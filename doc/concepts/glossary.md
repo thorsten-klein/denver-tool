@@ -27,7 +27,7 @@ targeting different venvs.
 **Provider** — the generic engine behind a stage type. denver ships eight:
 `uv`, `conan`, `zephyr`, `docker`, `download`, `git`, `nix` and `custom`. A provider holds no
 project-specific knowledge; everything specific comes from the `denver.yml`
-section it is given. See [`providers/`](https://github.com/thorsten-klein/denver/tree/develop/doc/providers).
+section it is given. See [`providers/`](https://github.com/thorsten-klein/denver-tool/tree/develop/doc/providers).
 
 **Extension provider** — a project's own `Provider` subclass, registered via
 `extensions: providers: dirs:` instead of being built into denver. Behaves

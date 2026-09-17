@@ -216,7 +216,7 @@ a stage that has several, each needing its own directory named — not
 replaced by this stage-wide one.
 
 Every other key in a stage's section must be one the stage's own provider
-recognises — see that provider's page under [`providers/`](https://github.com/thorsten-klein/denver/tree/develop/doc/providers). An
+recognises — see that provider's page under [`providers/`](https://github.com/thorsten-klein/denver-tool/tree/develop/doc/providers). An
 unrecognised key is an error, not silently ignored.
 
 ### Variable interpolation
@@ -240,7 +240,7 @@ name is already exported:
   fingerprints, logs, `performance.jsonl`. Per environment and never shared
   by default — overridable directly (`DENVER_ENV_WORKDIR`) — see "Where an
   environment's state lives" in the top-level
-  [`README.md`](https://github.com/thorsten-klein/denver/blob/develop/README.md).
+  [`README.md`](https://github.com/thorsten-klein/denver-tool/blob/develop/README.md).
 - **`DENVER_CACHE_DIR`** — the *shared* cache root (`~/.cache/denver` by
   default), offered for an env to point a tool's own download cache at, e.g.
   `env: {CONAN_HOME: "${DENVER_CACHE_DIR}/conan2"}`. Safe to share across
@@ -255,7 +255,7 @@ These are exported into the environment too, so scripts, compose files and
 the final command can read them as ordinary variables. `DENVER_ENV_DIR` —
 the one variable here denver *reads* rather than computes — is documented
 alongside them in the top-level
-[`README.md`](https://github.com/thorsten-klein/denver/blob/develop/README.md).
+[`README.md`](https://github.com/thorsten-klein/denver-tool/blob/develop/README.md).
 
 ### The prompt marker
 
@@ -525,7 +525,7 @@ Neither `--force` nor `--ci` is ever read from a real environment variable
 — both only ever come from the flag itself, so behavior can't silently
 change based on what happens to be exported in the calling shell.
 
-Each provider's page under [`providers/`](https://github.com/thorsten-klein/denver/tree/develop/doc/providers) documents exactly what
+Each provider's page under [`providers/`](https://github.com/thorsten-klein/denver-tool/tree/develop/doc/providers) documents exactly what
 `--fast` and `--force` mean for that provider.
 
 ## Previewing a run (`--dry-run`)

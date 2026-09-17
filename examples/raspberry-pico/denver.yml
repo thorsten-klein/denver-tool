@@ -1,6 +1,6 @@
 version: 1.0
 # minimum denver (the tool) this env needs -- see doc/configuration/config-file.md
-denver-version: ">=1.6.0"
+denver-version: ">=1.6.6"
 
 stages:
 - host-tools

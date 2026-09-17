@@ -1,7 +1,7 @@
 # Examples
 
 You can find some working denver environments under
-[`examples/`](https://github.com/thorsten-klein/denver/tree/develop/examples/)
+[`examples/`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/)
 in the repository. Each has its own README
 explaining what it does, why it exists and what it is meant to teach. They
 are not illustrative snippets — every `examples/*/denver.yml` has its
@@ -12,15 +12,15 @@ so an example that drifted out of sync with the code fails the build.
 
 | Example | Stages | What it is for |
 |---|---|---|
-| [`simple-env`](https://github.com/thorsten-klein/denver/tree/develop/examples/simple-env) | 3 × `custom` | The whole model at minimum size. Also the `cmd:` vs `source:` demo |
-| [`zephyr-uv`](https://github.com/thorsten-klein/denver/tree/develop/examples/zephyr-uv) | `uv` | A virtualenv and nothing else — proof that no container or toolchain is required |
-| [`nix-devshell`](https://github.com/thorsten-klein/denver/tree/develop/examples/nix-devshell) | `nix` → `custom` | A nix flake's `devShell` as the environment. What sourcing `nix print-dev-env` buys over wrapping `nix develop --command`, and what the evaluation cache is keyed on |
-| [`raspberry-pico`](https://github.com/thorsten-klein/denver/tree/develop/examples/raspberry-pico) | `custom` → `download` → `git` → `download` | A cross-compilation toolchain **without Docker, and without Conan**. `git`/`download` instead of hand-vendored archives; `unpack-cmd:` that builds, not just unpacks |
-| [`zephyr-docker`](https://github.com/thorsten-klein/denver/tree/develop/examples/zephyr-docker) | `docker` | The container layer on its own — a wrapper stage, and a `hooks: pre-docker:` script |
-| [`firmware-env`](https://github.com/thorsten-klein/denver/tree/develop/examples/firmware-env) | `docker` → `uv` → `custom` → `download` → `conan` → `custom` | Five providers in one small env — run end to end and built from scratch in [denver in 30 minutes](30-minutes.md). Also: the same job (a pinned prebuilt binary on `PATH`) done three ways — by hand, by `download`, by conan |
-| [`zephyr-devshell`](https://github.com/thorsten-klein/denver/tree/develop/examples/zephyr-devshell) | *(base — not runnable)* | The shared base: `import:`, layering, `runnable: false` |
-| [`zephyr-devshell-4.3.1`](https://github.com/thorsten-klein/denver/tree/develop/examples/zephyr-devshell-4.3.1) | `docker` → `uv` → `conan` → `zephyr` → `custom` | A full Zephyr RTOS setup — the extreme case, and what `import:` layering looks like at full size |
-| [`doc-env`](https://github.com/thorsten-klein/denver/tree/develop/examples/doc-env) | `uv` → `custom` | Builds *this documentation* with Sphinx — denver used on itself |
+| [`simple-env`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/simple-env) | 3 × `custom` | The whole model at minimum size. Also the `cmd:` vs `source:` demo |
+| [`zephyr-uv`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/zephyr-uv) | `uv` | A virtualenv and nothing else — proof that no container or toolchain is required |
+| [`nix-devshell`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/nix-devshell) | `nix` → `custom` | A nix flake's `devShell` as the environment. What sourcing `nix print-dev-env` buys over wrapping `nix develop --command`, and what the evaluation cache is keyed on |
+| [`raspberry-pico`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/raspberry-pico) | `custom` → `download` → `git` → `download` | A cross-compilation toolchain **without Docker, and without Conan**. `git`/`download` instead of hand-vendored archives; `unpack-cmd:` that builds, not just unpacks |
+| [`zephyr-docker`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/zephyr-docker) | `docker` | The container layer on its own — a wrapper stage, and a `hooks: pre-docker:` script |
+| [`firmware-env`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/firmware-env) | `docker` → `uv` → `custom` → `download` → `conan` → `custom` | Five providers in one small env — run end to end and built from scratch in [denver in 30 minutes](30-minutes.md). Also: the same job (a pinned prebuilt binary on `PATH`) done three ways — by hand, by `download`, by conan |
+| [`zephyr-devshell`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/zephyr-devshell) | *(base — not runnable)* | The shared base: `import:`, layering, `runnable: false` |
+| [`zephyr-devshell-4.3.1`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/zephyr-devshell-4.3.1) | `docker` → `uv` → `conan` → `zephyr` → `custom` | A full Zephyr RTOS setup — the extreme case, and what `import:` layering looks like at full size |
+| [`doc-env`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/doc-env) | `uv` → `custom` | Builds *this documentation* with Sphinx — denver used on itself |
 
 ## Running the bundled examples
 

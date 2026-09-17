@@ -4,11 +4,11 @@
 blank_issues_enabled: false
 contact_links:
 - name: Documentation
-  url: https://github.com/thorsten-klein/denver/blob/develop/doc/README.md
+  url: https://github.com/thorsten-klein/denver-tool/blob/develop/doc/README.md
   about: How denver builds an env, and what each provider does.
 - name: Provider reference
-  url: https://github.com/thorsten-klein/denver/tree/develop/doc/providers
+  url: https://github.com/thorsten-klein/denver-tool/tree/develop/doc/providers
   about: All settings of the conan, custom, docker, uv and zephyr providers.
 - name: Working examples
-  url: https://github.com/thorsten-klein/denver/tree/develop/examples
+  url: https://github.com/thorsten-klein/denver-tool/tree/develop/examples
   about: Envs that really run, all tested in CI. Often quicker than asking.

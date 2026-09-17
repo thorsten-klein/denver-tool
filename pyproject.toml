@@ -32,11 +32,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/thorsten-klein/denver"
-Documentation = "https://github.com/thorsten-klein/denver/blob/main/doc/README.md"
-Repository = "https://github.com/thorsten-klein/denver"
-Issues = "https://github.com/thorsten-klein/denver/issues"
-Changelog = "https://github.com/thorsten-klein/denver/releases"
+Homepage = "https://github.com/thorsten-klein/denver-tool"
+Documentation = "https://github.com/thorsten-klein/denver-tool/blob/main/doc/README.md"
+Repository = "https://github.com/thorsten-klein/denver-tool"
+Issues = "https://github.com/thorsten-klein/denver-tool/issues"
+Changelog = "https://github.com/thorsten-klein/denver-tool/releases"
 
 [project.scripts]
 # Expose executable under own name so that 'uvx denver-tool==x.y.z' (or 'uv tool install denver-tool')

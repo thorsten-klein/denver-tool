@@ -24,7 +24,8 @@ dist/
 build/
 *.egg-info
 .venv
-.coverage
+.mypy*
+.coverage*
 coverage.xml
 htmlcov/
 junit.xml

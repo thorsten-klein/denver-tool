@@ -8,7 +8,7 @@ end you can write your own instead of copying one.
 
 Build along in your own repo under `envs/firmware-env/`; the finished result is
 bundled as
-[`examples/firmware-env`](https://github.com/thorsten-klein/denver/tree/develop/examples/firmware-env)
+[`examples/firmware-env`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/firmware-env)
 if you want to compare, or skip ahead. (The bundled copy is a `denver.yml` --
 denver's default format -- while this walkthrough builds a `denver.toml`;
 same schema either way, see
@@ -689,7 +689,7 @@ yourself.
 
 ## The finished `denver.toml`
 
-See [`examples/firmware-env`](https://github.com/thorsten-klein/denver/tree/develop/examples/firmware-env) for all of this as a
+See [`examples/firmware-env`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/firmware-env) for all of this as a
 real, runnable environment: every file below, complete and working, ready to
 be started with `denver run examples/firmware-env`.
 
@@ -702,7 +702,7 @@ denver run examples/firmware-env
 ## Prove it, rather than hope
 
 A worthwhile habit for an environment like this: let it carry a test that
-checks what each stage promised. [`examples/firmware-env/tests/`](https://github.com/thorsten-klein/denver/tree/develop/examples/firmware-env/tests)
+checks what each stage promised. [`examples/firmware-env/tests/`](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/firmware-env/tests)
 does exactly that.
 
 So let's run those tests:

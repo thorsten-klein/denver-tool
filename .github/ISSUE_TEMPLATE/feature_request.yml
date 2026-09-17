@@ -11,7 +11,7 @@ body:
       you today".
 
       Good to read first:
-      [doc/philosophy.md](https://github.com/thorsten-klein/denver/blob/develop/doc/philosophy.md).
+      [doc/philosophy.md](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/philosophy.md).
 
 - type: textarea
   id: problem

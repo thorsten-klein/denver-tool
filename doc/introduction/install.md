@@ -3,7 +3,7 @@
 There are several ways to install denver. Pick whichever fits your project.
 
 All versions, changelogs and prebuilt binaries are on the
-[GitHub releases page](https://github.com/thorsten-klein/denver/releases).
+[GitHub releases page](https://github.com/thorsten-klein/denver-tool/releases).
 
 ## Run from source (no install)
 
@@ -17,7 +17,7 @@ the repository and run the script directly.
 > `>=3.9` range.
 
 ```bash
-git clone https://github.com/thorsten-klein/denver.git
+git clone https://github.com/thorsten-klein/denver-tool.git
 ```
 
 ```bash
@@ -40,7 +40,7 @@ pip install denver-tool
 or straight from GitHub:
 
 ```bash
-pip install git+https://github.com/thorsten-klein/denver.git@develop
+pip install git+https://github.com/thorsten-klein/denver-tool.git@develop
 ```
 
 If you use `uv` instead of `pip`:
@@ -58,7 +58,7 @@ uv tool install denver-tool
 or straight from GitHub:
 
 ```bash
-uv tool install git+https://github.com/thorsten-klein/denver.git@develop
+uv tool install git+https://github.com/thorsten-klein/denver-tool.git@develop
 ```
 
 Any of those commands installs the `denver` command.
@@ -75,7 +75,7 @@ alias denver="uvx --python 3.14 denver-tool==x.y.z"
 
 On a machine with no Python at all, or if you are stuck on Python older than
 `3.9`, use the standalone executable attached to every
-[release](https://github.com/thorsten-klein/denver/releases) instead. It
+[release](https://github.com/thorsten-klein/denver-tool/releases) instead. It
 bundles `denver`, its providers and a Python interpreter into one
 executable. (Stuck between `3.9` and `3.11`, specifically? A regular install
 still works fine as long as your configs are `denver.yml`/`denver.yaml` --
@@ -83,12 +83,12 @@ only `denver.toml` needs `3.11`, see
 [Configuration](../configuration/config-file.md).)
 
 Find the download link for the latest release
-[in your browser](https://github.com/thorsten-klein/denver/releases)
+[in your browser](https://github.com/thorsten-klein/denver-tool/releases)
 or download via `curl`:
 
 
 ```bash
-ASSET=$(curl -sSL https://api.github.com/repos/thorsten-klein/denver/releases/latest | grep -o 'https://[^"]*\.tar\.xz')
+ASSET=$(curl -sSL https://api.github.com/repos/thorsten-klein/denver-tool/releases/latest | grep -o 'https://[^"]*\.tar\.xz')
 ```
 
 Download and unpack it:
@@ -117,7 +117,7 @@ can install it in python's editable mode:
 First clone the repository
 
 ```bash
-git clone https://github.com/thorsten-klein/denver.git
+git clone https://github.com/thorsten-klein/denver-tool.git
 ```
 
 Then install in editable mode, e.g. via `pip`
@@ -132,7 +132,7 @@ as an installed package, add it via
 [git-nested](https://github.com/thorsten-klein/git-nested):
 
 ```bash
-git-nested clone https://github.com/thorsten-klein/denver.git
+git-nested clone https://github.com/thorsten-klein/denver-tool.git
 ```
 
 Nothing needs installing here either — same idea as

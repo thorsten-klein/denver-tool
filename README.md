@@ -1,15 +1,15 @@
 # denver
 
-<img src="https://raw.githubusercontent.com/thorsten-klein/denver/develop/src/denver_assets/logo.svg" alt="logo" width="500"/>
+<img src="https://raw.githubusercontent.com/thorsten-klein/denver-tool/develop/src/denver_assets/logo.svg" alt="logo" width="500"/>
 
 **Development Environments as code — reproducible, flexible, simple and fast.**
 
-[![CI](https://github.com/thorsten-klein/denver/actions/workflows/ci.yml/badge.svg)](https://github.com/thorsten-klein/denver/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/thorsten-klein/denver/branch/develop/graph/badge.svg)](https://codecov.io/gh/thorsten-klein/denver)
+[![CI](https://github.com/thorsten-klein/denver-tool/actions/workflows/ci.yml/badge.svg)](https://github.com/thorsten-klein/denver-tool/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/thorsten-klein/denver-tool/branch/develop/graph/badge.svg)](https://codecov.io/gh/thorsten-klein/denver-tool)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=thorsten-klein_denver&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=thorsten-klein_denver)
 [![PyPI](https://img.shields.io/pypi/v/denver-tool.svg)](https://pypi.org/project/denver-tool/)
 [![Python versions](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fthorsten-klein%2Fdenver%2Fdevelop%2Fpyproject.toml)](https://pypi.org/project/denver-tool/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/thorsten-klein/denver/blob/develop/LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/thorsten-klein/denver-tool/blob/develop/LICENSE)
 
 **D**evelopment **Env**ironment Launch**er** — declares dev environments in a
 `denver.yml` (or `denver.toml`): reproducible and layerable to fit your
@@ -28,7 +28,7 @@ time on any machine — for you, for teammates, and in CI.
 
 ## Documentation
 
-You can find the full documentation in Markdown [here](https://github.com/thorsten-klein/denver/blob/develop/doc/introduction/index.md)
+You can find the full documentation in Markdown [here](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/introduction/index.md)
 
 Additionally it is hosted [on GitHub Pages](https://thorsten-klein.github.io/denver/).
 
@@ -57,12 +57,12 @@ denver --version
 > **Note:** denver needs Python `>=3.9` and always supports `denver.yml` configs;
 > `denver.toml` needs python `>=3.11` (uses stdlib `tomllib`).
 > Stuck below `3.11` or even below `3.9`? Grab a prebuilt executable from a
-> [release](https://github.com/thorsten-klein/denver/releases), which bundles python 3.12.
+> [release](https://github.com/thorsten-klein/denver-tool/releases), which bundles python 3.12.
 > Or create a venv with a newer python, for example `uv venv --python 3.14`, and run
 > `uv run src/denver.py` (alternatively with `alias denver="uv run $PWD/src/denver.py"`).
 
 For more details about how to install or run `denver` see
-**[Install denver →](https://github.com/thorsten-klein/denver/blob/develop/doc/introduction/install.md)**.
+**[Install denver →](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/introduction/install.md)**.
 
 
 ## Tab Completion
@@ -80,7 +80,7 @@ denver complete | source
 ```
 
 
-For more details see **[Shell completion →](https://github.com/thorsten-klein/denver/blob/develop/doc/cli/completion.md)**.
+For more details see **[Shell completion →](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/cli/completion.md)**.
 
 ## Try it out
 
@@ -127,12 +127,12 @@ Output:
 ```
 
 For available flag (e.g. the `-q`, see
-**[CLI arguments →](https://github.com/thorsten-klein/denver/blob/develop/doc/cli/arguments.md)**
+**[CLI arguments →](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/cli/arguments.md)**
 or run `denver --help` respectively `denver run --help`.
 
-You want to see some more advanced example? Have a look at **[denver in 5 minutes →](https://github.com/thorsten-klein/denver/blob/develop/doc/quickstart/five-minutes.md)**.
+You want to see some more advanced example? Have a look at **[denver in 5 minutes →](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/quickstart/five-minutes.md)**.
 
-You want to see some even more advanced example? Have a look at **[denver in 30 minutes →](https://github.com/thorsten-klein/denver/blob/develop/doc/quickstart/30-minutes.md)**
+You want to see some even more advanced example? Have a look at **[denver in 30 minutes →](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/quickstart/30-minutes.md)**
 
 
 ## Known limitations
@@ -143,15 +143,15 @@ what lets the floor be as low as python `>=3.9`. `denver.toml` is supported
 too, but only where `tomllib` is importable (stdlib only from python
 `>=3.11`) — on an older interpreter it's rejected with a clear error instead
 of a silent misread. See
-[install or run denver](https://github.com/thorsten-klein/denver/blob/develop/doc/introduction/install.md).
+[install or run denver](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/introduction/install.md).
 
 ## Contributing
 
 Bug reports, feature requests and pull requests are very welcome — see
-[`doc/contributing/development.md`](https://github.com/thorsten-klein/denver/blob/develop/doc/contributing/development.md) for the workflow.
+[`doc/contributing/development.md`](https://github.com/thorsten-klein/denver-tool/blob/develop/doc/contributing/development.md) for the workflow.
 
 To sum up: `uv run poe all` should always pass.
 
 ## License
 
-Apache License 2.0 — see [`LICENSE`](https://github.com/thorsten-klein/denver/blob/develop/LICENSE).
+Apache License 2.0 — see [`LICENSE`](https://github.com/thorsten-klein/denver-tool/blob/develop/LICENSE).

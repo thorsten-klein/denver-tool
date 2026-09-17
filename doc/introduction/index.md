@@ -1,6 +1,6 @@
 # About denver
 
-<img src="https://raw.githubusercontent.com/thorsten-klein/denver/develop/src/denver_assets/logo.svg" alt="denver logo" width="500"/>
+<img src="https://raw.githubusercontent.com/thorsten-klein/denver-tool/develop/src/denver_assets/logo.svg" alt="denver logo" width="500"/>
 
 **D**evelopment **Env**ironment Launch**er** — describe your environment as
 code in a `denver.yml`: it consists of stages that build on top of each other.

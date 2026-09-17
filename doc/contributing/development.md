@@ -6,7 +6,7 @@ make sure `uv run poe all` passes (including 100% coverage), open a PR.
 ## Quick start
 
 ```bash
-git clone https://github.com/thorsten-klein/denver.git
+git clone https://github.com/thorsten-klein/denver-tool.git
 cd denver
 uv sync --group dev
 

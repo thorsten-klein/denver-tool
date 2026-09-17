@@ -6,13 +6,6 @@ on:
   push:
     branches:
     - develop
-    paths:
-    - 'doc/**'
-    - 'examples/doc-env/**'
-    - 'src/**'
-    - 'pyproject.toml'
-    - 'uv.lock'
-    - '.github/workflows/docs.yml'
   # on-demand -- 'Run workflow' in the Actions tab, or `gh workflow run docs.yml`
   workflow_dispatch:
 

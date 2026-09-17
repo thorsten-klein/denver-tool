@@ -71,7 +71,7 @@ version = release
 
 # the repo the "Edit on GitHub" flyout and the version line point at.
 github_user = "thorsten-klein"
-github_repo = "denver"
+github_repo = "denver-tool"
 github_url = f"https://github.com/{github_user}/{github_repo}"
 
 # Link target -- the full sha where git has one, else the short sha in the

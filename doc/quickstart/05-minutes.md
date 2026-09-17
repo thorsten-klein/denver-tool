@@ -6,7 +6,7 @@ This page explains the most simple bundled environment: `examples/simple-env`.
 ## Have a look first
 
 Open `examples/simple-env/denver.yml` in a file editor of your choice
-(or [in your Browser](https://github.com/thorsten-klein/denver/tree/develop/examples/simple-env/denver.yml)),
+(or [in your Browser](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/simple-env/denver.yml)),
 or ask `denver` to show the resolved config with `denver run examples/simple-env --show-config`.
 
 > [!NOTE]
@@ -44,7 +44,7 @@ print-vars-after:
 A closer look shows what each stage does:
 - The first stage prints the variables and their current values (most likely empty because you don't have set them on your host system).
 - The second stage prints some text, then sources `custom.sh` —
-  [open that script](https://github.com/thorsten-klein/denver/tree/develop/examples/simple-env/custom.sh)
+  [open that script](https://github.com/thorsten-klein/denver-tool/tree/develop/examples/simple-env/custom.sh)
   and you'll see it sets those variables to specific values.
 - The third stage prints the variables again, to showcase that the values from second stage are really applied.
 
