@@ -1,0 +1,679 @@
+
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Development &mdash; denver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=41959f36" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.svg"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/custom.js?v=4c2ef8d1"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="12. Glossary" href="../arc42/12_glossary/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            denver
+              <img src="../_static/logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/index.html">About denver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#what-problem-does-denver-solve">What problem does denver solve?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#why-denver-and-not-writing-your-own-scripts">Why denver and not writing your own scripts?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#what-is-a-denver-environment">What is a denver environment?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#is-denver-flexible">Is denver flexible?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/install.html">Install denver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#run-from-source-no-install">Run from source (no install)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#from-pypi">From PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#prebuilt-binary">Prebuilt binary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#editable-install">Editable install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#vendor-with-git-nested">Vendor with git-nested</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/05-minutes.html">denver in 5 minutes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#have-a-look-first">Have a look first</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#run-the-environment">Run the environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#what-just-happened">What just happened</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#pre-conditions-for-a-real-project">Pre-conditions for a real project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#the-handful-of-flags-you-ll-use-daily">The handful of flags you’ll use daily</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/30-minutes.html">denver in 30 minutes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#the-use-case">The use case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#what-you-need-before-starting">What you need before starting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-0-the-skeleton">Step 0 — the skeleton</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-1-declare-the-stages">Step 1 — declare the stages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-2-the-docker-base-stage">Step 2 — the <code class="docutils literal notranslate"><span class="pre">docker-base</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-docker-stage-needs">The files the docker stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#check-it-the-container">Check it — the container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-3-the-uv-packages-stage">Step 3 — the <code class="docutils literal notranslate"><span class="pre">uv-packages</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-4-the-nvim-setup-stage">Step 4 — the <code class="docutils literal notranslate"><span class="pre">nvim-setup</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-nvim-stage-needs">The files the nvim stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#check-it-nvim-on-path">Check it — nvim on PATH</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-5-the-ninja-setup-stage">Step 5 — the <code class="docutils literal notranslate"><span class="pre">ninja-setup</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-6-the-conan-packages-stage">Step 6 — the <code class="docutils literal notranslate"><span class="pre">conan-packages</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-conan-stage-needs">The files the conan stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#keeping-conan-s-cache">Keeping conan’s cache</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#by-hand-download-or-conan">By hand, <code class="docutils literal notranslate"><span class="pre">download</span></code> or conan?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-7-the-best-practices-stage">Step 7 — the <code class="docutils literal notranslate"><span class="pre">best-practices</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-8-the-default-command">Step 8 — the default command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#the-finished-denver-toml">The finished <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#prove-it-rather-than-hope">Prove it, rather than hope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#everyday-use">Everyday use</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/examples.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/examples.html#running-the-bundled-examples">Running the bundled examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/glossary.html">Glossary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#the-core-model">The core model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#execution">Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/philosophy.html">Philosophy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#genericity">Genericity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#explicit-over-implicit">Explicit over implicit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#central-default-resolution">Central default resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#fail-loud-on-the-unexpected">Fail loud on the unexpected</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#fast-by-default-never-at-the-cost-of-correctness">Fast by default, never at the cost of correctness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#reproducibility-as-a-first-class-goal">Reproducibility as a first-class goal</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">denver command</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../cli/arguments.html">Arguments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#control-the-stages-choosing-what-runs">Control the stages: Choosing what runs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#control-the-config-change-values-for-one-run">Control the config: Change values for one run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#an-env-s-own-flags-denver-custom-args">An env’s own flags: <code class="docutils literal notranslate"><span class="pre">denver-custom-args:</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#control-the-speed-trading-speed-against-freshness">Control the speed: Trading speed against freshness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#inspect-an-environment">Inspect an environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#hand-the-built-env-to-something-else">Hand the built env to something else</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#remove-an-environment-s-state">Remove an environment’s state</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/arguments.html#denver-clean-env"><code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span> <span class="pre">&lt;env&gt;</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#output-and-version">Output and version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/completion.html">Shell completion</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli/completion.html#works-no-matter-how-you-invoke-it">Works no matter how you invoke it</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/completion.html#what-gets-completed">What gets completed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/completion.html#inside-a-docker-relocated-shell-automatically">Inside a docker-relocated shell, automatically</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/environment-variables.html">Environment variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli/environment-variables.html#what-denver-reads">What denver reads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/environment-variables.html#what-denver-exports">What denver exports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/environment-variables.html#where-an-environment-s-state-lives">Where an environment’s state lives</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration/config-file.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#denver-yml-vs-denver-toml">denver.yml vs. denver.toml</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#core-model">Core model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#the-denver-toml-schema">The <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code> schema</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#top-level-keys">Top-level keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#requiring-a-denver-version">Requiring a denver version</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#generic-stage-keys">Generic stage keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#variable-interpolation">Variable interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#the-prompt-marker">The prompt marker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#config-resolution">Config resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#layering">Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-overrides">Command-line overrides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-environment-variables">Command-line environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#environment-specific-cli-arguments">Environment-specific CLI arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#hooks-and-scripts">Hooks and scripts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#fast-by-default">Fast by default</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#previewing-a-run-dry-run">Previewing a run (<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#stage-filtering">Stage filtering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#wrapper-relocation">Wrapper / relocation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#how-the-inner-run-knows-where-it-is">How the inner run knows where it is</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#one-run-per-environment-at-a-time">One run per environment at a time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#quiet-levels-and-verbose">Quiet levels and –verbose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#performance-tracing">Performance tracing</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Providers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../providers/uv.html">uv provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#one-venv-one-interpreter">One venv, one interpreter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/conan.html">conan provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/conan.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/conan.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/conan.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/docker.html">docker provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#setting-up-docker">Setting up Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/zephyr.html">zephyr provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/zephyr.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/zephyr.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/zephyr.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/download.html">download provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#key-reference">Key reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../providers/download.html#package-keys">Package keys</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#authenticated-downloads">Authenticated downloads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#where-things-go">Where things go</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#unpacking">Unpacking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/git.html">git provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#unreachable-commits">Unreachable commits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#where-things-go">Where things go</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/nix.html">nix provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#the-cache">The cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#shellhook">shellHook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/custom.html">custom provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/custom.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/custom.html#worked-example-bringing-a-prebuilt-binary-in-by-hand">Worked example: bringing a prebuilt binary in by hand</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/custom.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture (arc42)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arc42/index.html">Architecture (arc42)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html">1. Introduction and Goals</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#requirements-overview">1.1 Requirements overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#quality-goals">1.2 Quality goals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#stakeholders">1.3 Stakeholders</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html">2. Architecture Constraints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#technical-constraints">2.1 Technical constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#organizational-constraints">2.2 Organizational constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#conventions">2.3 Conventions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/03_context_and_scope/index.html">3. Context and Scope</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#business-context">3.1 Business context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#technical-context">3.2 Technical context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#scope-boundaries">3.3 Scope boundaries</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/04_solution_strategy/index.html">4. Solution Strategy</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#declarative-config-generic-providers">4.1 Declarative config, generic providers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#an-ordered-pipeline-of-stages">4.2 An ordered pipeline of stages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#one-central-place-for-every-default">4.3 One central place for every default</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#nothing-is-inferred-from-the-directory-layout">4.4 Nothing is inferred from the directory layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#two-ways-to-inherit-config">4.5 Two ways to inherit config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#loud-failure-over-a-silent-guess">4.6 Loud failure over a silent guess</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#fast-by-default-and-the-container-is-only-a-relocation">4.7 Fast by default, and the container is only a relocation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/05_building_block_view/index.html">5. Building Block View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-1-whitebox-denver">5.1 Level 1: whitebox denver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-inside-the-orchestrator">5.2 Level 2: inside the orchestrator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-inside-the-provider-package">5.3 Level 2: inside the provider package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-context">5.4 Level 2: <code class="docutils literal notranslate"><span class="pre">Context</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-3">5.5 Level 3</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/06_runtime_view/index.html">6. Runtime View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#cold-run-on-the-host">6.1 Cold run on the host</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#warm-run">6.2 Warm run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#relocation-into-a-container">6.3 Relocation into a container</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#inspecting-instead-of-running">6.4 Inspecting instead of running</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#failing-early">6.5 Failing early</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/07_deployment_view/index.html">7. Deployment View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#where-denver-runs">7.1 Where denver runs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#how-denver-itself-is-shipped">7.2 How denver itself is shipped</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#where-state-lives">7.3 Where state lives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#ci">7.4 CI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#network">7.5 Network</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html">8. Cross-cutting Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#error-handling">8.1 Error handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#fail-loud">8.2 Fail loud</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#config-merging">8.3 Config merging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#path-resolution">8.4 Path resolution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#central-defaults">8.5 Central defaults</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#interpolation">8.6 Interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#hooks-and-scripts">8.7 Hooks and scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#stage-selection">8.8 Stage selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#runtime-toggles">8.9 Runtime toggles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#fingerprinting">8.10 Fingerprinting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#dry-run-and-testability-from-one-seam">8.11 Dry-run and testability, from one seam</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#concurrency">8.12 Concurrency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#output-and-tracing">8.13 Output and tracing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#isolation">8.14 Isolation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/09_design_decisions/index.html">9. Architecture Decisions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0001-central-default-resolution.html">ADR-0001: Central default resolution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0002-no-inferred-paths.html">ADR-0002: No path is inferred from the directory layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0003-config-format.html">ADR-0003: YAML is the default config format, TOML optional</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0004-wrapper-relocation.html">ADR-0004: A container is a wrapper stage that relocates the run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0005-provider-is-mandatory-never-guessed-from-the-stage-id">ADR-0005: provider is mandatory, never guessed from the stage id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0006-stages-and-providers-as-the-two-names">ADR-0006: stages and providers as the two names</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0007-lists-append-instead-of-replacing">ADR-0007: lists append instead of replacing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0008-die-raises-denvererror-instead-of-exiting">ADR-0008: die() raises DenverError instead of exiting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0009-state-lives-with-the-env">ADR-0009: state lives with the env</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0010-one-run-per-environment">ADR-0010: one run per environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0011-fingerprint-content-not-absolute-paths">ADR-0011: fingerprint content, not absolute paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0012-extension-providers-instead-of-forks">ADR-0012: extension providers instead of forks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0013-download-and-git-as-providers">ADR-0013: download and git as providers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0014-subcommand-cli">ADR-0014: subcommand CLI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0015-top-level-package-names-that-do-not-squat">ADR-0015: top-level package names that do not squat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0016-pip-provider-renamed-to-uv">ADR-0016: pip provider renamed to uv</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html">10. Quality Scenarios</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html#quality-tree">10.1 Quality tree</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html#scenarios">10.2 Scenarios</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/11_technical_risks/index.html">11. Technical Risks and Debt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/12_glossary/index.html">12. Glossary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test-suite">Test suite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#coverage">Coverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#linting-formatting-types">Linting / formatting / types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-a-new-provider">Adding a new provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ci">CI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#releasing">Releasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#known-limitations">Known limitations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#denver-has-exactly-one-runtime-dependency-pyyaml">denver has exactly one runtime dependency: PyYAML</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#more-pyyaml-unrelated-to-denver-s-own-config">More PyYAML, unrelated to denver’s own config</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">denver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Development</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/thorsten-klein/denver-tool/blob/develop/doc/contributing/development.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="development">
+<h1>Development<a class="headerlink" href="#development" title="Link to this heading"></a></h1>
+<p>Contributions are welcome. The short version: fork, branch off <code class="docutils literal notranslate"><span class="pre">develop</span></code>,
+make sure <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">poe</span> <span class="pre">all</span></code> passes (including 100% coverage), open a PR.</p>
+<section id="quick-start">
+<h2>Quick start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/thorsten-klein/denver-tool.git
+<span class="nb">cd</span><span class="w"> </span>denver
+uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>dev
+
+uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>all<span class="w">      </span><span class="c1"># lint + format + mypy + test, in one go</span>
+</pre></div>
+</div>
+<p>Or run each stage on its own:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>pre-commit<span class="w">  </span><span class="c1"># pre-commit run --all-files</span>
+uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>lint<span class="w">        </span><span class="c1"># ruff check .</span>
+uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>format<span class="w">      </span><span class="c1"># ruff format .</span>
+uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>mypy<span class="w">        </span><span class="c1"># mypy</span>
+uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span><span class="nb">test</span><span class="w">        </span><span class="c1"># pytest, with coverage</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">poe</span> <span class="pre">pre-commit</span></code> runs the hooks in <code class="docutils literal notranslate"><span class="pre">.pre-commit-config.yaml</span></code> with
+<code class="docutils literal notranslate"><span class="pre">--all-files</span></code> rather than over a staged set: they’re cheap enough that
+there’s no reason to check less than the whole tree, and it means the gate
+says the same thing no matter what happens to be staged when you run it.
+The fixing hooks (trailing whitespace, end-of-file, line endings) repair the
+file in place and <em>then</em> exit non-zero, so the first run after a violation
+aborts <code class="docutils literal notranslate"><span class="pre">poe</span> <span class="pre">all</span></code> with the fix already applied — on next re-run it will pass.</p>
+<p><code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">poe</span> <span class="pre">clean</span></code> removes build artifacts (<code class="docutils literal notranslate"><span class="pre">dist/</span></code>, <code class="docutils literal notranslate"><span class="pre">build/</span></code>, <code class="docutils literal notranslate"><span class="pre">*.egg-info</span></code>,
+<code class="docutils literal notranslate"><span class="pre">htmlcov/</span></code>, <code class="docutils literal notranslate"><span class="pre">.coverage</span></code>, <code class="docutils literal notranslate"><span class="pre">coverage.xml</span></code>); <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">poe</span> <span class="pre">build</span></code> cleans then
+builds the wheel/sdist (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">build</span></code>). <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">poe</span> <span class="pre">pyinstaller</span></code> is separate:
+it freezes the standalone executable (<code class="docutils literal notranslate"><span class="pre">scripts/create-python-exe.sh</span> <span class="pre">--output</span> <span class="pre">dist</span></code>) – see “Prebuilt Binary” in <a class="reference internal" href="../introduction/install.html"><span class="std std-doc">Install</span></a>
+for what that executable is. Kept out of <code class="docutils literal notranslate"><span class="pre">build</span></code> on purpose: <code class="docutils literal notranslate"><span class="pre">publish.yml</span></code>
+runs <code class="docutils literal notranslate"><span class="pre">poe</span> <span class="pre">build</span></code> and uploads everything under <code class="docutils literal notranslate"><span class="pre">dist/</span></code> to PyPI as-is, and
+the executable is a GitHub release asset (built by <code class="docutils literal notranslate"><span class="pre">release-binary.yml</span></code>),
+not a PyPI artifact.</p>
+</section>
+<section id="test-suite">
+<h2>Test suite<a class="headerlink" href="#test-suite" title="Link to this heading"></a></h2>
+<p>Everything lives under <code class="docutils literal notranslate"><span class="pre">tests/</span></code>, run with <code class="docutils literal notranslate"><span class="pre">pytest</span></code> (<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">[tool.pytest.ini_options]</span></code> points it at <code class="docutils literal notranslate"><span class="pre">src/</span></code> via <code class="docutils literal notranslate"><span class="pre">pythonpath</span></code>, so <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">denver</span></code> / <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">providers</span></code> work without installing the package first).</p>
+<p><strong>Nothing here touches a real tool.</strong> <code class="docutils literal notranslate"><span class="pre">tests/conftest.py</span></code> provides three
+fakes, requested as fixtures:</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">run_recorder</span></code></strong> — replaces <code class="docutils literal notranslate"><span class="pre">subprocess.run</span></code>. Records every call
+(<code class="docutils literal notranslate"><span class="pre">.commands()</span></code> for joined-string matching, <code class="docutils literal notranslate"><span class="pre">.argvs()</span></code> for real argv-list
+matching — prefer the latter for flag/value-adjacency checks) and returns
+a configurable canned response (<code class="docutils literal notranslate"><span class="pre">.responses[&quot;substring&quot;]</span> <span class="pre">=</span> <span class="pre">FakeProc(...)</span></code>
+or a callable). A <code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">-c</span> <span class="pre">...</span></code> call passes through to the <em>real</em>
+<code class="docutils literal notranslate"><span class="pre">subprocess.run</span></code> unless explicitly overridden, so <code class="docutils literal notranslate"><span class="pre">Context.source()</span></code>
+behavior stays real even while every other tool is mocked.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">which</span></code></strong> — replaces <code class="docutils literal notranslate"><span class="pre">shutil.which</span></code>. A dict <code class="docutils literal notranslate"><span class="pre">{name:</span> <span class="pre">path-or-None}</span></code>;
+anything not in the dict resolves to <code class="docutils literal notranslate"><span class="pre">/usr/bin/&lt;name&gt;</span></code> by default.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">exec_recorder</span></code></strong> — replaces <code class="docutils literal notranslate"><span class="pre">os.execvpe</span></code> (what <code class="docutils literal notranslate"><span class="pre">Context.exec()</span></code> uses to
+hand off to the final command). Captures <code class="docutils literal notranslate"><span class="pre">file</span></code>/<code class="docutils literal notranslate"><span class="pre">args</span></code>/<code class="docutils literal notranslate"><span class="pre">env</span></code> instead of
+actually replacing the process.</p></li>
+</ul>
+<p><strong>Golden-file tests</strong> (<code class="docutils literal notranslate"><span class="pre">tests/test_golden_show_config.py</span></code>) are the one place
+that <em>is</em> end-to-end: for every env under <code class="docutils literal notranslate"><span class="pre">examples/</span></code> tracked in git, it runs
+the real <code class="docutils literal notranslate"><span class="pre">--show-config-full</span></code> resolution against the real <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> and
+compares the output to a checked-in snapshot in <code class="docutils literal notranslate"><span class="pre">tests/golden/</span></code>, with this
+checkout’s own absolute path normalized to <code class="docutils literal notranslate"><span class="pre">&lt;REPO&gt;</span></code> and the zephyr
+provider’s workspace-root lookups faked (both documented in that test
+module). <code class="docutils literal notranslate"><span class="pre">--show-config-full</span></code>, not the (now minimal-by-default) plain
+<code class="docutils literal notranslate"><span class="pre">--show-config</span></code>: the golden files exist to catch a resolver dropping or
+changing a default, which a minimal render would just hide by omitting the
+key entirely. If you change something that legitimately changes a real
+env’s resolved config (a provider default, a merge rule, …), regenerate
+the affected golden file(s) rather than hand-editing them — run
+<code class="docutils literal notranslate"><span class="pre">--show-config-full</span></code> for the env, apply the same <code class="docutils literal notranslate"><span class="pre">&lt;REPO&gt;</span></code> substitution, and
+diff the result against what changed.</p>
+</section>
+<section id="coverage">
+<h2>Coverage<a class="headerlink" href="#coverage" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>’s <code class="docutils literal notranslate"><span class="pre">[tool.coverage.report]</span></code> sets <code class="docutils literal notranslate"><span class="pre">fail_under</span> <span class="pre">=</span> <span class="pre">100</span></code>.
+Python has no compiler to catch a branch nobody ever exercises — 100%
+coverage is the substitute for that safety net, not a vanity metric.</p>
+<p>A branch that’s real but that coverage.py can’t reliably trace (rare — one
+known case: <code class="docutils literal notranslate"><span class="pre">continue</span></code> as a <code class="docutils literal notranslate"><span class="pre">for</span></code> loop’s last statement, under Python 3.9)
+is marked <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">pragma:</span> <span class="pre">no</span> <span class="pre">cover</span></code> with a comment explaining <em>why</em> it’s excluded
+rather than restructured to dodge the tool. Don’t reach for <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">pragma:</span> <span class="pre">no</span> <span class="pre">cover</span></code> to paper over a genuinely untested branch — it’s an escape hatch for
+a tooling limitation, not a way to hit 100% faster.</p>
+</section>
+<section id="linting-formatting-types">
+<h2>Linting / formatting / types<a class="headerlink" href="#linting-formatting-types" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ruff</span></code></strong> does both linting and formatting (<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">[tool.ruff]</span></code>/<code class="docutils literal notranslate"><span class="pre">[tool.ruff.lint]</span></code>/<code class="docutils literal notranslate"><span class="pre">[tool.ruff.format]</span></code>). <code class="docutils literal notranslate"><span class="pre">examples/</span></code> and <code class="docutils literal notranslate"><span class="pre">bak/</span></code>
+are excluded — they’re project-specific conan recipes and scratch, not
+denver’s own package. Tests are exempt from a few rules
+(<code class="docutils literal notranslate"><span class="pre">[tool.ruff.lint.per-file-ignores]</span></code>): unused fixture/mock-callback
+arguments are idiomatic pytest, and a test’s own name is its
+documentation, so docstrings aren’t required there.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">mypy</span></code></strong> type-checks <code class="docutils literal notranslate"><span class="pre">src/</span></code> only (<code class="docutils literal notranslate"><span class="pre">[tool.mypy]</span></code>). <code class="docutils literal notranslate"><span class="pre">conan_scripts/</span></code>’s own
+sibling-module imports (<code class="docutils literal notranslate"><span class="pre">get_rrev</span></code>, <code class="docutils literal notranslate"><span class="pre">DenverConanFile</span></code>) and the optional
+<code class="docutils literal notranslate"><span class="pre">conan</span></code> dependency (test-only, see the <code class="docutils literal notranslate"><span class="pre">conan-tools</span></code>
+dependency group) both need <code class="docutils literal notranslate"><span class="pre">ignore_missing_imports</span></code> overrides — see the
+comments next to each in <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code> for why.</p></li>
+</ul>
+</section>
+<section id="adding-a-new-provider">
+<h2>Adding a new provider<a class="headerlink" href="#adding-a-new-provider" title="Link to this heading"></a></h2>
+<p>This is for contributing a provider <em>into denver itself</em> — one generic
+enough that other projects would want it too. A provider specific to your
+own project (an internal build tool, a deploy step) doesn’t need any of
+this or a fork: see “Extension providers” in
+<a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a> instead.</p>
+<ol class="arabic simple">
+<li><p>Subclass <code class="docutils literal notranslate"><span class="pre">Provider</span></code> (<code class="docutils literal notranslate"><span class="pre">src/denver_providers/base.py</span></code>): set <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">KEYS</span></code> (every
+<code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> key your section understands), and <code class="docutils literal notranslate"><span class="pre">kind</span></code> if it’s a wrapper
+(default: <code class="docutils literal notranslate"><span class="pre">setup</span></code>).</p></li>
+<li><p>Implement <code class="docutils literal notranslate"><span class="pre">resolve_defaults(cls,</span> <span class="pre">ctx,</span> <span class="pre">cfg,</span> <span class="pre">config)</span></code> — a classmethod, and
+the <em>only</em> place your provider computes a default (a PATH lookup, a
+conventional value, …). No I/O side effects beyond path
+resolution/existence checks and <code class="docutils literal notranslate"><span class="pre">die()</span></code>ing on a bad config — this runs
+for <code class="docutils literal notranslate"><span class="pre">--show-config</span></code> too, not just a real run, so it must never guess
+differently depending on whether setup() will actually run afterward.</p></li>
+<li><p>Implement <code class="docutils literal notranslate"><span class="pre">setup(self,</span> <span class="pre">ctx)</span></code> (a setup provider) and/or <code class="docutils literal notranslate"><span class="pre">wrap(self,</span> <span class="pre">ctx,</span> <span class="pre">cmd)</span></code> (a wrapper provider) — this is where the real work (and any real
+I/O) happens, reading <code class="docutils literal notranslate"><span class="pre">self.config_section(ctx)</span></code> for the
+already-resolved config.</p></li>
+<li><p>Register it: add <code class="docutils literal notranslate"><span class="pre">&quot;&lt;name&gt;&quot;:</span> <span class="pre">YourProvider</span></code> to <code class="docutils literal notranslate"><span class="pre">PROVIDERS</span></code> in
+<code class="docutils literal notranslate"><span class="pre">src/denver_providers/__init__.py</span></code>.</p></li>
+<li><p>Write tests: unit tests driving your provider directly against a fake
+<code class="docutils literal notranslate"><span class="pre">Context</span></code> (<code class="docutils literal notranslate"><span class="pre">make_context</span></code> fixture) with <code class="docutils literal notranslate"><span class="pre">run_recorder</span></code>/<code class="docutils literal notranslate"><span class="pre">which</span></code> mocking
+whatever it shells out to — see any existing <code class="docutils literal notranslate"><span class="pre">tests/test_providers_*.py</span></code>
+for the pattern. If a bundled example env exercises the new provider,
+the golden-file test picks it up automatically once you regenerate its
+snapshot.</p></li>
+<li><p>Document it: add <code class="docutils literal notranslate"><span class="pre">doc/providers/&lt;name&gt;.md</span></code> (key reference + design
+notes), link it from <code class="docutils literal notranslate"><span class="pre">doc/README.md</span></code>’s provider table and the top-level
+<code class="docutils literal notranslate"><span class="pre">README.md</span></code>, and point the module docstring at the new page.</p></li>
+</ol>
+</section>
+<section id="ci">
+<h2>CI<a class="headerlink" href="#ci" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">.github/workflows/ci.yml</span></code> runs on every push to <code class="docutils literal notranslate"><span class="pre">develop</span></code> and every pull
+request, in three jobs:</p>
+<ul class="simple">
+<li><p><strong>lint</strong> — <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code>, <code class="docutils literal notranslate"><span class="pre">ruff</span> <span class="pre">format</span> <span class="pre">--check</span></code>, <code class="docutils literal notranslate"><span class="pre">ruff</span> <span class="pre">check</span></code>, <code class="docutils literal notranslate"><span class="pre">mypy</span></code>.</p></li>
+<li><p><strong>test</strong> — <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">poe</span> <span class="pre">test</span></code> on Python 3.9, 3.10, 3.11 and 3.13: the floor
+denver declares support for (<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>’s <code class="docutils literal notranslate"><span class="pre">requires-python</span></code>) through
+the newest available, so a change that only works at one end doesn’t slip
+through. 3.9/3.10 also exercise the one behavioural split in denver’s own
+code – <code class="docutils literal notranslate"><span class="pre">tomllib</span></code> (<code class="docutils literal notranslate"><span class="pre">denver.toml</span></code> support) is stdlib only from 3.11, so
+those two legs are what actually runs with it absent, not just a
+monkeypatched test. Coverage and test results are uploaded to Codecov from
+the 3.13 run.</p></li>
+<li><p><strong>build</strong> — builds the wheel/sdist, then installs it into a clean venv and
+runs <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">--help</span></code> plus a real <code class="docutils literal notranslate"><span class="pre">--show-config</span></code> against a bundled example,
+with <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">denver-version=null</span></code> to drop that example’s pin (a dev-versioned
+wheel can never satisfy one naming an untagged release — see “Releasing”).
+That installed-mode smoke test exists because a checkout has a sibling
+<code class="docutils literal notranslate"><span class="pre">src/</span></code> layout that an installed wheel doesn’t — exactly the gap that once
+let a <code class="docutils literal notranslate"><span class="pre">DENVER_DIR</span></code> bug through (see <code class="docutils literal notranslate"><span class="pre">denver.py</span></code>’s <code class="docutils literal notranslate"><span class="pre">_default_denver_dir()</span></code>
+docstring).</p></li>
+</ul>
+</section>
+<section id="releasing">
+<h2>Releasing<a class="headerlink" href="#releasing" title="Link to this heading"></a></h2>
+<p>Versions come from git tags via <code class="docutils literal notranslate"><span class="pre">setuptools-scm</span></code> — a released artifact has
+no version string in a file. Cutting a release is therefore just tagging:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>tag<span class="w"> </span><span class="m">1</span>.1.0
+git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span><span class="m">1</span>.1.0
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">.github/workflows/publish.yml</span></code> triggers on any <code class="docutils literal notranslate"><span class="pre">*.*.*</span></code> tag: it builds the
+distribution with <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">poe</span> <span class="pre">build</span></code> and publishes it to
+<a class="reference external" href="https://pypi.org/project/denver-tool/">PyPI</a> via trusted publishing (OIDC,
+no API token stored in the repo), through the <code class="docutils literal notranslate"><span class="pre">pypi</span></code> GitHub environment.</p>
+<p>Before tagging: make sure CI is green on the commit being tagged, that
+<code class="docutils literal notranslate"><span class="pre">README.md</span></code>/<code class="docutils literal notranslate"><span class="pre">doc/</span></code> describe what actually ships, and that
+<code class="docutils literal notranslate"><span class="pre">SUPPORTED_CONFIG_VERSION</span></code> in <code class="docutils literal notranslate"><span class="pre">src/denver.py</span></code> still matches the <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>
+schema — it must be bumped together with any breaking schema change, so an
+older denver rejects a newer file instead of misreading it.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> states which denver <em>tool</em> version it needs with
+<code class="docutils literal notranslate"><span class="pre">denver-version:</span></code> (see <a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>), so a file
+using a brand-new feature names the release that first shipped it. When an
+example under <code class="docutils literal notranslate"><span class="pre">examples/</span></code> is changed to rely on something unreleased, its
+<code class="docutils literal notranslate"><span class="pre">denver-version:</span></code> names the version about to be tagged — a pin for a release
+that does not exist yet.</p>
+<p><code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> in <code class="docutils literal notranslate"><span class="pre">src/denver.py</span></code> is what keeps that working. A checkout’s
+tags necessarily lag behind its content: right after the feature lands,
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">describe</span></code> still reports the <em>previous</em> release, so the example would
+refuse to run from source until the tag existed. <code class="docutils literal notranslate"><span class="pre">scm_version()</span></code> therefore
+reports an untagged tree against <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> instead, carrying the commit
+suffix over (<code class="docutils literal notranslate"><span class="pre">1.1.0-17-gabc1234</span></code> — seventeen commits into developing 1.1.0,
+not a claim to be the release). So:</p>
+<ul class="simple">
+<li><p><strong>Bump <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> as soon as a cycle starts</strong>, i.e. at the first commit
+past the release tag. Two tests in <code class="docutils literal notranslate"><span class="pre">tests/test_dev_version.py</span></code> enforce it:
+<code class="docutils literal notranslate"><span class="pre">test_examples_run_from_a_checkout</span></code> fails if any example’s merged pin isn’t
+satisfied by what this checkout reports, and
+<code class="docutils literal notranslate"><span class="pre">test_dev_version_keeps_up_with_the_release_tags</span></code> fails as soon as there
+are commits past the newest tag and <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> still names that tag —
+which catches a forgotten bump before any pin has moved to expose it.</p></li>
+<li><p><strong>Tag exactly that number.</strong> Once the tag is pushed, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">describe</span></code>
+overtakes <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> and it stops having any effect until the next
+bump, so a value left stale can only understate an untagged tree — never
+overstate a released one.</p></li>
+<li><p>Sitting <em>exactly</em> on a tag is never re-based: that tree really is that
+release, whatever <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> says.</p></li>
+</ul>
+</section>
+<section id="known-limitations">
+<h2>Known limitations<a class="headerlink" href="#known-limitations" title="Link to this heading"></a></h2>
+<section id="denver-has-exactly-one-runtime-dependency-pyyaml">
+<h3>denver has exactly one runtime dependency: PyYAML<a class="headerlink" href="#denver-has-exactly-one-runtime-dependency-pyyaml" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>/<code class="docutils literal notranslate"><span class="pre">denver.yaml</span></code> is denver’s default config format, parsed with
+PyYAML — a required dependency (<code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>’s <code class="docutils literal notranslate"><span class="pre">[project]</span> <span class="pre">dependencies</span></code>),
+and the reason the floor can be as low as <code class="docutils literal notranslate"><span class="pre">requires-python</span> <span class="pre">=</span> <span class="pre">&quot;&gt;=3.9&quot;</span></code>.
+<code class="docutils literal notranslate"><span class="pre">denver.toml</span></code> is supported too, but only where <code class="docutils literal notranslate"><span class="pre">tomllib</span></code> is importable
+(stdlib only from Python 3.11): on an older interpreter it just isn’t there,
+and <code class="docutils literal notranslate"><span class="pre">load_config_file()</span></code> says so with a clear error instead of guessing (see
+<a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>).</p>
+<p>Both formats need to work inside a wrapper’s re-invoked process too
+(<code class="docutils literal notranslate"><span class="pre">reinvoke_command()</span></code> in <code class="docutils literal notranslate"><span class="pre">src/denver.py</span></code> builds <code class="docutils literal notranslate"><span class="pre">[&quot;python3&quot;,</span> <span class="pre">&lt;this</span> <span class="pre">file&gt;,</span> <span class="pre">...]</span></code>, a bare command resolved against the container’s <code class="docutils literal notranslate"><span class="pre">PATH</span></code> for a
+docker-wrapped env — an interpreter denver cannot pip-install anything into
+ahead of time). PyYAML is always there because pip installed it as a real
+dependency of the <code class="docutils literal notranslate"><span class="pre">denver-tool</span></code> distribution the image’s own <code class="docutils literal notranslate"><span class="pre">python3</span></code>
+resolves against; <code class="docutils literal notranslate"><span class="pre">tomllib</span></code> is there or not purely based on that
+interpreter’s own version, same as on the host. Keep it that way when
+contributing: reaching for a <em>second</em> runtime dependency for denver’s own
+config handling is what would invalidate this, and turns a documented
+feature into a real compatibility matrix.</p>
+</section>
+<section id="more-pyyaml-unrelated-to-denver-s-own-config">
+<h3>More PyYAML, unrelated to denver’s own config<a class="headerlink" href="#more-pyyaml-unrelated-to-denver-s-own-config" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">conan_scripts/*.py</span></code> (<code class="docutils literal notranslate"><span class="pre">build_catalog.py</span></code>, <code class="docutils literal notranslate"><span class="pre">get_rrev.py</span></code>, <code class="docutils literal notranslate"><span class="pre">recipes.py</span></code>)
+unconditionally <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">yaml</span></code>, because <code class="docutils literal notranslate"><span class="pre">conandata.yml</span></code>/<code class="docutils literal notranslate"><span class="pre">catalog.yml</span></code> are
+formats Conan itself dictates, not something denver chose – see
+<a class="reference internal" href="../providers/conan.html"><span class="std std-doc">the conan provider</span></a>. This is unrelated to denver’s
+own <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>/<code class="docutils literal notranslate"><span class="pre">denver.toml</span></code>: those scripts run inside the env’s own venv
+(whatever <code class="docutils literal notranslate"><span class="pre">python3</span></code> the <code class="docutils literal notranslate"><span class="pre">conan</span></code> provider resolves at that point, see
+<code class="docutils literal notranslate"><span class="pre">src/denver_providers/conan.py</span></code>), not in the process running <code class="docutils literal notranslate"><span class="pre">denver.py</span></code>
+itself, so it’s the <code class="docutils literal notranslate"><span class="pre">test</span></code> dependency group that names it (for the suite,
+which imports those modules directly), not <code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>’s own
+<code class="docutils literal notranslate"><span class="pre">[project]</span> <span class="pre">dependencies</span></code>.
+Dependencies that are only needed for development or tests belong in a
+<code class="docutils literal notranslate"><span class="pre">[dependency-groups]</span></code> entry, where they never reach a user’s environment.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../arc42/12_glossary/index.html" class="btn btn-neutral float-left" title="12. Glossary" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Thorsten Klein.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,598 @@
+
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>nix provider &mdash; denver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=41959f36" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.svg"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/custom.js?v=4c2ef8d1"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="custom provider" href="custom.html" />
+    <link rel="prev" title="git provider" href="git.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            denver
+              <img src="../_static/logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/index.html">About denver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#what-problem-does-denver-solve">What problem does denver solve?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#why-denver-and-not-writing-your-own-scripts">Why denver and not writing your own scripts?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#what-is-a-denver-environment">What is a denver environment?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#is-denver-flexible">Is denver flexible?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/install.html">Install denver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#run-from-source-no-install">Run from source (no install)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#from-pypi">From PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#prebuilt-binary">Prebuilt binary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#editable-install">Editable install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#vendor-with-git-nested">Vendor with git-nested</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/05-minutes.html">denver in 5 minutes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#have-a-look-first">Have a look first</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#run-the-environment">Run the environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#what-just-happened">What just happened</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#pre-conditions-for-a-real-project">Pre-conditions for a real project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#the-handful-of-flags-you-ll-use-daily">The handful of flags you’ll use daily</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/30-minutes.html">denver in 30 minutes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#the-use-case">The use case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#what-you-need-before-starting">What you need before starting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-0-the-skeleton">Step 0 — the skeleton</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-1-declare-the-stages">Step 1 — declare the stages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-2-the-docker-base-stage">Step 2 — the <code class="docutils literal notranslate"><span class="pre">docker-base</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-docker-stage-needs">The files the docker stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#check-it-the-container">Check it — the container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-3-the-uv-packages-stage">Step 3 — the <code class="docutils literal notranslate"><span class="pre">uv-packages</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-4-the-nvim-setup-stage">Step 4 — the <code class="docutils literal notranslate"><span class="pre">nvim-setup</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-nvim-stage-needs">The files the nvim stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#check-it-nvim-on-path">Check it — nvim on PATH</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-5-the-ninja-setup-stage">Step 5 — the <code class="docutils literal notranslate"><span class="pre">ninja-setup</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-6-the-conan-packages-stage">Step 6 — the <code class="docutils literal notranslate"><span class="pre">conan-packages</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-conan-stage-needs">The files the conan stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#keeping-conan-s-cache">Keeping conan’s cache</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#by-hand-download-or-conan">By hand, <code class="docutils literal notranslate"><span class="pre">download</span></code> or conan?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-7-the-best-practices-stage">Step 7 — the <code class="docutils literal notranslate"><span class="pre">best-practices</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-8-the-default-command">Step 8 — the default command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#the-finished-denver-toml">The finished <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#prove-it-rather-than-hope">Prove it, rather than hope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#everyday-use">Everyday use</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/examples.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/examples.html#running-the-bundled-examples">Running the bundled examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/glossary.html">Glossary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#the-core-model">The core model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#execution">Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/philosophy.html">Philosophy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#genericity">Genericity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#explicit-over-implicit">Explicit over implicit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#central-default-resolution">Central default resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#fail-loud-on-the-unexpected">Fail loud on the unexpected</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#fast-by-default-never-at-the-cost-of-correctness">Fast by default, never at the cost of correctness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#reproducibility-as-a-first-class-goal">Reproducibility as a first-class goal</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">denver command</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../cli/arguments.html">Arguments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#control-the-stages-choosing-what-runs">Control the stages: Choosing what runs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#control-the-config-change-values-for-one-run">Control the config: Change values for one run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#an-env-s-own-flags-denver-custom-args">An env’s own flags: <code class="docutils literal notranslate"><span class="pre">denver-custom-args:</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#control-the-speed-trading-speed-against-freshness">Control the speed: Trading speed against freshness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#inspect-an-environment">Inspect an environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#hand-the-built-env-to-something-else">Hand the built env to something else</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#remove-an-environment-s-state">Remove an environment’s state</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../cli/arguments.html#denver-clean-env"><code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span> <span class="pre">&lt;env&gt;</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/arguments.html#output-and-version">Output and version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/completion.html">Shell completion</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli/completion.html#works-no-matter-how-you-invoke-it">Works no matter how you invoke it</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/completion.html#what-gets-completed">What gets completed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/completion.html#inside-a-docker-relocated-shell-automatically">Inside a docker-relocated shell, automatically</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/environment-variables.html">Environment variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cli/environment-variables.html#what-denver-reads">What denver reads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/environment-variables.html#what-denver-exports">What denver exports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cli/environment-variables.html#where-an-environment-s-state-lives">Where an environment’s state lives</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration/config-file.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#denver-yml-vs-denver-toml">denver.yml vs. denver.toml</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#core-model">Core model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#the-denver-toml-schema">The <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code> schema</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#top-level-keys">Top-level keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#requiring-a-denver-version">Requiring a denver version</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#generic-stage-keys">Generic stage keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#variable-interpolation">Variable interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#the-prompt-marker">The prompt marker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#config-resolution">Config resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#layering">Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-overrides">Command-line overrides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-environment-variables">Command-line environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#environment-specific-cli-arguments">Environment-specific CLI arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#hooks-and-scripts">Hooks and scripts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#fast-by-default">Fast by default</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#previewing-a-run-dry-run">Previewing a run (<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#stage-filtering">Stage filtering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#wrapper-relocation">Wrapper / relocation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#how-the-inner-run-knows-where-it-is">How the inner run knows where it is</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#one-run-per-environment-at-a-time">One run per environment at a time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#quiet-levels-and-verbose">Quiet levels and –verbose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#performance-tracing">Performance tracing</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Providers</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="uv.html">uv provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="uv.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uv.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uv.html#one-venv-one-interpreter">One venv, one interpreter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="uv.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="conan.html">conan provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="conan.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="conan.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="conan.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docker.html">docker provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docker.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker.html#setting-up-docker">Setting up Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docker.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="zephyr.html">zephyr provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="zephyr.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="zephyr.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="zephyr.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="download.html">download provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="download.html#key-reference">Key reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="download.html#package-keys">Package keys</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#authenticated-downloads">Authenticated downloads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#where-things-go">Where things go</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#unpacking">Unpacking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="download.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="git.html">git provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="git.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#unreachable-commits">Unreachable commits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#where-things-go">Where things go</a></li>
+<li class="toctree-l2"><a class="reference internal" href="git.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">nix provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-cache">The cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#shellhook">shellHook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="custom.html">custom provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="custom.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="custom.html#worked-example-bringing-a-prebuilt-binary-in-by-hand">Worked example: bringing a prebuilt binary in by hand</a></li>
+<li class="toctree-l2"><a class="reference internal" href="custom.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture (arc42)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arc42/index.html">Architecture (arc42)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html">1. Introduction and Goals</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#requirements-overview">1.1 Requirements overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#quality-goals">1.2 Quality goals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#stakeholders">1.3 Stakeholders</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html">2. Architecture Constraints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#technical-constraints">2.1 Technical constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#organizational-constraints">2.2 Organizational constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#conventions">2.3 Conventions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/03_context_and_scope/index.html">3. Context and Scope</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#business-context">3.1 Business context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#technical-context">3.2 Technical context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#scope-boundaries">3.3 Scope boundaries</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/04_solution_strategy/index.html">4. Solution Strategy</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#declarative-config-generic-providers">4.1 Declarative config, generic providers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#an-ordered-pipeline-of-stages">4.2 An ordered pipeline of stages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#one-central-place-for-every-default">4.3 One central place for every default</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#nothing-is-inferred-from-the-directory-layout">4.4 Nothing is inferred from the directory layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#two-ways-to-inherit-config">4.5 Two ways to inherit config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#loud-failure-over-a-silent-guess">4.6 Loud failure over a silent guess</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#fast-by-default-and-the-container-is-only-a-relocation">4.7 Fast by default, and the container is only a relocation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/05_building_block_view/index.html">5. Building Block View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-1-whitebox-denver">5.1 Level 1: whitebox denver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-inside-the-orchestrator">5.2 Level 2: inside the orchestrator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-inside-the-provider-package">5.3 Level 2: inside the provider package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-context">5.4 Level 2: <code class="docutils literal notranslate"><span class="pre">Context</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-3">5.5 Level 3</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/06_runtime_view/index.html">6. Runtime View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#cold-run-on-the-host">6.1 Cold run on the host</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#warm-run">6.2 Warm run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#relocation-into-a-container">6.3 Relocation into a container</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#inspecting-instead-of-running">6.4 Inspecting instead of running</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#failing-early">6.5 Failing early</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/07_deployment_view/index.html">7. Deployment View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#where-denver-runs">7.1 Where denver runs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#how-denver-itself-is-shipped">7.2 How denver itself is shipped</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#where-state-lives">7.3 Where state lives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#ci">7.4 CI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#network">7.5 Network</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html">8. Cross-cutting Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#error-handling">8.1 Error handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#fail-loud">8.2 Fail loud</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#config-merging">8.3 Config merging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#path-resolution">8.4 Path resolution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#central-defaults">8.5 Central defaults</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#interpolation">8.6 Interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#hooks-and-scripts">8.7 Hooks and scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#stage-selection">8.8 Stage selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#runtime-toggles">8.9 Runtime toggles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#fingerprinting">8.10 Fingerprinting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#dry-run-and-testability-from-one-seam">8.11 Dry-run and testability, from one seam</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#concurrency">8.12 Concurrency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#output-and-tracing">8.13 Output and tracing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#isolation">8.14 Isolation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/09_design_decisions/index.html">9. Architecture Decisions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0001-central-default-resolution.html">ADR-0001: Central default resolution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0002-no-inferred-paths.html">ADR-0002: No path is inferred from the directory layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0003-config-format.html">ADR-0003: YAML is the default config format, TOML optional</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0004-wrapper-relocation.html">ADR-0004: A container is a wrapper stage that relocates the run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0005-provider-is-mandatory-never-guessed-from-the-stage-id">ADR-0005: provider is mandatory, never guessed from the stage id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0006-stages-and-providers-as-the-two-names">ADR-0006: stages and providers as the two names</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0007-lists-append-instead-of-replacing">ADR-0007: lists append instead of replacing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0008-die-raises-denvererror-instead-of-exiting">ADR-0008: die() raises DenverError instead of exiting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0009-state-lives-with-the-env">ADR-0009: state lives with the env</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0010-one-run-per-environment">ADR-0010: one run per environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0011-fingerprint-content-not-absolute-paths">ADR-0011: fingerprint content, not absolute paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0012-extension-providers-instead-of-forks">ADR-0012: extension providers instead of forks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0013-download-and-git-as-providers">ADR-0013: download and git as providers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0014-subcommand-cli">ADR-0014: subcommand CLI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0015-top-level-package-names-that-do-not-squat">ADR-0015: top-level package names that do not squat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0016-pip-provider-renamed-to-uv">ADR-0016: pip provider renamed to uv</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html">10. Quality Scenarios</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html#quality-tree">10.1 Quality tree</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html#scenarios">10.2 Scenarios</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/11_technical_risks/index.html">11. Technical Risks and Debt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/12_glossary/index.html">12. Glossary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/development.html">Development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#quick-start">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#test-suite">Test suite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#coverage">Coverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#linting-formatting-types">Linting / formatting / types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#adding-a-new-provider">Adding a new provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#ci">CI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#releasing">Releasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#known-limitations">Known limitations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/development.html#denver-has-exactly-one-runtime-dependency-pyyaml">denver has exactly one runtime dependency: PyYAML</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/development.html#more-pyyaml-unrelated-to-denver-s-own-config">More PyYAML, unrelated to denver’s own config</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">denver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">nix provider</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/thorsten-klein/denver-tool/blob/develop/doc/providers/nix.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="nix-provider">
+<h1>nix provider<a class="headerlink" href="#nix-provider" title="Link to this heading"></a></h1>
+<p>A <code class="docutils literal notranslate"><span class="pre">nix</span></code> stage brings a <a class="reference external" href="https://nixos.wiki/wiki/Flakes">nix flake</a>’s
+<code class="docutils literal notranslate"><span class="pre">devShell</span></code> into the environment: the shell’s PATH, compilers, SDKs and
+variables become <em>this</em> process’s environment, and every later stage — and
+the final command — simply runs inside it.</p>
+<p>Nothing is wrapped. denver does not launch <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">develop</span> <span class="pre">--command</span> <span class="pre">&lt;your</span> <span class="pre">command&gt;</span></code>, and there is no second “post-nix” script: the environment is
+fetched once with <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span></code>, cached, and sourced into <code class="docutils literal notranslate"><span class="pre">ctx.env</span></code>
+like any other stage’s contribution. One process throughout, so a <code class="docutils literal notranslate"><span class="pre">uv</span></code> stage
+before it and a <code class="docutils literal notranslate"><span class="pre">conan</span></code> stage after it compose with it the ordinary way.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">stages</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">devshell</span>
+
+<span class="nt">devshell</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nix</span>
+<span class="w">  </span><span class="nt">flake</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nix-env</span><span class="w">          </span><span class="c1"># the directory holding flake.nix</span>
+<span class="w">  </span><span class="nt">root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">.</span><span class="w">                 </span><span class="c1"># what nix copies into the store (see 'root:')</span>
+<span class="w">  </span><span class="nt">shell</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span><span class="w">          </span><span class="c1"># devShells.&lt;system&gt;.default</span>
+<span class="w">  </span><span class="nt">expected-version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.35.2</span>
+</pre></div>
+</div>
+<p>(<code class="docutils literal notranslate"><span class="pre">provider:</span></code>/<code class="docutils literal notranslate"><span class="pre">description:</span></code>/<code class="docutils literal notranslate"><span class="pre">disabled:</span></code>/<code class="docutils literal notranslate"><span class="pre">scripts:</span></code>/<code class="docutils literal notranslate"><span class="pre">env:</span></code>/<code class="docutils literal notranslate"><span class="pre">env-prepend:</span></code>/<code class="docutils literal notranslate"><span class="pre">env-append:</span></code> are generic keys every
+stage has — see “Generic stage keys” in <a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>. Everything below is
+specific to <code class="docutils literal notranslate"><span class="pre">nix</span></code>.)</p>
+<section id="key-reference">
+<h2>Key reference<a class="headerlink" href="#key-reference" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">flake</span></code></strong> — the flake to enter, as a <strong>directory</strong> (resolved like every
+other denver path: against the env dir, then imported base envs) or as a
+<strong>flake reference</strong> with a scheme (<code class="docutils literal notranslate"><span class="pre">github:owner/repo</span></code>, <code class="docutils literal notranslate"><span class="pre">git+https://…</span></code>,
+<code class="docutils literal notranslate"><span class="pre">path:/abs/dir</span></code>). Default: <code class="docutils literal notranslate"><span class="pre">&quot;.&quot;</span></code>, the env dir itself.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">root</span></code></strong> — the directory nix copies into the store, when it has to be a
+<em>parent</em> of <code class="docutils literal notranslate"><span class="pre">flake:</span></code>. The reference becomes <code class="docutils literal notranslate"><span class="pre">path:&lt;root&gt;?dir=&lt;rel&gt;</span></code>.
+Needed whenever the flake declares a relative input pointing outside its
+own directory (a sibling flake stacked on top of it) — nix copies only the
+reference’s own root, and an input below that root fails evaluation with
+<em>“access to absolute path … forbidden in pure evaluation mode”</em>. Unset:
+the flake’s own directory is the root. Requires a nix new enough to accept
+<code class="docutils literal notranslate"><span class="pre">?dir=</span></code> on a <code class="docutils literal notranslate"><span class="pre">path:</span></code> URL — an older one (2.6, say) rejects it outright
+with <em>“path URL … has unsupported parameter ‘dir’”</em>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">shell</span></code></strong> — the devShell attribute to enter, appended as <code class="docutils literal notranslate"><span class="pre">#&lt;shell&gt;</span></code>
+(e.g. <code class="docutils literal notranslate"><span class="pre">default</span></code>, or a full <code class="docutils literal notranslate"><span class="pre">devShells.aarch64-linux.ci</span></code>). Unset: nix picks
+the default installable for this system itself — which older releases
+resolve as <code class="docutils literal notranslate"><span class="pre">devShell.&lt;system&gt;</span></code>, <em>not</em> <code class="docutils literal notranslate"><span class="pre">devShells.&lt;system&gt;.default</span></code>, so
+spell <code class="docutils literal notranslate"><span class="pre">shell:</span> <span class="pre">default</span></code> out when an env has to work across nix versions.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">exe</span></code></strong> — the nix executable (default: <code class="docutils literal notranslate"><span class="pre">nix</span></code>, found on PATH).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">args</span></code></strong> — extra arguments passed to <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span></code>, verbatim (e.g.
+<code class="docutils literal notranslate"><span class="pre">[&quot;--option&quot;,</span> <span class="pre">&quot;sandbox&quot;,</span> <span class="pre">&quot;false&quot;]</span></code>). Default: none.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">impure</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">true</span></code> adds <code class="docutils literal notranslate"><span class="pre">--impure</span></code>, letting the flake read the
+environment and absolute paths (default: <code class="docutils literal notranslate"><span class="pre">false</span></code>).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">experimental-features</span></code></strong> — passed as
+<code class="docutils literal notranslate"><span class="pre">--extra-experimental-features</span></code> (default: <code class="docutils literal notranslate"><span class="pre">&quot;nix-command</span> <span class="pre">flakes&quot;</span></code>, which is
+what <code class="docutils literal notranslate"><span class="pre">print-dev-env</span></code> and flake refs still need on a stock nix). An empty
+string drops the flag, for a nix.conf that already enables them.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">expected-version</span></code></strong> — the nix version this env was tested against. A
+different one only <strong>warns</strong> (with install instructions) — a missing nix
+is the fatal case. Unset: no version check at all.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">cache</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">false</span></code> re-runs <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span></code> on every single denver
+run (default: <code class="docutils literal notranslate"><span class="pre">true</span></code>; see “The cache” below).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">keep-path</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">true</span></code> (default) re-appends PATH entries the devShell’s
+own PATH replaced, so a venv or toolchain an <em>earlier</em> stage put there is
+still reachable — behind the devShell’s own tools, never in front of them.
+<code class="docutils literal notranslate"><span class="pre">false</span></code> leaves PATH exactly as the devShell exported it.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">shell-hook</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">false</span></code> drops the devShell’s own <code class="docutils literal notranslate"><span class="pre">shellHook</span></code> instead of
+running it (default: <code class="docutils literal notranslate"><span class="pre">true</span></code>; see “shellHook” below).</p></li>
+</ul>
+</section>
+<section id="what-runs-and-what-is-skipped">
+<h2>What runs, and what is skipped<a class="headerlink" href="#what-runs-and-what-is-skipped" title="Link to this heading"></a></h2>
+<p>Per stage, in order:</p>
+<ol class="arabic simple">
+<li><p><strong>nix check</strong> — <code class="docutils literal notranslate"><span class="pre">nix</span></code> missing from PATH is fatal, with the two install
+commands spelled out. With <code class="docutils literal notranslate"><span class="pre">expected-version:</span></code> set, a mismatch warns.</p></li>
+<li><p><strong>devshell</strong> — <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span> <span class="pre">&lt;flake-ref&gt;[#&lt;shell&gt;]</span></code>, its stdout
+written to this stage’s cache file. <strong>Skipped</strong> whenever a cache file for
+exactly these inputs already exists (and <code class="docutils literal notranslate"><span class="pre">--force</span></code> wasn’t given, and
+<code class="docutils literal notranslate"><span class="pre">cache:</span></code> isn’t <code class="docutils literal notranslate"><span class="pre">false</span></code>). This is the slow step: a cold evaluation builds
+every input the devShell needs.</p></li>
+<li><p><strong>activate</strong> — the cached script is sourced into <code class="docutils literal notranslate"><span class="pre">ctx.env</span></code>, <code class="docutils literal notranslate"><span class="pre">shellHook</span></code>
+and all. Then <code class="docutils literal notranslate"><span class="pre">keep-path:</span></code> re-appends whatever PATH entries the devShell
+dropped.</p></li>
+</ol>
+<p>Under <code class="docutils literal notranslate"><span class="pre">--fast</span></code> steps 1 and 2 are skipped entirely and the cached environment
+is sourced verbatim — nix is never invoked, not even to check its version.
+With no cache yet, <code class="docutils literal notranslate"><span class="pre">--fast</span></code> fails saying to run once without it.</p>
+<p>Under <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> nothing is evaluated: the <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span></code> command is
+printed, and a <code class="docutils literal notranslate"><span class="pre">[dry-run</span> <span class="pre">!]</span></code> line says the preview’s remaining commands are
+rendered <em>without</em> the devShell’s PATH and variables — unless a cache file
+is already there, which is sourced for real (that is how denver computes an
+environment at all).</p>
+</section>
+<section id="the-cache">
+<h2>The cache<a class="headerlink" href="#the-cache" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span></code>’s output is cached under
+<code class="docutils literal notranslate"><span class="pre">${DENVER_ENV_WORKDIR}/nix-devshell/&lt;stage&gt;-&lt;digest&gt;.sh</span></code>, where the digest
+covers everything that decides what nix would print:</p>
+<ul class="simple">
+<li><p>the installable (flake ref + <code class="docutils literal notranslate"><span class="pre">shell:</span></code>), <code class="docutils literal notranslate"><span class="pre">args:</span></code>, <code class="docutils literal notranslate"><span class="pre">impure:</span></code> and
+<code class="docutils literal notranslate"><span class="pre">shell-hook:</span></code>,</p></li>
+<li><p>the machine’s architecture — a cached <code class="docutils literal notranslate"><span class="pre">x86_64</span></code> environment is meaningless
+on <code class="docutils literal notranslate"><span class="pre">aarch64</span></code>, and the two legitimately share one checkout over a network
+mount,</p></li>
+<li><p>the <strong>content</strong> of every <strong>git-tracked</strong> file under the copy root
+(<code class="docutils literal notranslate"><span class="pre">root:</span></code>, else the flake’s directory).</p></li>
+</ul>
+<p>Git-tracked, because that is exactly the set a <code class="docutils literal notranslate"><span class="pre">path:</span></code> flake can see: nix
+copies a working tree’s tracked files into the store and ignores the rest,
+so hashing more would invalidate the cache on a build artifact nix never
+looked at — and hashing less would miss a change it does see. <strong>A new file
+has to be <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">add</span></code>ed before nix (or this cache) notices it at all.</strong> When
+the copy root is not a git checkout, <code class="docutils literal notranslate"><span class="pre">flake.nix</span></code> and <code class="docutils literal notranslate"><span class="pre">flake.lock</span></code> are hashed
+instead.</p>
+<p>Because the key is a digest of the inputs and not a “latest” pointer,
+switching a flake back and forth (a branch with a different <code class="docutils literal notranslate"><span class="pre">flake.lock</span></code>,
+say) re-uses both cached environments instead of re-evaluating each time.</p>
+<p>A <strong>remote</strong> reference has no local files to hash: a pinned one
+(<code class="docutils literal notranslate"><span class="pre">github:owner/repo/&lt;rev&gt;</span></code>) never changes, and a moving one
+(<code class="docutils literal notranslate"><span class="pre">github:owner/repo</span></code>) is refreshed with <code class="docutils literal notranslate"><span class="pre">--force</span></code> or <code class="docutils literal notranslate"><span class="pre">cache:</span> <span class="pre">false</span></code>.</p>
+</section>
+<section id="shellhook">
+<h2>shellHook<a class="headerlink" href="#shellhook" title="Link to this heading"></a></h2>
+<p>A current <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">print-dev-env</span></code> ends its output with <code class="docutils literal notranslate"><span class="pre">eval</span> <span class="pre">&quot;${shellHook:-}&quot;</span></code> —
+so simply sourcing it runs the devShell’s <code class="docutils literal notranslate"><span class="pre">shellHook</span></code> exactly as <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">develop</span></code> would, and denver does nothing extra to make that happen. That is
+the default, and it is what a flake doing real work there (generating a
+config, seeding a directory) needs.</p>
+<p><code class="docutils literal notranslate"><span class="pre">shell-hook:</span> <span class="pre">false</span></code> is for the other kind of hook — one written for an
+interactive <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">develop</span></code>, which prints a banner or expects a tty. nix has
+no flag to leave it out, so denver drops that trailing <code class="docutils literal notranslate"><span class="pre">eval</span></code> line from the
+<strong>cached script</strong> when it is written. It cannot be undone afterwards: by the
+time the environment is in <code class="docutils literal notranslate"><span class="pre">ctx.env</span></code> the hook has already run.</p>
+<p>An older nix that does not emit the <code class="docutils literal notranslate"><span class="pre">eval</span></code> line at all never runs the hook
+either way, and <code class="docutils literal notranslate"><span class="pre">shell-hook:</span> <span class="pre">false</span></code> then has nothing to strip.</p>
+</section>
+<section id="design-notes">
+<h2>Design notes<a class="headerlink" href="#design-notes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Why not <code class="docutils literal notranslate"><span class="pre">nix</span> <span class="pre">develop</span> <span class="pre">--command</span></code>.</strong> Wrapping puts a second shell between
+denver and the command, and nothing after it can contribute to the
+environment any more: a later <code class="docutils literal notranslate"><span class="pre">conan</span></code> or <code class="docutils literal notranslate"><span class="pre">custom</span></code> stage would run
+<em>outside</em> what it was supposed to extend. Sourcing <code class="docutils literal notranslate"><span class="pre">print-dev-env</span></code>’s
+output instead keeps denver’s whole model — stages assembling one
+environment, in order — intact, and makes the devShell just another
+contributor to it.</p></li>
+<li><p><strong>Why cache at all.</strong> Even a fully-cached devShell costs a nix evaluation
+(a second or two at best) on every single run, and denver is meant to be
+in the path of every build command. Keying on file <em>content</em> is what
+makes the skip safe: the cache is stale exactly when nix’s own answer
+would have changed.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">keep-path:</span></code> is on by default.</strong> The devShell exports an absolute PATH,
+which would otherwise discard what earlier stages put there. Appending the
+dropped entries (never prepending them) keeps <code class="docutils literal notranslate"><span class="pre">denver</span></code> composable without
+ever letting a host tool shadow one the devShell provides.</p></li>
+<li><p><strong>A version mismatch warns, it doesn’t fail.</strong> <code class="docutils literal notranslate"><span class="pre">expected-version:</span></code> records
+which nix an env was tested against. Refusing to run on a different one
+would make every env unusable the day a machine upgrades, for a
+difference that is usually invisible.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="git.html" class="btn btn-neutral float-left" title="git provider" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="custom.html" class="btn btn-neutral float-right" title="custom provider" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Thorsten Klein.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

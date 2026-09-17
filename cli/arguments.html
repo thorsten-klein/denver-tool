@@ -1,0 +1,814 @@
+
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arguments &mdash; denver</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=41959f36" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.svg"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script src="../_static/custom.js?v=4c2ef8d1"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Shell completion" href="completion.html" />
+    <link rel="prev" title="Philosophy" href="../concepts/philosophy.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            denver
+              <img src="../_static/logo.svg" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/index.html">About denver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#what-problem-does-denver-solve">What problem does denver solve?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#why-denver-and-not-writing-your-own-scripts">Why denver and not writing your own scripts?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#what-is-a-denver-environment">What is a denver environment?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/index.html#is-denver-flexible">Is denver flexible?</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/install.html">Install denver</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#run-from-source-no-install">Run from source (no install)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#from-pypi">From PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#prebuilt-binary">Prebuilt binary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#editable-install">Editable install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../introduction/install.html#vendor-with-git-nested">Vendor with git-nested</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Quickstart</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/05-minutes.html">denver in 5 minutes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#have-a-look-first">Have a look first</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#run-the-environment">Run the environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#what-just-happened">What just happened</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#pre-conditions-for-a-real-project">Pre-conditions for a real project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/05-minutes.html#the-handful-of-flags-you-ll-use-daily">The handful of flags you’ll use daily</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/30-minutes.html">denver in 30 minutes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#the-use-case">The use case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#what-you-need-before-starting">What you need before starting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-0-the-skeleton">Step 0 — the skeleton</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-1-declare-the-stages">Step 1 — declare the stages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-2-the-docker-base-stage">Step 2 — the <code class="docutils literal notranslate"><span class="pre">docker-base</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-docker-stage-needs">The files the docker stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#check-it-the-container">Check it — the container</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-3-the-uv-packages-stage">Step 3 — the <code class="docutils literal notranslate"><span class="pre">uv-packages</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-4-the-nvim-setup-stage">Step 4 — the <code class="docutils literal notranslate"><span class="pre">nvim-setup</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-nvim-stage-needs">The files the nvim stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#check-it-nvim-on-path">Check it — nvim on PATH</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-5-the-ninja-setup-stage">Step 5 — the <code class="docutils literal notranslate"><span class="pre">ninja-setup</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-6-the-conan-packages-stage">Step 6 — the <code class="docutils literal notranslate"><span class="pre">conan-packages</span></code> stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#the-files-the-conan-stage-needs">The files the conan stage needs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#keeping-conan-s-cache">Keeping conan’s cache</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../quickstart/30-minutes.html#by-hand-download-or-conan">By hand, <code class="docutils literal notranslate"><span class="pre">download</span></code> or conan?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-7-the-best-practices-stage">Step 7 — the <code class="docutils literal notranslate"><span class="pre">best-practices</span></code> stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#step-8-the-default-command">Step 8 — the default command</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#the-finished-denver-toml">The finished <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#prove-it-rather-than-hope">Prove it, rather than hope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/30-minutes.html#everyday-use">Everyday use</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/examples.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/examples.html#running-the-bundled-examples">Running the bundled examples</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/glossary.html">Glossary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#the-core-model">The core model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/glossary.html#execution">Execution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/philosophy.html">Philosophy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#genericity">Genericity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#explicit-over-implicit">Explicit over implicit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#central-default-resolution">Central default resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#fail-loud-on-the-unexpected">Fail loud on the unexpected</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#fast-by-default-never-at-the-cost-of-correctness">Fast by default, never at the cost of correctness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/philosophy.html#reproducibility-as-a-first-class-goal">Reproducibility as a first-class goal</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">denver command</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Arguments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#control-the-stages-choosing-what-runs">Control the stages: Choosing what runs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#control-the-config-change-values-for-one-run">Control the config: Change values for one run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#an-env-s-own-flags-denver-custom-args">An env’s own flags: <code class="docutils literal notranslate"><span class="pre">denver-custom-args:</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#control-the-speed-trading-speed-against-freshness">Control the speed: Trading speed against freshness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inspect-an-environment">Inspect an environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hand-the-built-env-to-something-else">Hand the built env to something else</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#remove-an-environment-s-state">Remove an environment’s state</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#denver-clean-env"><code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span> <span class="pre">&lt;env&gt;</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#output-and-version">Output and version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="completion.html">Shell completion</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="completion.html#works-no-matter-how-you-invoke-it">Works no matter how you invoke it</a></li>
+<li class="toctree-l2"><a class="reference internal" href="completion.html#what-gets-completed">What gets completed</a></li>
+<li class="toctree-l2"><a class="reference internal" href="completion.html#inside-a-docker-relocated-shell-automatically">Inside a docker-relocated shell, automatically</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="environment-variables.html">Environment variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="environment-variables.html#what-denver-reads">What denver reads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="environment-variables.html#what-denver-exports">What denver exports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="environment-variables.html#where-an-environment-s-state-lives">Where an environment’s state lives</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../configuration/config-file.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#overview">Overview</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#denver-yml-vs-denver-toml">denver.yml vs. denver.toml</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#core-model">Core model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#the-denver-toml-schema">The <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code> schema</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#top-level-keys">Top-level keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#requiring-a-denver-version">Requiring a denver version</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#generic-stage-keys">Generic stage keys</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#variable-interpolation">Variable interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#the-prompt-marker">The prompt marker</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#config-resolution">Config resolution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#layering">Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-overrides">Command-line overrides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-environment-variables">Command-line environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#environment-specific-cli-arguments">Environment-specific CLI arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#hooks-and-scripts">Hooks and scripts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#fast-by-default">Fast by default</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#previewing-a-run-dry-run">Previewing a run (<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#stage-filtering">Stage filtering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#wrapper-relocation">Wrapper / relocation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#how-the-inner-run-knows-where-it-is">How the inner run knows where it is</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#one-run-per-environment-at-a-time">One run per environment at a time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#quiet-levels-and-verbose">Quiet levels and –verbose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#performance-tracing">Performance tracing</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Providers</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../providers/uv.html">uv provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#one-venv-one-interpreter">One venv, one interpreter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/uv.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/conan.html">conan provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/conan.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/conan.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/conan.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/docker.html">docker provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#setting-up-docker">Setting up Docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/docker.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/zephyr.html">zephyr provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/zephyr.html#requires">Requires</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/zephyr.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/zephyr.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/download.html">download provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#key-reference">Key reference</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../providers/download.html#package-keys">Package keys</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#authenticated-downloads">Authenticated downloads</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#where-things-go">Where things go</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#unpacking">Unpacking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/download.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/git.html">git provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#unreachable-commits">Unreachable commits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#where-things-go">Where things go</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/git.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/nix.html">nix provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#what-runs-and-what-is-skipped">What runs, and what is skipped</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#the-cache">The cache</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#shellhook">shellHook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/nix.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../providers/custom.html">custom provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../providers/custom.html#key-reference">Key reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/custom.html#worked-example-bringing-a-prebuilt-binary-in-by-hand">Worked example: bringing a prebuilt binary in by hand</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../providers/custom.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture (arc42)</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../arc42/index.html">Architecture (arc42)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html">1. Introduction and Goals</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#requirements-overview">1.1 Requirements overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#quality-goals">1.2 Quality goals</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/01_introduction_and_goals/index.html#stakeholders">1.3 Stakeholders</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html">2. Architecture Constraints</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#technical-constraints">2.1 Technical constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#organizational-constraints">2.2 Organizational constraints</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/02_architecture_constraints/index.html#conventions">2.3 Conventions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/03_context_and_scope/index.html">3. Context and Scope</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#business-context">3.1 Business context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#technical-context">3.2 Technical context</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/03_context_and_scope/index.html#scope-boundaries">3.3 Scope boundaries</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/04_solution_strategy/index.html">4. Solution Strategy</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#declarative-config-generic-providers">4.1 Declarative config, generic providers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#an-ordered-pipeline-of-stages">4.2 An ordered pipeline of stages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#one-central-place-for-every-default">4.3 One central place for every default</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#nothing-is-inferred-from-the-directory-layout">4.4 Nothing is inferred from the directory layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#two-ways-to-inherit-config">4.5 Two ways to inherit config</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#loud-failure-over-a-silent-guess">4.6 Loud failure over a silent guess</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/04_solution_strategy/index.html#fast-by-default-and-the-container-is-only-a-relocation">4.7 Fast by default, and the container is only a relocation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/05_building_block_view/index.html">5. Building Block View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-1-whitebox-denver">5.1 Level 1: whitebox denver</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-inside-the-orchestrator">5.2 Level 2: inside the orchestrator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-inside-the-provider-package">5.3 Level 2: inside the provider package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-2-context">5.4 Level 2: <code class="docutils literal notranslate"><span class="pre">Context</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/05_building_block_view/index.html#level-3">5.5 Level 3</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/06_runtime_view/index.html">6. Runtime View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#cold-run-on-the-host">6.1 Cold run on the host</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#warm-run">6.2 Warm run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#relocation-into-a-container">6.3 Relocation into a container</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#inspecting-instead-of-running">6.4 Inspecting instead of running</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/06_runtime_view/index.html#failing-early">6.5 Failing early</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/07_deployment_view/index.html">7. Deployment View</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#where-denver-runs">7.1 Where denver runs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#how-denver-itself-is-shipped">7.2 How denver itself is shipped</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#where-state-lives">7.3 Where state lives</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#ci">7.4 CI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/07_deployment_view/index.html#network">7.5 Network</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html">8. Cross-cutting Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#error-handling">8.1 Error handling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#fail-loud">8.2 Fail loud</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#config-merging">8.3 Config merging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#path-resolution">8.4 Path resolution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#central-defaults">8.5 Central defaults</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#interpolation">8.6 Interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#hooks-and-scripts">8.7 Hooks and scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#stage-selection">8.8 Stage selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#runtime-toggles">8.9 Runtime toggles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#fingerprinting">8.10 Fingerprinting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#dry-run-and-testability-from-one-seam">8.11 Dry-run and testability, from one seam</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#concurrency">8.12 Concurrency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#output-and-tracing">8.13 Output and tracing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/08_cross_cutting_concepts/index.html#isolation">8.14 Isolation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/09_design_decisions/index.html">9. Architecture Decisions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0001-central-default-resolution.html">ADR-0001: Central default resolution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0002-no-inferred-paths.html">ADR-0002: No path is inferred from the directory layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0003-config-format.html">ADR-0003: YAML is the default config format, TOML optional</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/adr-0004-wrapper-relocation.html">ADR-0004: A container is a wrapper stage that relocates the run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0005-provider-is-mandatory-never-guessed-from-the-stage-id">ADR-0005: provider is mandatory, never guessed from the stage id</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0006-stages-and-providers-as-the-two-names">ADR-0006: stages and providers as the two names</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0007-lists-append-instead-of-replacing">ADR-0007: lists append instead of replacing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0008-die-raises-denvererror-instead-of-exiting">ADR-0008: die() raises DenverError instead of exiting</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0009-state-lives-with-the-env">ADR-0009: state lives with the env</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0010-one-run-per-environment">ADR-0010: one run per environment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0011-fingerprint-content-not-absolute-paths">ADR-0011: fingerprint content, not absolute paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0012-extension-providers-instead-of-forks">ADR-0012: extension providers instead of forks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0013-download-and-git-as-providers">ADR-0013: download and git as providers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0014-subcommand-cli">ADR-0014: subcommand CLI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0015-top-level-package-names-that-do-not-squat">ADR-0015: top-level package names that do not squat</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/09_design_decisions/index.html#adr-0016-pip-provider-renamed-to-uv">ADR-0016: pip provider renamed to uv</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html">10. Quality Scenarios</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html#quality-tree">10.1 Quality tree</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../arc42/10_quality_scenarios/index.html#scenarios">10.2 Scenarios</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/11_technical_risks/index.html">11. Technical Risks and Debt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../arc42/12_glossary/index.html">12. Glossary</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributing</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/development.html">Development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#quick-start">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#test-suite">Test suite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#coverage">Coverage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#linting-formatting-types">Linting / formatting / types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#adding-a-new-provider">Adding a new provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#ci">CI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#releasing">Releasing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../contributing/development.html#known-limitations">Known limitations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/development.html#denver-has-exactly-one-runtime-dependency-pyyaml">denver has exactly one runtime dependency: PyYAML</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../contributing/development.html#more-pyyaml-unrelated-to-denver-s-own-config">More PyYAML, unrelated to denver’s own config</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">denver</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Arguments</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/thorsten-klein/denver-tool/blob/develop/doc/cli/arguments.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="arguments">
+<h1>Arguments<a class="headerlink" href="#arguments" title="Link to this heading"></a></h1>
+<p>You have already used a handful of these in
+<a class="reference internal" href="../quickstart/05-minutes.html"><span class="std std-doc">Quickstart</span></a> — <code class="docutils literal notranslate"><span class="pre">--scripts</span></code>, <code class="docutils literal notranslate"><span class="pre">--fast</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--skip</span></code>, <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>. This page is the full list.</p>
+<p>denver’s CLI is subcommand-based: <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">&lt;env&gt;</span> <span class="pre">...</span></code> is the normal entry
+point, and every flag below except <code class="docutils literal notranslate"><span class="pre">--version</span></code>/<code class="docutils literal notranslate"><span class="pre">--license</span></code> belongs to it.
+(<code class="docutils literal notranslate"><span class="pre">--version</span></code> and <code class="docutils literal notranslate"><span class="pre">--license</span></code> are top-level, before the subcommand, e.g.
+<code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">--version</span></code>. The other two subcommands are <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span> <span class="pre">&lt;env&gt;</span></code> — see
+<a class="reference internal" href="#remove-an-environment-s-state">Remove an environment’s state</a> below — and
+<code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">complete</span></code>, see <a class="reference internal" href="completion.html"><span class="std std-doc">Shell completion</span></a>.)</p>
+<p><code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">--help</span></code> is always authoritative and lists <em>every</em> <code class="docutils literal notranslate"><span class="pre">run</span></code> flag;
+the notes below are for the ones whose behavior isn’t obvious from a
+one-line description.</p>
+<section id="control-the-stages-choosing-what-runs">
+<h2>Control the stages: Choosing what runs<a class="headerlink" href="#control-the-stages-choosing-what-runs" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--until</span> <span class="pre">&lt;stage&gt;</span></code></strong> truncates the pipeline: every stage up to and
+including <code class="docutils literal notranslate"><span class="pre">&lt;stage&gt;</span></code> runs, everything after it is dropped — there’s no
+“run only this one stage” flag, since a stage practically always needs
+the ones before it. The command (if any) still runs afterwards, in
+whatever partial environment those stages built.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--skip</span> <span class="pre">&lt;stage&gt;</span></code></strong> removes individual stages from whatever <code class="docutils literal notranslate"><span class="pre">--until</span></code>
+left; repeatable. Skipping a wrapper stage (<code class="docutils literal notranslate"><span class="pre">--skip</span> <span class="pre">docker</span></code>) is how you
+run the stack directly on the host instead of relocating into a
+container.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--scripts</span> <span class="pre">&lt;name&gt;</span></code></strong> runs every (filtered) stage’s own <code class="docutils literal notranslate"><span class="pre">scripts:</span> <span class="pre">&lt;name&gt;:</span></code> list, then exits without running the rest of the pipeline — see
+<a class="reference internal" href="../configuration/config-file.html#hooks-and-scripts"><span class="std std-ref">“<code class="docutils literal notranslate"><span class="pre">scripts:</span></code>”</span></a> in
+Configuration for an example (one-time host setup, e.g. installing Docker
+itself, is the usual use). <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> is open-ended, not a fixed set of flags: a project can
+declare <code class="docutils literal notranslate"><span class="pre">scripts:</span> <span class="pre">migrate:</span></code> and run <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">&lt;env&gt;</span> <span class="pre">--scripts</span> <span class="pre">migrate</span></code>
+without denver itself changing. Repeatable — each name’s entries run in
+the order given. With no <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> (on any occurrence), it lists the names
+this env defines instead of running anything. If <code class="docutils literal notranslate"><span class="pre">&lt;name&gt;</span></code> isn’t declared
+by any (filtered) stage, denver logs <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">'&lt;name&gt;'</span> <span class="pre">scripts</span> <span class="pre">to</span> <span class="pre">run</span> <span class="pre">for</span> <span class="pre">env</span> <span class="pre">'&lt;env&gt;'</span></code> at info level rather than exiting silently.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--setup</span></code></strong>/<strong><code class="docutils literal notranslate"><span class="pre">--login</span></code></strong> are shorthand for <code class="docutils literal notranslate"><span class="pre">--scripts</span> <span class="pre">setup</span></code>/<code class="docutils literal notranslate"><span class="pre">--scripts</span> <span class="pre">login</span></code> — two conventional names most envs use. They share <code class="docutils literal notranslate"><span class="pre">--scripts</span></code>’
+ordering and repeat rules, so <code class="docutils literal notranslate"><span class="pre">--login</span> <span class="pre">--setup</span></code> runs <code class="docutils literal notranslate"><span class="pre">login</span></code> then <code class="docutils literal notranslate"><span class="pre">setup</span></code>,
+and either can still be combined with a plain <code class="docutils literal notranslate"><span class="pre">--scripts</span> <span class="pre">&lt;name&gt;</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--clean</span></code></strong> is the third such shorthand, plus one step: it runs the
+env’s own <code class="docutils literal notranslate"><span class="pre">scripts:</span> <span class="pre">clean:</span></code> entries <strong>and then removes the env’s state
+directory</strong> — see
+<a class="reference internal" href="#remove-an-environment-s-state">Remove an environment’s state</a> below.
+Use plain <strong><code class="docutils literal notranslate"><span class="pre">--scripts</span> <span class="pre">clean</span></code></strong> for only the scripts, with the state
+directory kept.</p></li>
+</ul>
+</section>
+<section id="control-the-config-change-values-for-one-run">
+<h2>Control the config: Change values for one run<a class="headerlink" href="#control-the-config-change-values-for-one-run" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">-c</span></code>/<code class="docutils literal notranslate"><span class="pre">--config</span> <span class="pre">KEY.PATH=VALUE</span></code></strong> overrides a single value in the merged
+<code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">uv.python=3.13</span></code>); any missing parent section is
+created as an empty mapping. <code class="docutils literal notranslate"><span class="pre">KEY.PATH+=VALUE</span></code> appends to an existing
+list/string/number instead of replacing it (behaves like <code class="docutils literal notranslate"><span class="pre">=</span></code> if the path
+doesn’t exist yet). <code class="docutils literal notranslate"><span class="pre">VALUE</span></code> is parsed as JSON when that succeeds, so
+<code class="docutils literal notranslate"><span class="pre">&quot;true&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;3&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">'[&quot;a&quot;,</span> <span class="pre">&quot;b&quot;]'</span></code> become their real type; anything that isn’t
+valid JSON on its own (a bare word, an unquoted version string like
+<code class="docutils literal notranslate"><span class="pre">3.12.3</span></code>) is kept as a plain string. Repeatable; later <code class="docutils literal notranslate"><span class="pre">-c</span></code>s win when they
+target the same path.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">-cf</span></code>/<code class="docutils literal notranslate"><span class="pre">--config-file</span> <span class="pre">FILE</span></code></strong> overlays a whole config file (<code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>
+or <code class="docutils literal notranslate"><span class="pre">denver.toml</span></code>, dispatched the same way <code class="docutils literal notranslate"><span class="pre">&lt;env&gt;</span></code> itself is) on top of the
+env’s own config, using the same merge rules as <code class="docutils literal notranslate"><span class="pre">import:</span></code>. Repeatable,
+applied in the order given; <code class="docutils literal notranslate"><span class="pre">-c</span></code> overrides are applied last, on top of
+every <code class="docutils literal notranslate"><span class="pre">-cf</span></code> file.</p></li>
+</ul>
+<p>Both follow the same merge rules as <code class="docutils literal notranslate"><span class="pre">import:</span></code>, explained in
+<a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>.</p>
+</section>
+<section id="an-env-s-own-flags-denver-custom-args">
+<h2>An env’s own flags: <code class="docutils literal notranslate"><span class="pre">denver-custom-args:</span></code><a class="headerlink" href="#an-env-s-own-flags-denver-custom-args" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">-c</span></code> can set <em>anything</em>, which is exactly why it is a poor fit for the one
+or two knobs an env actually wants to offer (“which board?”, “debug or
+release?”): its users have to know the dotted path, nothing shows up in
+<code class="docutils literal notranslate"><span class="pre">--help</span></code>, and a typo just becomes a new config key instead of an error.</p>
+<p><code class="docutils literal notranslate"><span class="pre">denver-custom-args:</span></code>, in the env’s own <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>, declares those knobs
+as real flags instead. Each entry is one <code class="docutils literal notranslate"><span class="pre">parser.add_argument()</span></code> call:
+<code class="docutils literal notranslate"><span class="pre">flags:</span></code> names the flag (a string, or a list to give it aliases), and
+<strong>every other key is forwarded verbatim as a keyword argument</strong> — so an env
+gets argparse’s whole vocabulary (<code class="docutils literal notranslate"><span class="pre">help:</span></code>, <code class="docutils literal notranslate"><span class="pre">default:</span></code>, <code class="docutils literal notranslate"><span class="pre">action:</span></code>, <code class="docutils literal notranslate"><span class="pre">nargs:</span></code>,
+<code class="docutils literal notranslate"><span class="pre">choices:</span></code>, <code class="docutils literal notranslate"><span class="pre">required:</span></code>, <code class="docutils literal notranslate"><span class="pre">metavar:</span></code>, <code class="docutils literal notranslate"><span class="pre">dest:</span></code>, …) without denver
+re-inventing, or restricting, any of it:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">denver-custom-args</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">flags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"--board"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"-b"</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">nrf52840dk</span>
+<span class="w">  </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">which board to build for</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">flags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"--release"</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">store_true</span>
+<span class="w">  </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">build with optimisations</span>
+</pre></div>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>denver<span class="w"> </span>run<span class="w"> </span>my-project<span class="w"> </span>--board<span class="w"> </span>nrf5340dk<span class="w"> </span>--release<span class="w"> </span>--<span class="w"> </span>west<span class="w"> </span>build
+</pre></div>
+</div>
+<p>What the user passed is exported as <strong><code class="docutils literal notranslate"><span class="pre">DENVER_ARG_&lt;DEST&gt;</span></code></strong>, where <code class="docutils literal notranslate"><span class="pre">&lt;DEST&gt;</span></code>
+is argparse’s own destination name uppercased (<code class="docutils literal notranslate"><span class="pre">--board</span></code> → <code class="docutils literal notranslate"><span class="pre">DENVER_ARG_BOARD</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--build-type</span></code> → <code class="docutils literal notranslate"><span class="pre">DENVER_ARG_BUILD_TYPE</span></code>, or whatever an explicit <code class="docutils literal notranslate"><span class="pre">dest:</span></code>
+says). That is one variable in the environment denver is building, so it
+reaches everything through the same mechanisms as any other variable —
+<code class="docutils literal notranslate"><span class="pre">${...}</span></code> interpolation in the same <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>, hooks, <code class="docutils literal notranslate"><span class="pre">scripts:</span></code>, and the
+final command:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">zephyr-build</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">custom</span>
+<span class="w">  </span><span class="nt">cmd</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">west build -b ${DENVER_ARG_BOARD}</span>
+</pre></div>
+</div>
+<p>The value is always a string, since an environment variable is:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">store_true</span></code>/<code class="docutils literal notranslate"><span class="pre">store_false</span></code> → <code class="docutils literal notranslate"><span class="pre">&quot;1&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;0&quot;</span></code>.</p></li>
+<li><p>a multi-value flag (<code class="docutils literal notranslate"><span class="pre">nargs:</span></code>, <code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">append</span></code>) → its items, space-joined.</p></li>
+<li><p>a flag with no <code class="docutils literal notranslate"><span class="pre">default:</span></code> that wasn’t given → <strong>not exported at all</strong>,
+rather than exported empty — so <code class="docutils literal notranslate"><span class="pre">${DENVER_ARG_BOARD:-nrf52840dk}</span></code> still
+falls back the way it reads.</p></li>
+</ul>
+<p>For the same reason, <code class="docutils literal notranslate"><span class="pre">type:</span></code> is rejected: argparse’s <code class="docutils literal notranslate"><span class="pre">type=</span></code> is a callable,
+which TOML cannot express, and every value ends up a string anyway. Use
+<code class="docutils literal notranslate"><span class="pre">choices:</span></code> (argparse validates it, and lists it in <code class="docutils literal notranslate"><span class="pre">--help</span></code>) or an
+<code class="docutils literal notranslate"><span class="pre">action:</span></code>.</p>
+<p>A few more properties worth knowing:</p>
+<ul class="simple">
+<li><p>The flags are ordinary argparse flags, so <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">&lt;env&gt;</span> <span class="pre">--help</span></code> lists
+them alongside denver’s own, and a mistyped one is argparse’s usual
+<code class="docutils literal notranslate"><span class="pre">usage:</span></code>/<code class="docutils literal notranslate"><span class="pre">error:</span></code> on stderr — never a silently ignored token.</p></li>
+<li><p>Write them <strong>after</strong> <code class="docutils literal notranslate"><span class="pre">&lt;env&gt;</span></code> (<code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">my-project</span> <span class="pre">--board</span> <span class="pre">x</span></code>): the flags
+an env declares live in the very file <code class="docutils literal notranslate"><span class="pre">&lt;env&gt;</span></code> names, so denver has to
+resolve <code class="docutils literal notranslate"><span class="pre">&lt;env&gt;</span></code> before it can know them.</p></li>
+<li><p>A flag that would collide with one of denver’s own (<code class="docutils literal notranslate"><span class="pre">--force</span></code>, or a <code class="docutils literal notranslate"><span class="pre">dest:</span></code>
+of <code class="docutils literal notranslate"><span class="pre">ci</span></code>) is a hard error, not a silent override.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">denver-custom-args:</span></code> is a list, so it follows the normal list-merge rule: an env
+inherits every flag its <code class="docutils literal notranslate"><span class="pre">import:</span></code> chain declares and adds its own (see
+“Layering” in <a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>).</p></li>
+<li><p>They survive a wrapper relocation: the tokens are re-passed to the denver
+re-invoked inside the container, which would otherwise only see each
+flag’s <code class="docutils literal notranslate"><span class="pre">default:</span></code> (see “Wrapper / relocation” in
+<a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>).</p></li>
+</ul>
+</section>
+<section id="control-the-speed-trading-speed-against-freshness">
+<h2>Control the speed: Trading speed against freshness<a class="headerlink" href="#control-the-speed-trading-speed-against-freshness" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--fast</span></code></strong> skips every provider’s (re-)build step and only activates
+what a previous full run already built (each provider’s own page under
+<a class="reference internal" href="../providers/uv.html"><span class="std std-doc">Providers</span></a> documents exactly what that means for
+it). Run once without <code class="docutils literal notranslate"><span class="pre">--fast</span></code> first — a provider dies with a clear
+message if what it needs isn’t there yet.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--force</span></code></strong> forces a provider to redo expensive work it would otherwise
+skip because nothing looked like it changed (again, see each provider’s
+own page for specifics). Like <code class="docutils literal notranslate"><span class="pre">--ci</span></code> below, this is only ever set by
+the flag itself, never inherited from a same-named real environment
+variable.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--ci</span></code></strong> swaps in narrower/faster args a provider judges appropriate
+for a CI runner (currently just zephyr’s <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code>, adding a shallow-clone
+strategy on top of whatever <code class="docutils literal notranslate"><span class="pre">update-args:</span></code> already configures).</p></li>
+</ul>
+</section>
+<section id="inspect-an-environment">
+<h2>Inspect an environment<a class="headerlink" href="#inspect-an-environment" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--show-config</span></code></strong> prints the fully merged configuration — <code class="docutils literal notranslate"><span class="pre">import:</span></code>
+chain resolved, overrides applied, every default filled in — then exits,
+showing only the keys that actually carry a value (whatever the env itself
+configured, or a provider default computed from it); a key nothing ever
+set is left out rather than shown as unset. The fastest way to understand
+an env you didn’t write, and it needs no toolchain, no network and no
+Docker.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--show-config-full</span></code></strong> is <code class="docutils literal notranslate"><span class="pre">--show-config</span></code> plus every key left unset,
+each shown explicitly (<code class="docutils literal notranslate"><span class="pre">key:</span> <span class="pre">null</span></code> — YAML, the default; a commented-out
+<code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">key</span> <span class="pre">=</span> <span class="pre">null</span></code> line with <code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">toml</span></code>, since TOML has no <code class="docutils literal notranslate"><span class="pre">null</span></code>) — the
+complete key reference for a stage’s own section, not just what this
+particular env happens to set.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">{yml,toml}</span></code></strong> picks the output format for either of the
+above, independent of whether the env itself is a <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> or a
+<code class="docutils literal notranslate"><span class="pre">denver.toml</span></code> — <code class="docutils literal notranslate"><span class="pre">yml</span></code> (the default) always works, <code class="docutils literal notranslate"><span class="pre">toml</span></code> needs no extra
+install either (denver’s own hand-written renderer, not <code class="docutils literal notranslate"><span class="pre">tomllib</span></code> —
+writing TOML doesn’t need what only reading it does).</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">toml</span></code> output is syntax-highlighted (table headers, keys, strings,
+numbers/booleans and <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">key</span> <span class="pre">=</span> <span class="pre">null</span></code> comments each their own color) whenever
+stdout looks like a real terminal — auto-detected, off the moment output is
+piped or redirected, so a golden-file snapshot, <code class="docutils literal notranslate"><span class="pre">|</span> <span class="pre">grep</span></code>, or a redirect into
+a file all still get plain text. Two environment variables override the
+auto-detection, the same convention most CLI tools use:
+<a class="reference external" href="https://no-color.org"><code class="docutils literal notranslate"><span class="pre">NO_COLOR</span></code></a> (any non-empty value) always forces it
+off, and <code class="docutils literal notranslate"><span class="pre">FORCE_COLOR</span></code> forces it on even when piped (e.g. into <code class="docutils literal notranslate"><span class="pre">less</span> <span class="pre">-R</span></code>).
+(<code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">yml</span></code>’s output is always plain text — PyYAML’s own renderer, not
+denver’s, doesn’t have this.)</p>
+<ul>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code></strong> shows what each stage <em>would</em> do instead of doing it: no
+command is executed for its effect, no file is written, and the final
+command is printed rather than launched. Useful for answering “what does
+this env actually run?” without waiting for (or committing to) a real
+build. Every line is tagged <code class="docutils literal notranslate"><span class="pre">[dry-run</span> <span class="pre">&lt;marker&gt;]</span></code>, each marker in its own
+color (a legend stating the same key prints once, up front):</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>marker</p></th>
+<th class="head"><p>color</p></th>
+<th class="head"><p>meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">+</span></code></p></td>
+<td><p>green</p></td>
+<td><p>a command that would run (skipped)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">?</span></code></p></td>
+<td><p>cyan</p></td>
+<td><p>a read-only query, <strong>really run</strong> — its output is what decides the commands below it</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">~</span></code></p></td>
+<td><p>yellow</p></td>
+<td><p>a file or directory write that would happen (skipped)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.</span></code></p></td>
+<td><p>blue</p></td>
+<td><p>a script sourced into the environment, <strong>really done</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">!</span></code></p></td>
+<td><p>red</p></td>
+<td><p>a note about what this preview cannot show</p></td>
+</tr>
+</tbody>
+</table>
+<p>The two “really” rows are the deliberate limit. A dry run has to answer
+questions like <em>is the image already cached?</em>, <em>which conan home?</em>, <em>what
+does <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">list</span></code> say?</em> to render the commands that follow — so those
+read-only queries execute, and scripts are still sourced (that is how
+denver computes the environment a command is rendered against). Two
+further consequences worth knowing: the preview reflects the state your
+machine is in <em>now</em>, so an already-built env legitimately shows fewer
+commands than a clean one (that is what a real run would do too); and a
+wrapper stage (<code class="docutils literal notranslate"><span class="pre">docker</span></code>) can’t be previewed past its own boundary, since
+entering the container is itself one of the commands not being run —
+denver says so and points you at <code class="docutils literal notranslate"><span class="pre">--skip</span> <span class="pre">docker</span></code> to preview those stages
+on the host instead.</p>
+</li>
+</ul>
+</section>
+<section id="hand-the-built-env-to-something-else">
+<h2>Hand the built env to something else<a class="headerlink" href="#hand-the-built-env-to-something-else" title="Link to this heading"></a></h2>
+<ul>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--export-env</span> <span class="pre">&lt;file&gt;</span></code></strong> writes what denver itself changed in the
+environment as <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">KEY=VALUE</span></code> lines to <code class="docutils literal notranslate"><span class="pre">&lt;file&gt;</span></code>, right before
+launching the final command — for bash or zsh (not fish) to source.
+Useful when something other than that final command needs the same env:
+a container’s interactive terminals, say, started fresh by an IDE and
+unaware denver ever ran. Carried along automatically into a docker
+wrapper’s own reinvocation, so it still reaches the process that
+actually builds the env rather than the outer one that only relocates
+into the container.</p>
+<p>Only variables that differ from what this process already had are
+written — a plain dump of the whole (inherited-plus-built) environment
+would re-assert a hundred unrelated variables (<code class="docutils literal notranslate"><span class="pre">SSH_AUTH_SOCK</span></code>, say) that
+the sourcing shell already has its own, possibly different, value for.
+A variable denver only prepended or appended to (<code class="docutils literal notranslate"><span class="pre">PATH</span></code> via a provider’s
+own setup, most commonly) is written as <code class="docutils literal notranslate"><span class="pre">prefix&quot;$VAR&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;$VAR&quot;suffix</span></code>
+rather than the whole resolved value, so it composes with whatever that
+variable already is in the sourcing shell instead of overwriting it
+outright. A value set with <code class="docutils literal notranslate"><span class="pre">-e</span></code>/<code class="docutils literal notranslate"><span class="pre">--env</span></code> is always written, even if it
+happens to match what the process already had.</p>
+</li>
+</ul>
+</section>
+<section id="remove-an-environment-s-state">
+<h2>Remove an environment’s state<a class="headerlink" href="#remove-an-environment-s-state" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>denver<span class="w"> </span>run<span class="w"> </span>&lt;env&gt;<span class="w"> </span>--clean<span class="w">              </span><span class="c1"># run 'scripts: clean:', then remove the state</span>
+denver<span class="w"> </span>run<span class="w"> </span>&lt;env&gt;<span class="w"> </span>--clean<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># only say what would go</span>
+denver<span class="w"> </span>run<span class="w"> </span>&lt;env&gt;<span class="w"> </span>--scripts<span class="w"> </span>clean<span class="w">      </span><span class="c1"># only the scripts, state kept</span>
+</pre></div>
+</div>
+<p>After running the env’s own <code class="docutils literal notranslate"><span class="pre">scripts:</span> <span class="pre">clean:</span></code> entries, <code class="docutils literal notranslate"><span class="pre">--clean</span></code> deletes the
+whole state directory denver keeps for that env — its venvs, installed tool
+trees, downloads, logs and the fingerprints that decide what a run can skip
+(see
+<a class="reference internal" href="environment-variables.html#where-an-environment-s-state-lives"><span class="std std-ref">Where an environment’s state lives</span></a>).
+There is nothing to preserve in it: the next <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span></code> rebuilds all of it
+from the <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>, which is the whole point of an environment being
+code. It removes the directory whether or not the env declares any <code class="docutils literal notranslate"><span class="pre">clean</span></code>
+scripts at all.</p>
+<p>Four things worth knowing:</p>
+<ul class="simple">
+<li><p><strong>The scripts run first</strong>, deliberately: they run against the built
+environment (a venv’s tools, a container) that is about to go.</p></li>
+<li><p><strong>Like <code class="docutils literal notranslate"><span class="pre">--setup</span></code>/<code class="docutils literal notranslate"><span class="pre">--login</span></code>, it neither builds nor enters the env.</strong> Only
+the env’s own <code class="docutils literal notranslate"><span class="pre">clean</span></code> scripts run — no stage’s setup work, and no final
+command afterwards.</p></li>
+<li><p><strong>It only removes what denver itself wrote.</strong> Anything the env’s own
+config points somewhere else — a <code class="docutils literal notranslate"><span class="pre">CONAN_HOME:</span> <span class="pre">&quot;${DENVER_ENV_DIR}/.conan2&quot;</span></code>,
+say — is a location the project chose for a tool’s own cache, not denver’s
+state, and is left alone.</p></li>
+<li><p><strong>The <code class="docutils literal notranslate"><span class="pre">.denver</span></code> directory goes too</strong>, once nothing but the <code class="docutils literal notranslate"><span class="pre">.gitignore</span></code>
+denver wrote is left inside it, so the env comes back to exactly the files
+its author checked in. A <code class="docutils literal notranslate"><span class="pre">.denver</span></code> still holding another config variant’s
+state (<code class="docutils literal notranslate"><span class="pre">denver.debug.yml</span></code>’s) is kept, along with that state — cleaning
+one variant never touches its neighbours. denver’s own shared-root
+fallback (<code class="docutils literal notranslate"><span class="pre">~/.denver</span></code>) is never removed either way; only this env’s own
+directory inside it is.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">--clean</span></code> is the bigger hammer next to <code class="docutils literal notranslate"><span class="pre">--force</span></code>: <code class="docutils literal notranslate"><span class="pre">--force</span></code> rebuilds what a
+run would otherwise skip, <code class="docutils literal notranslate"><span class="pre">--clean</span></code> removes it so there is nothing to skip
+in the first place.</p>
+<section id="denver-clean-env">
+<h3><code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span> <span class="pre">&lt;env&gt;</span></code><a class="headerlink" href="#denver-clean-env" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>denver<span class="w"> </span>clean<span class="w"> </span>&lt;env&gt;<span class="w">              </span><span class="c1"># remove every directory denver keeps for it</span>
+denver<span class="w"> </span>clean<span class="w"> </span>&lt;env&gt;<span class="w"> </span>--dry-run<span class="w">    </span><span class="c1"># only say what would go</span>
+denver<span class="w"> </span>clean<span class="w"> </span>&lt;env&gt;<span class="w"> </span>-y<span class="w">           </span><span class="c1"># skip the confirmation prompts</span>
+denver<span class="w"> </span>clean<span class="w"> </span>&lt;env&gt;<span class="w"> </span>--all<span class="w">        </span><span class="c1"># also remove the shared DENVER_CACHE_DIR</span>
+</pre></div>
+</div>
+<p>The subcommand is the wider one, and runs no scripts. It removes state in
+<em>every</em> place it can live — an explicit <code class="docutils literal notranslate"><span class="pre">DENVER_ENV_WORKDIR</span></code> (if currently
+set), the workdir inside the env (<code class="docutils literal notranslate"><span class="pre">&lt;env&gt;/.denver/&lt;config</span> <span class="pre">stem&gt;</span></code>), and
+denver’s own shared-root fallback (<code class="docutils literal notranslate"><span class="pre">.envs</span></code>) — so an env built under more
+than one of these across different runs is left with nothing anywhere. And
+it does the same for every env <code class="docutils literal notranslate"><span class="pre">&lt;env&gt;</span></code> imports, since a base env is built as
+part of building whatever imports it.</p>
+<p>It needs no working config: an env whose <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> will not parse still
+has its own directories removed, with a warning that the envs it imports
+were left alone.</p>
+<p>Before removing anything, it shows the directory and asks to confirm it,
+<strong>one directory at a time</strong> — declining one keeps it and moves on to the
+next rather than stopping the whole clean. <strong><code class="docutils literal notranslate"><span class="pre">-y</span></code>/<code class="docutils literal notranslate"><span class="pre">--yes</span></code></strong> skips every one
+of those prompts, for scripts and CI. With no tty to ask on and no <code class="docutils literal notranslate"><span class="pre">-y</span></code>, it
+refuses rather than guessing either way. <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> never asks (there is
+nothing to confirm: it removes nothing either way).</p>
+<p><strong><code class="docutils literal notranslate"><span class="pre">--all</span></code></strong> additionally removes denver’s shared, content-addressed cache
+root (<code class="docutils literal notranslate"><span class="pre">DENVER_CACHE_DIR</span></code>, default <code class="docutils literal notranslate"><span class="pre">~/.cache/denver</span></code> — see
+<a class="reference internal" href="environment-variables.html#where-an-environment-s-state-lives"><span class="std std-ref">Where an environment’s state lives</span></a>).
+Unlike everything else <code class="docutils literal notranslate"><span class="pre">clean</span></code> touches, that directory isn’t this env’s own:
+it’s shared across every env and checkout on the machine, so it’s only ever
+removed when asked for explicitly.</p>
+</section>
+</section>
+<section id="output-and-version">
+<h2>Output and version<a class="headerlink" href="#output-and-version" title="Link to this heading"></a></h2>
+<p>By default denver prints only the coarse progress trail — one line per
+stage (<code class="docutils literal notranslate"><span class="pre">--</span> <span class="pre">[i/n]</span> <span class="pre">stage</span> <span class="pre">'id'</span> <span class="pre">(provider)</span></code> or its “skipped by …” reason) —
+plus whatever each stage’s own build tool prints on its own. denver’s own
+finer detail (sub-step banners, performance timings, the <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">cmd</span></code> echo of
+every command it runs) is off unless asked for with <code class="docutils literal notranslate"><span class="pre">-v</span></code>/<code class="docutils literal notranslate"><span class="pre">--verbose</span></code>.</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">-q</span></code>/<code class="docutils literal notranslate"><span class="pre">-qq</span></code></strong> are two quiet levels. <code class="docutils literal notranslate"><span class="pre">-q</span></code> silences denver’s own output
+entirely (the progress trail included), but leaves each stage’s own build
+tool output showing — that’s usually still what you want to watch. <code class="docutils literal notranslate"><span class="pre">-qq</span></code>
+additionally discards that too, so only the launched command’s own output
+reaches the terminal. <code class="docutils literal notranslate"><span class="pre">-q</span></code>/<code class="docutils literal notranslate"><span class="pre">-qq</span></code> always win over <code class="docutils literal notranslate"><span class="pre">-v</span></code>: there is nothing
+left for <code class="docutils literal notranslate"><span class="pre">-v</span></code> to add once either is given. Errors are always reported.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">-v</span></code>/<code class="docutils literal notranslate"><span class="pre">--verbose</span></code></strong> turns on denver’s own diagnostic detail, hidden by
+default: each stage’s finer sub-step banners (e.g. a <code class="docutils literal notranslate"><span class="pre">custom</span></code> stage’s
+<code class="docutils literal notranslate"><span class="pre">cmd</span></code>/<code class="docutils literal notranslate"><span class="pre">source</span></code>, a <code class="docutils literal notranslate"><span class="pre">uv</span></code> stage’s <code class="docutils literal notranslate"><span class="pre">install</span></code>/<code class="docutils literal notranslate"><span class="pre">activate</span></code>), the per-stage
+“finished in Ns” line and the closing stage-timing summary (both in blue),
+the env’s own “started in Ns” duration, and the <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">cmd</span></code> echo ahead of
+every command denver runs (including the final launched command’s own <code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">exec:</span> <span class="pre">cmd</span></code> line). Silenced by <code class="docutils literal notranslate"><span class="pre">-q</span></code>/<code class="docutils literal notranslate"><span class="pre">-qq</span></code> like everything else denver
+prints.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--version</span></code></strong> (top-level: <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">--version</span></code>, before any subcommand)
+prints the running denver’s version and exits — derived
+from the checkout’s git tags when denver runs from a checkout (script or
+editable install), otherwise from the installed package’s metadata. A
+checkout ahead of its last tag reports as a development build of the
+release it is heading for (<code class="docutils literal notranslate"><span class="pre">1.1.0-17-gabc1234</span></code>). A <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code> can
+require a minimum with <code class="docutils literal notranslate"><span class="pre">denver-version:</span> <span class="pre">&quot;&gt;=1.1.0&quot;</span></code>, and is rejected up
+front by a denver older than that (see
+<a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>).</p></li>
+</ul>
+<p>Each stage’s runtime is also appended to
+<code class="docutils literal notranslate"><span class="pre">$DENVER_ENV_WORKDIR/performance.jsonl</span></code> as JSON Lines of Chrome Trace
+Event Format events — concatenate them into a <code class="docutils literal notranslate"><span class="pre">{&quot;traceEvents&quot;:</span> <span class="pre">[...]}</span></code>
+document to load at chrome://tracing or https://ui.perfetto.dev.</p>
+<blockquote>
+<div><p>[!NOTE]
+<strong>Next:</strong> <a class="reference internal" href="completion.html"><span class="std std-doc">Shell completion</span></a> — tab-complete subcommands, env
+paths and flags with <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">complete</span></code>. Then
+<a class="reference internal" href="environment-variables.html"><span class="std std-doc">Environment variables</span></a> — the two variables
+denver itself reads, and where an environment’s state lives on disk.</p>
+</div></blockquote>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../concepts/philosophy.html" class="btn btn-neutral float-left" title="Philosophy" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="completion.html" class="btn btn-neutral float-right" title="Shell completion" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Thorsten Klein.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
