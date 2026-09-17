@@ -1,0 +1,1480 @@
+"""Shared runtime context for denver providers.
+
+The Context object is the single place that holds everything a provider
+needs: computed denver built-in paths, the merged denver.toml config, and the
+mutable environment (``env``) that providers build up and that the final
+command is launched with.
+
+Genericity principle: no provider hard-codes project-specific paths or
+values. Everything specific comes from denver.toml, where values may
+reference denver built-ins and each other through ``${VAR}`` interpolation.
+"""
+
+import errno
+import fcntl
+import hashlib
+import logging
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+from denver_errors import die
+
+# Every line a --dry-run emits starts with '[dry-run ', so the whole preview
+# can be grepped/filtered out of a terminal session in one go (e.g. `grep
+# '\[dry-run'`) regardless of which marker it carries. The marker inside the
+# brackets ('+', '?', '~', '.', '!') says which kind of line it is -- see
+# dry_run_legend(), which states the same key to the user once per run, and
+# DRY_MARKER_COLORS, which gives each one its own color.
+DRY_PREFIX = "[dry-run]"
+
+# One color per marker -- bright ANSI codes reset to default foreground
+# (\033[39m), the same convention as every other color in this file.
+# Deliberately unconditional (no isatty check, matching banner()/
+# stage_banner()/skip_banner() and the legend this replaces, which was
+# already unconditionally colored before this) -- an explicit --color/
+# --no-color-style toggle can be layered on later if it's ever needed.
+# Chosen by what each marker means: '+' a real command that would run
+# (green, "go"), '?' a read-only query that really runs (cyan, "just
+# looking"), '~' a write that would happen (yellow, "caution"), '.' a
+# script really sourced (blue, matching info()'s own blue -- it's real,
+# not previewed), '!' a limitation of the preview itself (red, "heads up").
+DRY_MARKER_COLORS = {
+    "+": "\033[92m",
+    "?": "\033[96m",
+    "~": "\033[93m",
+    ".": "\033[94m",
+    "!": "\033[91m",
+}
+_DRY_RESET = "\033[39m"
+
+
+def _dry_tag(marker=None):
+    """The colored '[dry-run <marker>]' tag for one dry-run line, or the bare '[dry-run]' intro tag if ``marker`` is None.
+
+    See DRY_MARKER_COLORS for why a real marker's tag is colored and the
+    bare intro tag (dry_run_legend()'s own opening line, which isn't any
+    one category) is not.
+    """
+    if marker is None:
+        return DRY_PREFIX
+    return f"{DRY_MARKER_COLORS[marker]}[dry-run {marker}]{_DRY_RESET}"
+
+
+# One denver run per env at a time -- see Context.acquire_lock.
+LOCK_FILE_NAME = ".lock"
+
+# Lock files this *process* already holds, path -> fd. flock associates a lock
+# with the open file description rather than the process, so a second open() of
+# the same path blocks against the first even from within one process. The
+# hazard being guarded against is another *process*, so a path already held
+# here is simply kept: re-locking it would deadlock against ourselves.
+_HELD_LOCKS = {}
+
+
+def _boot_id():
+    """This boot's identifier, or "?" where the kernel does not publish one.
+
+    Stamped into the lock file so a leftover from before a reboot is
+    recognisable: pids are reused freely across boots, so "pid 1234 holds it"
+    is otherwise unfalsifiable.
+    """
+    try:
+        return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    except OSError:  # pragma: no cover - Linux-only file
+        return "?"
+
+
+def _lock_holder(path):
+    """Describe whoever holds the lock, for a message -- best effort."""
+    try:
+        stamp = Path(path).read_text().split()
+    except OSError:  # pragma: no cover - the file exists; we just locked it
+        stamp = []
+    return " ".join(stamp) or "unknown"
+
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr)
+logger = logging.getLogger("denver")
+
+
+# --------------------------------------------------------------------------- #
+# Small logging helpers, backed by the stdlib logging module
+# --------------------------------------------------------------------------- #
+def info(message):
+    """Log ``message`` at info level (suppressed under --quiet)."""
+    logger.info(message)
+
+
+def warn(message):
+    """Log ``message`` at warning level: something is off, but not off enough to stop.
+
+    Suppressed under --quiet exactly like info() (see set_quiet) -- only
+    die()'s errors survive that. So a warning is for a run that is expected
+    to keep working, just not the way the config says it should; anything
+    the user must see even under -q belongs in die() instead.
+    """
+    logger.warning(message)
+
+
+# 0 = normal, 1 = quiet (-q: denver's own output silenced, a stage's own
+# command output still inherited), 2+ = silent (-qq: nothing at all, not
+# even a stage's own command output -- only the final launched command
+# speaks). See set_quiet()/banner().
+_quiet_level = 0
+
+# --verbose/-v: off by default. Turns on the *extra* diagnostic detail
+# (banner()'s per-sub-step boxes, the per-stage/env performance timings, and
+# Context.run's/exec()'s '+ cmd' echo) -- none of which show otherwise, even
+# at quiet level 0. -q/-qq always win over it: "no denver output" is
+# absolute, so there is nothing left for -v to add once either is given. See
+# set_quiet()/banner().
+_verbose = False
+
+
+def set_quiet(level, verbose=False):
+    """Silence denver-emitted messages across every provider module (by level), or restore normal logging.
+
+    Level 1 (-q) covers info/warn/banner()/stage_banner()/skip_banner() and
+    the '+ cmd' echo -- they all funnel through this one "denver" logger or
+    the shared quiet/verbose globals here, so a single threshold is enough --
+    but leaves a stage's own command output (Context.run's subprocess)
+    inherited, so there is still something to watch. Level 2+ (-qq)
+    additionally discards that subprocess output too, matching every prior
+    version of --quiet (full silence, only the final launched command
+    speaks). logger.error (die) is never silenced at any level: a failure
+    must still be reported.
+
+    ``verbose`` (-v/--verbose) is independent of the level -- see the
+    ``_verbose`` global's own docstring for how the two combine.
+    """
+    global _quiet_level, _verbose
+    _quiet_level = level
+    _verbose = verbose
+    logger.setLevel(logging.ERROR if level >= 1 else logging.INFO)
+
+
+def banner(ctx, stage, message):
+    """Print a colored progress marker to stderr (e.g. '[1/7] conan - install'), only under --verbose.
+
+    ``[ctx.stage_index/ctx.stage_count]`` is the stage's position in the
+    overall pipeline (set by denver.py as it runs each stage in order).
+    Prefixed with the stage id, not just the message -- an env can declare
+    several stages of the same provider type (e.g. two 'uv' stages), and
+    the message alone (e.g. 'install') can't tell those apart; the stage id
+    always can. There's no sub-step numbering: each call is just the next
+    line in that stage's own progress trail, in whatever order the provider
+    actually does the work -- nothing to precompute or keep in sync between
+    a real run and its --fast/--force variants.
+
+    These are the "banners for the substages" --verbose specifically turns
+    on -- stage_banner()'s single "[i/n] stage 'id' (provider)" line (which
+    every stage gets regardless) is the coarser, always-on signal of which
+    *stage* is running; these boxes are the finer detail of what it is
+    actually doing right now, and stay hidden without -v even at the default
+    quiet level. -q/-qq hide them regardless of -v, same as everything else
+    denver prints.
+    """
+    # printed directly (not via logger.info) so it isn't prefixed with
+    # "INFO: " -- it's a visual progress marker, not a log line.
+    if _quiet_level >= 1 or not _verbose:
+        return
+    text = f"[{ctx.stage_index}/{ctx.stage_count}] {stage} - {message}"
+    line = "-" * (len(text) + 4)
+    print(f"\033[93m{line}\n| {text} |\n{line}\033[39m", file=sys.stderr)
+
+
+def stage_banner(ctx, stage, provider_name):
+    """Print a single colored '[i/n] stage '<id>' (<provider>)' line to stderr, unless -q/-qq.
+
+    Emitted centrally by denver.py right before a stage's setup() runs, so a
+    stage always announces itself even when its provider dies before
+    reaching a banner() of its own -- which several do, since they check for
+    their tool first (see e.g. ZephyrProvider.setup). Without this, such a
+    failure prints an error with no indication of which stage produced it,
+    and the stage id is exactly what the user needs to pass to --skip next.
+
+    One line rather than banner()'s boxed frame: this marks *entering* a
+    stage, while the boxes below it (--verbose only) are the sub-steps that
+    stage actually performs. Naming the provider too, because a stage id is
+    only a label -- an env may run the same provider twice under different
+    ids. Unlike banner(), this one shows at the default quiet level with no
+    -v needed -- it is the minimal "which stage is running" signal, not the
+    finer "substage" detail -v adds; -q/-qq still hide it, same as
+    everything else denver prints.
+    """
+    if _quiet_level >= 1:
+        return
+    text = f"[{ctx.stage_index}/{ctx.stage_count}] stage '{stage}' ({provider_name})"
+    print(f"\033[93m-- {text}\033[39m", file=sys.stderr)
+
+
+def skip_banner(ctx, stage, reason):
+    """Print a single colored '[i/n] stage '<id>' <reason>' line to stderr, unless -q/-qq.
+
+    For a stage skipped entirely (--until/--skip), not one that ran but had a
+    sub-step skipped (that's still banner(), --verbose only, e.g. 'install
+    (skipped by --fast)'). Always one line, never banner()'s boxed frame --
+    a whole-stage skip did no work, so a full box would overstate it. Same
+    default-quiet-level visibility as stage_banner(), hidden at -q/-qq.
+    """
+    if _quiet_level >= 1:
+        return
+    text = f"[{ctx.stage_index}/{ctx.stage_count}] stage '{stage}' {reason}"
+    print(f"\033[93m-- {text}\033[39m", file=sys.stderr)
+
+
+def dry_run_legend():
+    """Print the one-off ``[dry-run ...]`` marker legend to stderr, before the first stage runs.
+
+    The markers mean genuinely different things -- skipped, really run,
+    skipped filesystem write (see Context.run) -- and a preview that doesn't
+    say which is which invites reading a '?' line as "would run", i.e. as
+    the opposite of what it reports. So the key is stated once, up front,
+    rather than left to the documentation -- each entry colored the same way
+    its own marker's lines are (see DRY_MARKER_COLORS), so the legend
+    doubles as a color key too.
+    """
+    print(
+        f"{_dry_tag()} no command below is executed for its effect. Legend:\n"
+        f"{_dry_tag('+')}  command that would run\n"
+        f"{_dry_tag('?')}  read-only query, really run (its output decides what follows)\n"
+        f"{_dry_tag('~')}  file/directory write that would happen\n"
+        f"{_dry_tag('.')}  script sourced into the environment, really done\n"
+        f"{_dry_tag('!')}  note about what this preview cannot show",
+        file=sys.stderr,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Shared config-validation helpers
+#
+# Every provider (and denver.py itself, for a stage's generic keys) rejects
+# the same handful of config shapes -- an unrecognised key, a required
+# string missing, a mapping that isn't flat {str: str}, a pair of keys that
+# must come together -- each used to spell its own die() out by hand, with
+# wording that had already drifted between call sites. One phrasing each,
+# here, used everywhere that shape is checked.
+# --------------------------------------------------------------------------- #
+def die_on_unknown_keys(present, allowed, where):
+    """Die if ``present`` (any iterable of keys) has a key ``allowed`` doesn't."""
+    unknown = sorted(set(present) - set(allowed))
+    if unknown:
+        die(f"{where}: unknown key(s) {', '.join(unknown)} -- known: {', '.join(sorted(allowed)) or '(none)'}.")
+
+
+def die_unless_required_strings(entry, keys, where):
+    """Die unless every one of ``keys`` is present on ``entry`` as a non-empty string."""
+    for key in keys:
+        value = entry.get(key)
+        if not isinstance(value, str) or not value.strip():
+            die(f"{where}: '{key}:' is required and must be a non-empty string (got {value!r})")
+
+
+def die_unless_paired(entry, key_a, key_b, where):
+    """Die if exactly one of ``key_a``/``key_b`` is set on ``entry`` -- both or neither is required."""
+    if bool(entry.get(key_a)) != bool(entry.get(key_b)):
+        die(f"{where} needs both '{key_a}:' and '{key_b}:', or neither")
+
+
+def die_unless_flat_str_map(mapping, where):
+    """Die unless ``mapping`` is a flat {str: str} mapping. ``None`` (unset) is the caller's own job to allow first."""
+    if not isinstance(mapping, dict):
+        die(f"{where} must be a mapping of environment variable to string value (got {mapping!r})")
+    for key, value in mapping.items():
+        if not isinstance(value, str):
+            die(f"{where} '{key}:' must be a string (got {value!r})")
+
+
+# --------------------------------------------------------------------------- #
+# Parent-directory search helpers
+# --------------------------------------------------------------------------- #
+def find_in_parents(start, name):
+    """Yield every ancestor of ``start`` (inclusive) that contains ``name``."""
+    current = Path(start).resolve()
+    while True:
+        if (current / name).exists():
+            yield current
+        if current.parent == current:
+            break
+        current = current.parent
+
+
+def find_outermost_in_parents(start, name):
+    """Return the highest (closest-to-root) ancestor of ``start`` that contains ``name``, or None."""
+    matches = list(find_in_parents(start, name))
+    return matches[-1] if matches else None
+
+
+_VAR_RE = re.compile(r"\$\{([A-Za-z_]\w*)(?::-([^}]*))?\}")
+
+
+def _expand_str(value, variables, *, quote=False):
+    """Expand every ``${VAR}`` / ``${VAR:-default}`` occurrence in one string.
+
+    ``quote``: shell-quote (``shlex.quote``) each substituted value, so it
+    lands as a single, inert shell word regardless of its content -- see
+    interpolate_shell, the only caller that sets it.
+    """
+
+    def repl(match):
+        name, default = match.group(1), match.group(2)
+        found = variables.get(name)
+        if found is not None:
+            resolved = str(found)
+        elif default is not None:
+            resolved = default
+        else:
+            resolved = ""
+        return shlex.quote(resolved) if quote else resolved
+
+    return _VAR_RE.sub(repl, value)
+
+
+def interpolate(value, variables) -> Any:
+    """Expand ``${VAR}`` / ``${VAR:-default}`` in strings, lists and dicts.
+
+    Return type pinned to ``Any`` so pyright doesn't over-narrow it.
+    """
+    if isinstance(value, str):
+        return _expand_str(value, variables)
+    if isinstance(value, list):
+        return [interpolate(v, variables) for v in value]
+    if isinstance(value, dict):
+        return {k: interpolate(v, variables) for k, v in value.items()}
+    return value
+
+
+def interpolate_shell(value, variables):
+    """Like interpolate(), but shell-quote every substituted ``${VAR}`` value -- for a string about to be handed to `bash -c` verbatim.
+
+    Plain ``interpolate()`` does textual substitution with no
+    shell-quoting: splicing an attacker-influenced value (a CLI ``-e``
+    override, a value derived from a branch name, a CI-injected secret,
+    ...) straight into a string bash is about to parse lets shell
+    metacharacters in that value (``;``, `` ` ``, ``$()``, ``|``, ...) act
+    as syntax instead of data -- the same bug class as an f-string built
+    into a shell command. Used only where the interpolated result is a
+    literal shell command line (``custom``'s ``cmd:``, ``download``'s
+    ``unpack-cmd:``, ``uv``'s ``$(...)`` install-args entries) -- every
+    other interpolation site (a URL, a path, an env var value, ...) must
+    keep using plain interpolate(), since quoting there would corrupt the
+    value instead of protecting it.
+
+    Only a bare string is meaningfully "shell text" here; a list/dict falls
+    back to plain interpolate() (none of this class's callers ever pass
+    one -- 'cmd:'/'unpack-cmd:' are single strings by their own KEYS
+    validation).
+
+    An author must write ``${VAR}`` bare, not wrapped in their own quotes
+    (``"${VAR}"``): the quoting here already makes it one safe word, so
+    bash would see any additional ``"``/``'`` the author wrote as literal
+    text, not as quoting -- corrupting the value instead of protecting it
+    twice. Bash's own bare ``$VAR`` (no braces) never reaches this
+    function at all -- denver's ``_VAR_RE`` only matches ``${...}`` -- so
+    it keeps quoting exactly as it always has.
+    """
+    if isinstance(value, str):
+        return _expand_str(value, variables, quote=True)
+    return interpolate(value, variables)
+
+
+def _argv(cmd):
+    """A command with every element stringified, the way subprocess/os.exec want it."""
+    return [str(c) for c in cmd]
+
+
+def _printable(cmd):
+    """A command as the single string denver echoes and reports it as.
+
+    shlex.join, not a bare ' '.join -- an argument containing its own
+    spaces/quotes (e.g. ``["bash", "-c", 'echo "a $b"']``, the shape every
+    custom 'cmd:' takes) would otherwise print as if it were several
+    separate words, an echo indistinguishable from -- and wrong about --
+    what actually ran; shlex.join quotes exactly the arguments that need it,
+    so the printed line is both accurate and a valid command on its own.
+    """
+    return shlex.join(str(c) for c in cmd)
+
+
+def _validate_exec_cmd(cmd):
+    """Die on a command os.execvpe() could only fail at confusingly.
+
+    A resolved command is always denver's own doing (default_command()/
+    resolve_command(), a wrapper's wrap(), or a script's own argv) -- sourced
+    from the same invoking user's own denver.toml/CLI, not a remote or
+    otherwise privileged party -- but a malformed 'command:'/script entry
+    (e.g. an empty string) must not reach os.execvpe() as a bare, confusing
+    OSError, and cmd[0] looking like a CLI flag (e.g. a stray '-c' from a
+    mistyped 'command:') would be taken as the literal program name by
+    execvpe anyway, so catching it here names the actual problem instead of a
+    baffling "no such file".
+    """
+    if not cmd or not cmd[0]:
+        die(f"exec: empty or invalid command: {cmd!r}")
+    if cmd[0].startswith("-"):
+        die(f"exec: command must not look like a CLI option: {cmd[0]!r}")
+    if any("\0" in arg for arg in cmd):
+        die(f"exec: command arguments must not contain NUL bytes: {cmd!r}")
+
+
+def _drop_bundled_library_path(env):
+    """Undo a frozen build's LD_LIBRARY_PATH in the environment handed to child processes.
+
+    A one-file PyInstaller build (see scripts/create-python-exe.sh) unpacks
+    the libraries it bundles -- liblzma, libssl, libz, ... -- into a temporary
+    directory and runs with ``LD_LIBRARY_PATH`` pointing there, so its own
+    interpreter finds them. Every child process inherits that, and denver's
+    entire job is starting child processes: the *system's* programs, linked
+    against the *system's* libraries, which then load denver's instead. Where
+    the bundled copy is older (it is built on an old distro precisely so the
+    executable runs everywhere), they simply fail::
+
+        xz: /tmp/_MEIxxxxxx/liblzma.so.5: version `XZ_5.4' not found (required by xz)
+
+    PyInstaller preserves any pre-existing value as ``LD_LIBRARY_PATH_ORIG``,
+    so that one is restored when present and the variable dropped entirely
+    when it is not -- the state the user's own shell was in either way.
+
+    Undoing it here, on the environment rather than on this process, is what
+    makes it safe: the dynamic loader read the variable once at startup, so
+    denver's own already-resolved libraries are unaffected, while everything
+    downstream of ctx (run(), source(), exec() and the final command) gets a
+    clean environment from the single place it is seeded.
+    """
+    if not getattr(sys, "frozen", False):
+        return
+    original = env.pop("LD_LIBRARY_PATH_ORIG", None)
+    if original is None:
+        env.pop("LD_LIBRARY_PATH", None)
+    else:
+        env["LD_LIBRARY_PATH"] = original
+
+
+# Set by denver on the process it relocates into a wrapper (see denver.py's
+# reinvoke_command and DockerProvider.wrap): the wrapper stage ids that put
+# it there. Denver's own bookkeeping, never a fact about the machine -- which
+# is why it is stated rather than detected.
+RELOCATED_VAR = "DENVER_RELOCATED"
+
+# Set by a wrapper that relocates into a container, so the process inside
+# never has to infer it. The probes below only have to cover the container
+# denver did *not* create -- one a user started by hand.
+IN_CONTAINER_VAR = "DENVER_IN_CONTAINER"
+
+# Set (only when -e/--env was given) to every name the CLI --env flag
+# supplied, comma-joined -- denver's own bookkeeping, the same way
+# RELOCATED_VAR names which stages relocated this run. Naming just the
+# *names* (each value already lives under its own key in ctx.env) is what
+# lets a wrapper that crosses a real process boundary (docker) forward
+# exactly those entries explicitly -- see docker.py's _relocation_env --
+# instead of the whole of ctx.env, most of which the container's own image
+# already provides its own way.
+CLI_ENV_VAR_NAMES = "DENVER_CLI_ENV_VAR_NAMES"
+
+
+def _prepended_prefix(value, old):
+    """The bit ctx.prepend_path put ahead of ``old``, or None if this isn't that shape."""
+    if old and value.endswith(old):
+        return value[: len(value) - len(old)]
+    return None
+
+
+def _appended_suffix(value, old):
+    """The bit ctx.append_path_var put after ``old``, or None if this isn't that shape."""
+    if old and value.startswith(old):
+        return value[len(old) :]
+    return None
+
+
+def _export_env_line(key, value, old, forced):
+    """Render one 'export KEY=...' line for Context.write_export_env.
+
+    A forced (-e/--env) value is always the full value. Otherwise, when
+    ``value`` is ``old`` with something prepended or appended (ctx.prepend_path,
+    ctx.append_path_var), the line composes with the sourcing shell's own
+    "$VAR" instead of baking in the whole resolved value -- see
+    write_export_env's own docstring.
+    """
+    if forced:
+        return f"export {key}={shlex.quote(value)}\n"
+    prefix = _prepended_prefix(value, old)
+    if prefix is not None:
+        return f'export {key}={shlex.quote(prefix)}"${key}"\n'
+    suffix = _appended_suffix(value, old)
+    if suffix is not None:
+        return f'export {key}="${key}"{shlex.quote(suffix)}\n'
+    return f"export {key}={shlex.quote(value)}\n"
+
+
+# Files a container runtime leaves behind, most common first. Deliberately
+# not /proc/self/cgroup string-matching: under cgroup v2 that file is often
+# just '0::/' whether containerised or not, so it answers nothing.
+_CONTAINER_MARKERS = (
+    "/.dockerenv",  # docker
+    "/run/.containerenv",  # podman
+)
+
+# systemd writes its detected environment's name into this file, for both
+# real containers (docker, lxc, systemd-nspawn, ...) and WSL -- systemd
+# lumps WSL in under the same "container" virtualization category (it has no
+# reboot/power management of its own, same as a container), even though it
+# is really a full, separately-kernelled lightweight VM. That distinction is
+# exactly what matters here: a WSL machine runs its own dockerd natively, so
+# a docker wrapper stage relocating into a container there is an ordinary
+# docker run, not docker-in-docker -- unlike the real container kinds below,
+# which do share the host's docker socket/kernel and must not be nested.
+_SYSTEMD_CONTAINER_MARKER = "/run/systemd/container"
+_SYSTEMD_NON_CONTAINER_VALUES = {"wsl"}
+
+
+def _systemd_marks_container():
+    """True unless the systemd container marker is absent, or names a non-container env like WSL (see its own comment)."""
+    marker = Path(_SYSTEMD_CONTAINER_MARKER)
+    if not marker.is_file():
+        return False
+    value = marker.read_text(encoding="utf-8", errors="replace").strip().lower()
+    return value not in _SYSTEMD_NON_CONTAINER_VALUES
+
+
+def in_container(env=None):
+    """True when this process is running inside a container.
+
+    Answers a question about the *machine*: is the filesystem/interpreter
+    here a container's rather than the host's. That is what decides whether
+    an interpreter can be installed, whether an offline install makes sense,
+    and which venv directory to use -- none of which are the same question
+    as "did a denver wrapper relocate me" (see Context.relocated).
+
+    An explicit ``DENVER_IN_CONTAINER`` from a wrapper wins; otherwise the
+    runtime's own marker file, or the ``container`` variable podman,
+    systemd-nspawn and lxc set. ``env`` defaults to the real environment.
+    """
+    env = os.environ if env is None else env
+    if env.get(IN_CONTAINER_VAR) or env.get("container"):
+        return True
+    return any(Path(marker).exists() for marker in _CONTAINER_MARKERS) or _systemd_marks_container()
+
+
+# denver's own state directory inside an env: <env dir>/.denver/<config stem>.
+STATE_DIRNAME = ".denver"
+
+# explicit override for where per-env state goes, and the shared,
+# content-addressed cache tier. See state_dir_for / Context._init_builtins.
+ENV_WORKDIR_VAR = "DENVER_ENV_WORKDIR"
+CACHE_DIR_VAR = "DENVER_CACHE_DIR"
+
+
+def state_dir_for(env_dir, config_path, env=None):
+    """Where this env's state (venv, caches, logs, fingerprints) lives: ``<env dir>/.denver/<config stem>/``.
+
+    State belongs with the env that owns it -- deleting a checkout deletes
+    exactly its own state, two checkouts cannot share one, and a wrapper
+    that bind-mounts the workspace carries it across without anything extra.
+
+    ``<config stem>`` is a level of its own because one directory may hold
+    several variants (``denver.debug.yml``, ``denver.release.yml``), and
+    those are different environments sharing a folder -- not one.
+
+    ``DENVER_ENV_WORKDIR`` overrides it outright, naming the exact directory
+    to use instead. That is also the only way out when the env dir itself
+    cannot be written to (a read-only mount, a vendored base env, an env
+    shipped inside an image): denver dies rather than silently picking
+    somewhere else nobody asked for.
+    """
+    env = os.environ if env is None else env
+    override = env.get(ENV_WORKDIR_VAR)
+    if override:
+        return Path(override).expanduser().resolve()
+    if not os.access(env_dir, os.W_OK):
+        die(f"{env_dir} is not writable -- set {ENV_WORKDIR_VAR} to choose where this env's state goes")
+    return Path(env_dir) / STATE_DIRNAME / Path(config_path).stem
+
+
+class Context:
+    """Everything a provider needs to do its job."""
+
+    def __init__(
+        self,
+        env_dir,
+        config,
+        import_dirs=None,
+        extra_hook_entries=None,
+        quiet=0,
+        verbose=False,
+        fast=False,
+        force=False,
+        ci=False,
+        dry_run=False,
+        config_path=None,
+    ):
+        """Compute every built-in path/flag a provider might need, and seed ``self.env`` with them.
+
+        ``quiet`` is a level (0 normal, 1 = -q, 2+ = -qq -- see
+        set_quiet()/banner()), not a bool, though a bare ``True``/``False``
+        still works (``bool`` is an ``int`` subclass: ``True`` behaves as
+        level 1, ``False`` as level 0). ``verbose`` (-v/--verbose) is
+        independent of it -- see set_quiet()'s own docstring for how the two
+        combine. ``force``/``ci``/``dry_run`` are plain flags (denver's own
+        ``--force``/``--ci``/``--dry-run``, see denver.py) -- unlike every
+        other provider-facing toggle, these are never read back out of a
+        real environment variable; ``ctx.force``/``ctx.ci``/``ctx.dry_run``
+        reflect exactly what was passed in here, nothing else.
+        """
+        # where denver's own code lives (this file's directory, containing
+        # denver.py and providers/) -- always exactly where the bundled
+        # conan_scripts/docker_scripts live, in both a checkout and an
+        # installed package.
+        self.denver_pkg_dir = Path(__file__).resolve().parent.parent
+        self.env_dir = Path(env_dir).resolve()
+        self.config = config or {}
+        self.import_dirs = [Path(d).resolve() for d in (import_dirs or [])]
+        # section-stacked source envs' own 'hooks:' (e.g. a stacked-in
+        # 'docker:' section's 'pre-docker:') -- see expand_section_imports;
+        # collect_hook_entries() only walks the whole-file 'import:' chain
+        # and would otherwise never see these. name -> [(base_dir, script), ...].
+        self.extra_hook_entries = extra_hook_entries or {}
+        self.quiet = quiet
+        self.verbose = verbose
+        self.fast = fast
+        self.force = force
+        self.ci = ci
+        self.dry_run = dry_run
+        # names ctx.which() already had to invent a dry-run stand-in for, so
+        # the warning explaining that is printed once per tool instead of
+        # once per lookup (every stage re-resolves its own defaults).
+        self._dry_missing_tools = set()
+        # (stage id, duration or skip reason) per declared stage, in pipeline
+        # order -- the summary denver prints just before launching the
+        # command (see denver._print_stage_summary).
+        self.stage_timings = []
+        # holds this env's run lock open for the process's lifetime (acquire_lock)
+        self._lock_fd = None
+        # this stage's position in the overall pipeline, for banner()'s
+        # '[i/n]' -- 1/1 by default so a provider driven directly (e.g. in
+        # tests) without going through denver.py's run_stages() still gets a
+        # sensible progress line; run_stages() overwrites these per stage.
+        self.stage_index = 1
+        self.stage_count = 1
+        # the current stage's own id (e.g. "docker", "conan") -- set by
+        # denver.py right before calling a provider's setup()/wrap(), so
+        # ctx.run(..., step="...")'s auto-banner knows which stage it's
+        # for without every call site having to pass self.stage itself.
+        self.stage_id = None
+        # each stage's config section exactly as the denver.toml (after
+        # stacking/overrides) spelled it, before any provider default was
+        # filled in -- kept by denver.resolve_provider_defaults so a stage's
+        # defaults can be resolved *again*, from scratch, right before it
+        # runs. Re-resolving the already-resolved section can't do that: a
+        # resolver reads its own output back as if the author had written
+        # it, so a PATH lookup that resolved to the host's copy upfront
+        # would survive an earlier stage installing the real one. Empty
+        # (never populated) when a provider is driven directly, e.g. in tests.
+        self.raw_sections = {}
+        set_quiet(quiet, verbose)
+
+        self.env_name = self.env_dir.name
+        self.in_container = in_container()
+
+        # denver-owned working area for this env (venv, caches, logs, ...),
+        # keyed on the config file rather than on the env dir's bare name --
+        # see state_dir_for. config_path defaults to the conventional
+        # denver.toml so a provider driven directly (e.g. in tests) still gets
+        # a sensible location.
+        self.config_path = Path(config_path) if config_path else self.env_dir / "denver.toml"
+        self.env_workdir = state_dir_for(self.env_dir, self.config_path)
+        self.logs_dir = self.env_workdir / ".logs"
+
+        # venv lives under the workdir; host and in-docker venvs are kept apart.
+        # venv_dir is the default; venv_dir_for(name) gives a per-stage venv so
+        # an env can have several uv stages with distinct venvs.
+        self.venv_dir = self.venv_dir_for(None)
+
+        # the mutable environment the final command inherits
+        self.env = dict(os.environ)
+        # snapshot before any stage (or _init_builtins) touches self.env, so
+        # write_export_env can tell what denver itself changed from what
+        # this process merely inherited -- see that method.
+        self._initial_env = dict(self.env)
+        _drop_bundled_library_path(self.env)
+        self._init_builtins()
+
+    # ---- built-in variables --------------------------------------------- #
+    def _init_builtins(self):
+        """Seed env with denver built-ins (also usable in ${...} interpolation)."""
+        builtins = {
+            "DENVER_SRC_DIR": str(self.denver_pkg_dir),
+            "DENVER_ENV_DIR": str(self.env_dir),
+            "DENVER_ENV_NAME": self.env_name,
+            "DENVER_ENV_WORKDIR": str(self.env_workdir),
+            # The shared, content-addressed tier: a download cache several
+            # envs (and several checkouts) can safely share, because the
+            # tools that own it -- conan, uv, west -- do their own locking.
+            # Anything denver itself writes belongs in DENVER_ENV_WORKDIR
+            # instead, which is per env and never shared.
+            "DENVER_CACHE_DIR": str(self.cache_dir),
+            "SHELL_PROMPT_PREFIX": self.prompt_prefix,
+        }
+        # denver-owned identifiers always reflect the current run, even over a
+        # stale value of the same name already in the real environment
+        self.env.update(builtins)
+        self._prefix_prompt()
+
+    @property
+    def in_docker(self):
+        """Deprecated alias for :attr:`in_container`.
+
+        Kept for one release so out-of-tree code reading it keeps working.
+        Read-only on purpose: assigning it used to be how a caller faked
+        "inside a container", and that must now go to ``in_container`` so it
+        cannot silently stop having an effect.
+        """
+        return self.in_container
+
+    @property
+    def relocated(self):
+        """The wrapper stage ids that relocated this denver into where it is running, or [].
+
+        denver's own bookkeeping, stated by the process doing the relocating
+        (see denver.py's reinvoke_command) rather than inferred from the
+        environment -- so it is equally true for a wrapper that relocates
+        into something which is *not* a container, e.g. a `custom` stage with
+        a ``launcher:``, which no filesystem marker could ever reveal.
+        """
+        value = self.env.get(RELOCATED_VAR, "")
+        return [stage for stage in value.split(",") if stage]
+
+    @property
+    def cli_env_vars(self):
+        """``{name: value}`` for every ``-e``/``--env`` entry this invocation was given, or ``{}``.
+
+        Read back out of ctx.env (see denver.py's resolve_full_config, which
+        is what sets CLI_ENV_VAR_NAMES) rather than kept separately, the same
+        pattern ``relocated`` uses -- so it survives untouched across
+        whatever else touches ctx.env in between.
+        """
+        names = self.env.get(CLI_ENV_VAR_NAMES, "")
+        return {name: self.env.get(name, "") for name in names.split(",") if name}
+
+    @property
+    def cache_dir(self):
+        """The shared cache root (``DENVER_CACHE_DIR``, default ``~/.cache/denver``).
+
+        Only ever a *pointer* denver exports for an env to aim a tool's own
+        cache at (e.g. ``CONAN_HOME``); denver neither creates nor reads it.
+        Unlike ``env_workdir`` it is deliberately shared across envs and
+        checkouts -- the tools that own such caches do their own locking, and
+        duplicating them per checkout is expensive for no benefit.
+        """
+        configured = self.env.get(CACHE_DIR_VAR)
+        return Path(configured).expanduser() if configured else Path("~/.cache/denver").expanduser()
+
+    def ensure_state_dir(self):
+        """Create this env's state directory, and keep it out of the project's git history.
+
+        A ``.gitignore`` holding a single ``*`` makes the directory ignore
+        itself, so no project has to add anything to its own ``.gitignore``
+        for state denver put inside the working tree. Written once, when the
+        directory is created, and never rewritten -- an author who edits it
+        keeps their version.
+        """
+        self.mkdir(self.env_workdir)
+        if self.env_workdir.parent.name != STATE_DIRNAME:
+            return  # an explicit DENVER_ENV_WORKDIR, not the conventional '<env>/.denver'
+        marker = self.env_workdir.parent / ".gitignore"
+        if not marker.exists():
+            self.write_text(marker, "# denver's own state for this env -- not part of the project.\n*\n")
+
+    @property
+    def prompt_prefix(self):
+        """The marker text saying a shell is running inside this env: ``'(<env>) '``.
+
+        Exported as denver's own ``SHELL_PROMPT_PREFIX``; nothing reads that
+        on its own, it carries the text for a shell's config to apply.
+        """
+        return f"({self.env_name}) "
+
+    @property
+    def prompt(self):
+        """Zsh's PROMPT for this env: ``'(<env>) %m%#'`` (short host, then % or # for root)."""
+        return f"{self.prompt_prefix}%m%#"
+
+    @property
+    def prompt_command(self):
+        """The snippet denver appends to PROMPT_COMMAND, re-applying ``prompt_prefix`` to PS1.
+
+        PROMPT_COMMAND is bash's own standard pre-prompt hook, not something
+        denver owns -- denver only adds to whatever is already in it. That
+        hook is what makes the marker survive at all: bash runs it before
+        drawing *every* prompt, i.e. after the rc files that would otherwise
+        have discarded an inherited PS1 (see _prefix_prompt).
+
+        The ``case`` guard is not decoration: without it this would re-prefix
+        on every single prompt, growing PS1 to '(env) (env) (env) ...' line
+        after line. ``case`` rather than a bash-only conditional so a
+        POSIX-ish shell sourcing it doesn't choke.
+        """
+        prefix = self.prompt_prefix
+        return f'case "$PS1" in "{prefix}"*) ;; *) export PS1="{prefix}$PS1";; esac'
+
+    def _prefix_prompt(self):
+        """Mark the shell denver execs with ``prompt_prefix``, via each shell's own prompt variable.
+
+        None of these belong to denver -- it writes the variables the shells
+        themselves define: PS1/PROMPT_COMMAND for bash, PROMPT for zsh, and
+        SHELL_PROMPT_PREFIX, which fish reads natively from 4.8.0 on.
+
+        PS1 is deliberately *not* set: an interactive bash re-reads its own
+        rc files after denver execs it and assigns PS1 outright, so anything
+        denver put there is discarded before the user ever sees it.
+        PROMPT_COMMAND is bash's answer to exactly that -- it runs after
+        those rc files, before every prompt -- so that is where the marker
+        goes instead.
+
+        Prefixing is idempotent: a wrapper provider re-invokes denver inside
+        the container (see denver.py's reinvoke_command) with this env
+        already applied, and the inner run must not stack a second copy.
+        """
+        snippet = self.prompt_command
+        # a trailing ';' on the inherited value would make '<existing>; <snippet>'
+        # a bash syntax error ('cmd; ; case ...'), so it's normalised away
+        existing = self.env.get("PROMPT_COMMAND", "").strip().rstrip(";").strip()
+        if snippet not in existing:
+            self.env["PROMPT_COMMAND"] = f"{existing}; {snippet}" if existing else snippet
+
+        # zsh's own prompt variable. PROMPT and PS1 are the *same* parameter
+        # in zsh, so an inherited PS1 (denver sets none of its own, see
+        # above) would win over this one if it happened to come later in
+        # environ -- re-inserting PROMPT last (pop + assign) makes this
+        # zsh-syntax value the one zsh keeps, whatever it inherited.
+        self.env.pop("PROMPT", None)
+        self.env["PROMPT"] = self.prompt
+
+    @property
+    def variables(self):
+        """The dict used for ${...} interpolation: current env wins."""
+        return self.env
+
+    def venv_dir_for(self, name):
+        """Path of a (named) venv; host and in-docker venvs are kept apart.
+
+        ``name`` (a stage's ``venv:``) is the *whole* leaf dirname, not a
+        suffix tacked onto a fixed ``.venv-`` prefix -- so 'venv: shared'
+        gives ``<env_workdir>/shared``, not ``<env_workdir>/.venv-shared``.
+        """
+        leaf = name if name else ".venv"
+        venv = self.env_workdir / leaf
+        return venv if self.in_container else Path(str(venv) + ".host")
+
+    # ---- serialising concurrent runs ------------------------------------ #
+    def acquire_lock(self, *, wait=True):
+        """Take this env's exclusive run lock, so two runs cannot corrupt each other's state.
+
+        Every piece of an env's state is shared between concurrent runs, and
+        several steps rebuild rather than update: the conan provider wipes its
+        whole install tree before installing, and the uv provider removes and
+        recreates a venv whose requirements changed -- both potentially while
+        another run is sourcing or using exactly that. There is no useful way
+        to merge two such runs, so they are serialised.
+
+        Deliberately *not* released explicitly: the lock fd is closed by
+        ``os.execvpe`` (Python creates file descriptors non-inheritable --
+        PEP 446), so the lock lasts exactly as long as denver is mutating
+        state and drops the moment it hands over to the user's command. A
+        long-lived devshell therefore never holds it, and a wrapper
+        relocation cannot deadlock against itself: the outer process ceases
+        to exist at exec, before the inner one asks.
+
+        Skipped entirely under --dry-run, which mutates nothing.
+        """
+        if self.dry_run:
+            return
+        path = self.env_workdir / LOCK_FILE_NAME
+        if str(path) in _HELD_LOCKS:
+            return  # already ours -- see _HELD_LOCKS
+        self.mkdir(path.parent)
+        fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o644)
+        if not self._flock(fd, path, wait=wait):
+            os.close(fd)
+            return
+        # stamped for diagnosis only -- the lock itself is the flock, never
+        # this content. The boot id makes a stale file from before a reboot
+        # recognisable as such, since pids are reused freely across one.
+        os.ftruncate(fd, 0)
+        os.write(fd, f"pid={os.getpid()}\nboot={_boot_id()}\n".encode())
+        # kept on the instance purely to hold the descriptor open for this
+        # process's lifetime; nothing ever reads it back.
+        self._lock_fd = fd
+        _HELD_LOCKS[str(path)] = fd
+
+    def _flock(self, fd, path, *, wait):
+        """Take the flock on ``fd``, reporting a wait; False if locking is unavailable here."""
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return True
+        except OSError as exc:
+            if exc.errno not in (errno.EACCES, errno.EAGAIN):
+                # ENOLCK/EOPNOTSUPP/EINVAL: some NFS and overlay mounts do not
+                # implement flock at all. Saying so beats pretending the run
+                # is serialised when nothing is enforcing it.
+                warn(f"denver: cannot lock {path} ({exc.strerror or exc}) -- concurrent runs are not serialised")
+                return False
+        if not wait:
+            die(f"denver: another denver run holds this env ({_lock_holder(path)}); --no-wait was given")
+        info(f"denver: waiting for another denver run on this env ({_lock_holder(path)})")
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        return True
+
+    # ---- config access -------------------------------------------------- #
+    def section(self, name):
+        """Return a provider's config section (interpolated), or {}."""
+        raw = self.config.get(name) or {}
+        return interpolate(raw, self.variables)
+
+    def resolve_path(self, value, *, base=None):
+        """Resolve a possibly-relative config path.
+
+        Relative paths are resolved against ``base`` (default: the env dir).
+        If not found under the env dir, imported (base) env dirs are tried, so
+        an env can inherit files like conan/base_classes from its base.
+
+        A value that isn't a path at all (a list where a provider expects one
+        string, say) is a config mistake, and gets denver's own message
+        rather than a raw TypeError out of pathlib -- see "Fail loud" in
+        doc/concepts/philosophy.md. This is the last line of defence: a provider that
+        knows which key it is reading should say so itself first (see
+        ConanProvider.resolve_defaults' 'base-classes:' check).
+        """
+        value = interpolate(value, self.variables)
+        if not isinstance(value, (str, os.PathLike)):
+            die(f"expected a path in denver.toml, got a {type(value).__name__}: {value!r}")
+        p = Path(value).expanduser()
+        if p.is_absolute():
+            return p
+        found = self._existing_under(p, Path(base) if base else self.env_dir)
+        # default to env-dir-relative even if missing (caller may create it)
+        return found if found else (self.env_dir / p).resolve()
+
+    def resolve_command(self, cmd):
+        """A literal argv (e.g. 'patches-apply:') with every relative-path-looking token resolved.
+
+        Unlike resolve_path, this doesn't know which token (if any) is a
+        path -- a literal command is free-form, one flag/exe-name/path token
+        after another, and a provider running it isn't meant to parse that
+        structure (see doc/providers/uv.md's 'patches-apply:'). So every
+        string token is tried against the same existing-file search
+        resolve_path itself falls back on (env dir, then each imported base
+        env dir, see _existing_under) -- a token that resolves to a real
+        file/dir there is rewritten to that absolute path; anything else
+        (a bare exe name found on PATH instead, a literal flag, 'apply')
+        is passed through completely untouched.
+        """
+        return [self._resolved_command_token(t) for t in interpolate(cmd, self.variables)]
+
+    def _resolved_command_token(self, token):
+        """One 'resolve_command' token: its resolved absolute path if one exists on disk, else itself untouched."""
+        if not isinstance(token, str):
+            return token
+        found = self._existing_under(Path(token).expanduser(), self.env_dir)
+        return str(found) if found else token
+
+    def _existing_under(self, p, base):
+        """The first existing candidate for a relative path -- under ``base``, else an imported env dir. None if none."""
+        primary = base / p
+        if primary.exists():
+            return primary.resolve()
+        for d in self.import_dirs:
+            candidate = d / p
+            if candidate.exists():
+                return candidate.resolve()
+        return None
+
+    # ---- env manipulation ----------------------------------------------- #
+    def set(self, key, value):
+        """Set ``key`` in ctx.env to ``str(value)`` (or "" for None)."""
+        self.env[key] = "" if value is None else str(value)
+
+    def setdefault(self, key, value):
+        """Set ``key`` only if it isn't already set (or is set to an empty string) in ctx.env."""
+        if not self.env.get(key):
+            self.set(key, value)
+
+    def prepend_path(self, directory):
+        """Prepend ``directory`` onto ctx.env['PATH'] (e.g. to put a venv's bin/ first)."""
+        directory = str(directory)
+        current = self.env.get("PATH", "")
+        if current:
+            self.env["PATH"] = f"{directory}{os.pathsep}{current}"
+        else:
+            self.env["PATH"] = directory
+
+    def append_path_var(self, key, value, sep=os.pathsep):
+        """Append ``value`` onto ctx.env[key], joined by ``sep`` if it's already set."""
+        current = self.env.get(key, "")
+        self.env[key] = f"{current}{sep}{value}" if current else str(value)
+
+    def resolve_env_value(self, value):
+        """One generic 'env-prepend:'/'env-append:' *value*, resolved as a path.
+
+        Backs the generic per-stage 'env-prepend:'/'env-append:' keys (see
+        GENERIC_STAGE_KEYS in denver.py): the value resolves exactly the way
+        any other denver.toml path does (Context.resolve_path -- against the
+        env dir, then imported base envs; an already-absolute value is left
+        untouched), so a stage can point at a fixed location (its own
+        checkout, a sibling stage's output) without a provider-specific
+        notion of "this stage's own directory" to resolve it against. A
+        provider wanting *that* (several per-package directories in one
+        stage, say) still uses its own mechanism -- see download's
+        per-package 'env-prepend:'/'env-append:', which resolve_env_value
+        deliberately doesn't replace.
+        """
+        return str(self.resolve_path(value))
+
+    def extend_env_var(self, key, value, *, prepend):
+        """Put ``value`` directly in front of (or behind) whatever ctx.env[key] already holds -- no separator inserted.
+
+        The generic engine behind both the per-stage 'env-prepend:'/
+        'env-append:' keys and download's own per-package ones: 'prepend:'
+        puts ``value`` ahead of the variable's current value (the common
+        case -- a stage exists to provide a specific version of a tool, and
+        appending would let whatever the OS already has on PATH win
+        instead), 'append:' behind it (a fallback MANPATH, a low-priority
+        CMAKE_PREFIX_PATH). Whichever separator the result needs (a
+        trailing ':' baked into this value for 'env-prepend:', a leading one
+        for 'env-append:') is on whoever writes the value -- denver never
+        guesses one.
+        """
+        current = self.env.get(key, "")
+        self.set(key, f"{value}{current}" if prepend else f"{current}{value}")
+
+    def apply_env_map(self, mapping):
+        """Apply an {name: value} mapping into the environment, interpolating one entry at a time.
+
+        Each value is expanded against ``self.variables`` (i.e. ``self.env``,
+        see the ``variables`` property) right before it's set -- not the
+        whole mapping up front -- so a later entry's ``${...}`` can reference
+        an earlier entry of the *same* mapping, in the order it was written
+        (e.g. ``PROJECT_ROOT`` set from ``DENVER_ENV_DIR``, then a later entry
+        built from ``${PROJECT_ROOT}``).
+        """
+        for key, value in (mapping or {}).items():
+            self.set(key, interpolate(value, self.variables))
+
+    # ---- dry-run reporting ---------------------------------------------- #
+    def dry_note(self, marker, message):
+        """Print one ``[dry-run <marker>] <message>`` line to stderr (see Context.run for the markers).
+
+        Always printed, even under --quiet: in a dry run these lines *are*
+        the output -- silencing them would leave the run with nothing to
+        show at all. The tag is colored by marker (see DRY_MARKER_COLORS),
+        so which kind of line this is -- a real command, a read-only query,
+        a write, ... -- is visible without reading the marker itself.
+        """
+        print(f"{_dry_tag(marker)} {message}", file=sys.stderr)
+
+    # ---- process helpers ------------------------------------------------ #
+    def run(
+        self, cmd, *, cwd=None, check=True, echo=True, capture=False, query=None, extra_env=None, input=None, step=None
+    ):
+        """Run a subprocess using the context environment.
+
+        Under --quiet, the '+ cmd' echo is skipped and -- unless the caller
+        already asked for capture=True, in which case nothing was ever
+        printed anyway -- the subprocess's own stdout/stderr are discarded
+        rather than inherited, so only the final launched command (which
+        goes through Context.exec, not Context.run) is ever visible.
+
+        Under --dry-run (``ctx.dry_run``) a command that exists for its
+        *effect* is printed as ``[dry-run +] cmd`` and not run at all,
+        standing in as an immediately-successful, output-less call. A
+        ``query=True`` call is different: some provider is about to branch on
+        it (is the image cached? which conan home? what does `west list`
+        say? did a skip-on-success/skip-on-failure script exit as configured?), so a dry run would have nothing
+        to decide with and would stop reflecting what a real run does. Those
+        are genuinely executed -- they are the reads, not the writes -- and
+        reported as ``[dry-run ?] cmd`` so the preview still says so.
+        A missing executable is not fatal in that case either: half the point
+        of a dry run is previewing an env whose tools an earlier (skipped)
+        stage would have installed, so it degrades to the same empty,
+        non-zero result rather than raising.
+
+        ``query`` defaults to ``capture``: a caller reading ``.stdout`` back
+        (the common case) needs both -- the real output, and the dry-run
+        guarantee that it was genuinely produced. The two are independent,
+        though: a caller that only branches on ``.returncode`` (e.g.
+        ``skip-on-success``/``skip-on-failure``) wants ``query=True`` without ``capture=True``, so the
+        script's own stdout/stderr stay live on the terminal on a real run,
+        while --dry-run still executes it for a real answer.
+
+        ``input``, if given, is fed to the subprocess's stdin (e.g. a secret
+        piped into ``docker login --password-stdin`` without it ever
+        appearing in argv or a log line) -- same name/meaning as
+        subprocess.run's own ``input`` kwarg, just forwarded through.
+
+        ``step``, if given, prints this command's own progress banner (via
+        ``banner()``, using ``ctx.stage_id``) immediately before the '+ cmd'
+        echo -- the two can never drift apart or print out of order, unlike
+        a separate ``banner(...)`` call a caller has to remember to place
+        before this one. Only worth using for a step that *is* essentially
+        one subprocess call; a step spanning several calls (or none, e.g. a
+        pure info message) still calls ``banner()`` directly instead.
+        """
+        if step is not None:
+            banner(self, self.stage_id, step)
+        if query is None:
+            query = capture
+        env = self._child_env(extra_env)
+        printable = _printable(cmd)
+        if self.dry_run:
+            return self._dry_run_command(cmd, printable, cwd=cwd, env=env, query=query, input=input)
+        self._echo_command(printable, echo)
+        try:
+            return subprocess.run(
+                _argv(cmd),
+                cwd=str(cwd) if cwd else None,
+                env=env,
+                check=check,
+                text=True,
+                **self._run_kwargs(capture=capture, input=input),
+            )
+        except OSError as exc:
+            self._die_unstartable(printable, exc)
+
+    def _child_env(self, extra_env):
+        """ctx.env plus this call's own ``extra_env`` overrides, every value stringified."""
+        env = dict(self.env)
+        if extra_env:
+            env.update({k: str(v) for k, v in extra_env.items()})
+        return env
+
+    def _echo_command(self, printable, echo):
+        """Print the '+ cmd' echo -- only under --verbose (and never under --quiet/-qq), unless the caller silenced it."""
+        if echo and not self.quiet and self.verbose:
+            print(f"+ {printable}", file=sys.stderr)
+
+    def _run_kwargs(self, *, capture, input):
+        """The subprocess.run kwargs implied by ``capture``, -qq, and an ``input`` payload.
+
+        A single -q leaves a stage's own command output inherited (visible)
+        -- only -qq (level 2+) discards it, matching --quiet's new meaning:
+        -q silences denver's *own* output, -qq silences everything.
+        """
+        run_kwargs = {}
+        if capture:
+            run_kwargs["capture_output"] = True
+        elif self.quiet >= 2:
+            run_kwargs["stdout"] = subprocess.DEVNULL
+            run_kwargs["stderr"] = subprocess.DEVNULL
+        if input is not None:
+            run_kwargs["input"] = input
+        return run_kwargs
+
+    def _die_unstartable(self, printable, exc):
+        """Report a command that could not be started at all.
+
+        A configured 'exe:' naming a file that isn't there, a script without
+        the execute bit, an unreadable cwd. That is a denver.toml problem, but
+        Popen raises before check= ever applies, so main()'s
+        CalledProcessError handler never sees it and the user gets a
+        traceback whose frames name subprocess.py rather than the key at
+        fault. Reported here instead, naming the stage and command.
+        """
+        stage = f"stage '{self.stage_id}': " if self.stage_id else ""
+        die(f"{stage}cannot run {printable}: {exc.strerror or exc}")
+
+    def _dry_run_command(self, cmd, printable, *, cwd, env, query, input):
+        """Report ``cmd`` under --dry-run: print-and-skip it, or really run it if it's a query (see Context.run)."""
+        if not query:
+            self.dry_note("+", printable)
+            return subprocess.CompletedProcess(_argv(cmd), 0, "", "")
+        self.dry_note("?", printable)
+        try:
+            # a dry run reports a query, it never aborts on one
+            result = subprocess.run(
+                _argv(cmd),
+                cwd=str(cwd) if cwd else None,
+                env=env,
+                check=False,
+                text=True,
+                capture_output=True,
+                input=input,
+            )
+        except OSError as exc:
+            # e.g. the tool an earlier stage would have installed isn't
+            # there: report it and let the caller see an ordinary failure.
+            self.dry_note("?", f"{cmd[0]}: not available ({exc.strerror or exc}) -- assuming it would fail")
+            return subprocess.CompletedProcess(_argv(cmd), 127, "", "")
+        if result.returncode != 0:
+            # a query that failed answered nothing, so whatever the caller
+            # derives from it below (which args to pass, whether a step is
+            # needed) is a guess. Said out loud: a real run would have had
+            # an answer here, and silence would let the preview look
+            # authoritative where it is least so.
+            self.dry_note("?", f"{cmd[0]}: exited {result.returncode} -- what follows may not match a real run")
+        return result
+
+    def which(self, name, *, dry_fallback=False):
+        """Find an executable, honouring the context PATH (e.g. the venv).
+
+        ``dry_fallback`` marks a tool an *earlier stage* is expected to
+        install (west, conan, uv, docker): under --dry-run that stage only
+        printed its commands, so the tool legitimately isn't there yet, and
+        returning None would abort the preview at exactly the stage the user
+        wanted to see. The bare name is returned instead -- enough to render
+        every command below it -- with a one-off warning saying so.
+        """
+        found = shutil.which(name, path=self.env.get("PATH"))
+        if found is None and self.dry_run and dry_fallback:
+            if name not in self._dry_missing_tools:
+                self._dry_missing_tools.add(name)
+                warn(f"dry-run: '{name}' is not on PATH -- showing commands as if it were")
+            return name
+        return found
+
+    # ---- filesystem helpers (--dry-run aware) ---------------------------- #
+    #
+    # Providers write and delete real files outside of any subprocess
+    # (checksum stamps, generated listings, a wiped venv/conan tree). Those
+    # go through these helpers rather than pathlib/shutil directly, so
+    # --dry-run has one place to intercept them: printing that a subprocess
+    # was skipped while still deleting the venv it would have rebuilt would
+    # be worse than not offering a dry run at all.
+    def mkdir(self, path, *, parents=True, exist_ok=True):
+        """Create ``path`` as a directory (no-op, reported, under --dry-run)."""
+        if self.dry_run:
+            if not Path(path).is_dir():
+                self.dry_note("~", f"mkdir {path}")
+            return
+        Path(path).mkdir(parents=parents, exist_ok=exist_ok)
+
+    def write_text(self, path, text):
+        """Write ``text`` to ``path``, replacing it (no-op, reported, under --dry-run)."""
+        if self.dry_run:
+            self.dry_note("~", f"write {path}")
+            return
+        Path(path).write_text(text)
+
+    def append_text(self, path, text):
+        """Append ``text`` to ``path`` (no-op, reported, under --dry-run)."""
+        if self.dry_run:
+            self.dry_note("~", f"append to {path}")
+            return
+        with Path(path).open("a") as fh:
+            fh.write(text)
+
+    def touch(self, path):
+        """Create ``path`` as an empty file if missing (no-op, reported, under --dry-run)."""
+        if self.dry_run:
+            self.dry_note("~", f"touch {path}")
+            return
+        Path(path).touch()
+
+    def unlink(self, path, *, missing_ok=False):
+        """Delete the file ``path`` (no-op, reported, under --dry-run)."""
+        if self.dry_run:
+            self.dry_note("~", f"rm {path}")
+            return
+        Path(path).unlink(missing_ok=missing_ok)
+
+    def rmtree(self, path):
+        """Delete the directory tree ``path``, tolerating a missing one (no-op, reported, under --dry-run)."""
+        if self.dry_run:
+            self.dry_note("~", f"rm -r {path}")
+            return
+        shutil.rmtree(path, ignore_errors=True)
+
+    def source(self, *scripts):
+        """Source bash script(s) and fold the resulting exports into env.
+
+        This is how denver 'activates' things that are only expressible as
+        bash (venv activate, conan's conanbuildenv.sh, hook scripts).
+
+        Still done under --dry-run, and reported as ``[dry-run .] script``:
+        sourcing is how denver *computes* the environment, and a command
+        rendered without it would show empty ``${...}`` values and a PATH
+        missing every tool an earlier stage put there -- i.e. not the
+        commands a real run would use. A script that doesn't exist yet
+        (a venv's activate, conan's conanbuildenv.sh) is skipped in a dry
+        run exactly as it is in a real one, silently.
+        """
+        scripts = [str(s) for s in scripts if s and Path(s).exists()]
+        if not scripts:
+            return
+        if self.dry_run:
+            for script in scripts:
+                self.dry_note(".", script)
+        self._absorb_env(self._sourced_env(scripts))
+
+    def _sourced_env(self, scripts):
+        """Source ``scripts`` in a bash subprocess and return the NUL-separated ``KEY=value`` blob they leave behind.
+
+        Dumped with a ``compgen -e`` loop, a bash builtin, rather than GNU
+        coreutils' ``env -0``: denver supports macOS, whose ``env`` is BSD's
+        and rejects ``-0`` outright ("illegal option -- 0"), while
+        ``compgen -e`` -- the exported-variable-names equivalent of what
+        ``env`` would list -- has been a bash builtin since bash 2.x, so it
+        works identically on Linux and on macOS's bash 3.2.
+        """
+        sentinel = "__DENVER_ENV_SENTINEL__"
+        source_cmds = " && ".join(f". {shlex.quote(s)}" for s in scripts)
+        dump_cmd = 'for __v in $(compgen -e); do printf "%s=%s\\0" "$__v" "${!__v}"; done'
+        script = f'{source_cmds}; printf "%s\\0" "{sentinel}"; {dump_cmd}'
+        result = subprocess.run(
+            ["bash", "-c", script],
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            die(f"failed to source {scripts}: {result.stderr.strip()}")
+        _, _, env_blob = result.stdout.partition(f"{sentinel}\0")
+        return env_blob
+
+    def _absorb_env(self, env_blob):
+        """Fold a NUL-separated ``KEY=value`` blob's entries into ctx.env."""
+        for entry in env_blob.split("\0"):
+            # skip the trailing '' after the last \0-terminated entry (and
+            # any malformed entry with no '=') -- always exercised (every
+            # source() call hits the trailing ''), but coverage.py under
+            # Python 3.9 doesn't reliably trace a 'continue' as a loop's
+            # last statement, so it's excluded rather than restructured.
+            if not entry or "=" not in entry:
+                continue  # pragma: no cover
+            key, _, value = entry.partition("=")
+            self.env[key] = value
+
+    def exec(self, cmd):
+        """Replace the current process with ``cmd`` using the context env.
+
+        Under --dry-run the command is reported and this returns normally
+        instead -- every caller treats exec() as the last thing it does, so
+        returning simply ends the run the way the real one ends the process.
+        """
+        cmd = _argv(cmd)
+        _validate_exec_cmd(cmd)
+        if self.dry_run:
+            sys.stdout.flush()
+            self.dry_note("+", f"exec: {_printable(cmd)}")
+            return
+        # Flush stdout *before* printing "+ exec:" (and again right before
+        # the actual os.execvpe() below): print() output (e.g. the startup
+        # logo, a stage's "finished in Xs" line) isn't always line-buffered
+        # -- piped output block-buffers -- so without this the "+ exec:"
+        # line (and the replaced command's own output right after it) could
+        # appear on-screen *before* stdout content that was actually printed
+        # earlier, and os.execvpe() never runs Python's normal
+        # flush-on-exit, so unflushed content would otherwise be lost
+        # outright, not just reordered.
+        sys.stdout.flush()
+        # Plain print with the same '+' marker as Context.run's own echo and
+        # the --dry-run preview below (not info(), which would print
+        # "INFO: exec: ..." -- a different, inconsistent prefix for what is
+        # otherwise the exact same "here is the command about to run" line),
+        # gated on quiet/verbose the same way _echo_command is.
+        if not self.quiet and self.verbose:
+            print(f"+ exec: {_printable(cmd)}", file=sys.stderr)
+        sys.stderr.flush()
+        # Resolve the program to a concrete file *before* handing it to the
+        # kernel, rather than leaving the PATH search to execvpe: the lookup
+        # then has an answer denver can check and name ("not found on this
+        # environment's PATH", the actual problem) instead of an ENOENT that
+        # cannot say whether the program or something inside it was missing.
+        # Resolved against this environment's PATH -- the one the stages just
+        # built, which is also the one execvpe would have used. Deliberately
+        # after the --dry-run branch above: a preview must still work for a
+        # tool the stage it comes from was skipped.
+        program = shutil.which(cmd[0], path=self.env.get("PATH"))
+        if not program:
+            die(f"exec: command not found on this environment's PATH: {cmd[0]!r}")
+        try:
+            os.execvpe(program, cmd, self.env)
+        except OSError as exc:
+            die(f"failed to exec {cmd[0]}: {exc}")
+
+    def write_export_env(self, path):
+        """Dump what denver itself changed in the env as shell-sourceable 'export' lines to ``path``.
+
+        Only keys whose value actually differs from this process's own
+        starting environment (self._initial_env) are written -- a plain dump
+        of the whole (inherited-plus-built) env would re-assert a hundred
+        unrelated variables (e.g. SSH_AUTH_SOCK) that a fresh shell already
+        has, some of which may since have moved on (e.g. a fresh shell's own
+        SSH_AUTH_SOCK for a new agent socket) and shouldn't be clobbered.
+        For bash/zsh (not fish) -- see --export-env.
+
+        A prepended/appended value (ctx.prepend_path, ctx.append_path_var --
+        PATH being the common case) is written as '=prefix"$VAR"' or
+        '="$VAR"suffix' rather than the whole resolved string, so it composes
+        with whatever that variable already is in the sourcing shell instead
+        of overwriting it outright. Keys that aren't valid shell identifiers
+        (e.g. ``BASH_FUNC_foo%%``, which bash uses to smuggle exported
+        functions through the environment) are skipped either way: sourcing
+        them back as 'export' assignments would just fail.
+
+        A -e/--env value is written unconditionally, even one that happens
+        to equal what the process already had: -e is applied straight to
+        this process's own os.environ before ctx exists (see
+        _run_resolved_cli), so by the time ctx snapshots its baseline it can
+        no longer tell that one apart from something truly inherited --
+        cli_env_vars (denver's own CLI_ENV_VAR_NAMES bookkeeping) is what
+        still remembers it was asked for on this invocation.
+        """
+        if self.dry_run:
+            self.dry_note(".", f"write env to {path}")
+            return
+        Path(path).write_text("".join(self._changed_export_lines()))
+
+    def _changed_export_lines(self):
+        cli_env_vars = self.cli_env_vars
+        for key, value in sorted(self.env.items()):
+            if self._should_export(key, value, cli_env_vars):
+                yield _export_env_line(key, value, self._initial_env.get(key), key in cli_env_vars)
+
+    def _should_export(self, key, value, cli_env_vars):
+        if not re.match(r"^[A-Za-z_]\w*$", key):
+            return False
+        return key in cli_env_vars or self._initial_env.get(key) != value
+
+
+def fingerprint_label(path, base=None):
+    """How ``path`` is named inside a fingerprint: relative to ``base`` where possible.
+
+    A fingerprint exists to answer "did the inputs change since last run",
+    so it must not also change when the same inputs sit at a different
+    absolute path -- which is the normal state of affairs with two checkouts
+    of one project, a renamed directory, or a git worktree. Naming a file
+    relative to the env dir keeps the answer about content and layout, not
+    about where the tree happens to live.
+
+    Anything not reachable relatively (a different drive, or no ``base`` at
+    all) keeps its absolute path: that is still stable for the run it
+    describes, and it is better to over-invalidate than to conflate two
+    genuinely different files.
+    """
+    path = Path(path)
+    if base is None:
+        return str(path)
+    try:
+        return str(Path(os.path.relpath(path, base)))
+    except ValueError:  # pragma: no cover - Windows-only (paths on different drives)
+        return str(path)
+
+
+def sha256_of_files(paths, base=None):
+    """Stable checksum block for a set of files (missing files are tolerated).
+
+    ``base`` makes the block independent of where the tree lives -- see
+    fingerprint_label.
+    """
+    lines = []
+    for path in paths:
+        p = Path(path)
+        digest = hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else "0" * 64
+        lines.append(f"{digest}  {fingerprint_label(p, base)}")
+    return "\n".join(lines)

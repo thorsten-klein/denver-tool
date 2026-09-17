@@ -1,0 +1,130 @@
+name: Examples
+
+# Runs the example envs end-to-end. Kept out of ci.yml on purpose. These are
+# the slow, network- and docker-heavy runs (conan remotes, west update, image
+# builds, nix evaluation), so the full set guards the develop branch rather
+# than every push/PR.
+# Pull requests get the short matrix only -- see the 'example' matrix below.
+on:
+  push:
+    branches:
+    - develop
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+  # on-demand -- 'Run workflow' in the Actions tab, or `gh workflow run examples.yml`
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # built once, by the same recipe the release uses (old-glibc container and
+  # all), then reused by every 'binary' entry of the matrix below -- so what
+  # the examples run is the executable users actually download, not a
+  # separately-built approximation of it.
+  binary:
+    uses: ./.github/workflows/build-binary.yml
+
+  examples:
+    needs: binary
+    runs-on: ubuntu-latest
+    # the venvs below and uv's cache land on different filesystems on this
+    # runner, so uv's default hardlinking can't work -- asking for a copy
+    # up front avoids the "falling back to full copy" warning uv would
+    # otherwise print for every install.
+    env:
+      UV_LINK_MODE: copy
+    strategy:
+      # every mode reported, not just the first to break. Which modes fail is
+      # the whole signal here -- a fault in one of them says something quite
+      # different from a fault in all four.
+      fail-fast: false
+      matrix:
+        # note zephyr-devshell is not startable at all. It declares
+        # 'runnable' set to false -- it is the shared base the versioned devshells
+        # 'import', and denver rejects starting it directly.
+        #
+        # Pull requests run the cheap, representative envs only.
+        # The rest of the full set is minutes of network- and docker-heavy
+        # work per leg, so it is left to the develop push and to a manual
+        # 'Run workflow'.
+        example: ${{ (github.event_name == 'pull_request' && fromJSON('["simple-env", "firmware-env", "nix-devshell"]')) || fromJSON('["simple-env", "raspberry-pico", "firmware-env", "nix-devshell", "zephyr-devshell-4.3.1"]') }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # denver derives its own version from the checkout's git tags (see
+          # denver.py's scm_version), and the default shallow, tagless
+          # checkout has none -- leaving it to answer 0.1.dev1, which no
+          # example's 'denver-version' pin is satisfied by. The 'wheel' and
+          # 'binary' modes have no checkout to consult at run time and go by
+          # the version setuptools-scm baked in at build time instead -- also
+          # from these tags, so they need them just as much.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+
+      # only the nix env needs it, and it is the whole prerequisite for that
+      # env: the provider shells out to nix and nothing else. Deliberately
+      # installed *without* enabling nix-command/flakes in nix.conf -- the
+      # provider passes '--extra-experimental-features' on every invocation
+      # itself, and a stock install is what proves that still works.
+      - name: Install nix
+        if: matrix.example == 'nix-devshell'
+        uses: cachix/install-nix-action@v31
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: denver-binary-x64-linux
+          path: /tmp/denver-binary
+
+      - name: Install denver, every mode
+        run: |
+          set -eux
+          # 'script' -- "no install required to run" is a deliberate
+          # constraint (see denver.py's _default_denver_dir) -- an interpreter
+          # with denver's single dependency, and the checkout as-is.
+          uv venv .venv
+          uv pip install --python .venv/bin/python pyyaml
+
+          uv venv /tmp/denver-wheel
+          uv pip install --python /tmp/denver-wheel/bin/python .
+
+          uv venv /tmp/denver-editable
+          uv pip install --python /tmp/denver-editable/bin/python -e .
+
+          # the released archive, unpacked exactly as a user would -- which
+          # also keeps the exec bit a zipped artifact would lose, and the
+          # 'denver' symlink pointing at the versioned binary inside it. This
+          # mode needs no python at all, as the executable brings its own.
+          # Named denver-<version>-x64-linux, so matched by glob.
+          tar -xf /tmp/denver-binary/denver-*-x64-linux.tar.xz -C /tmp
+
+      # Every mode against the same example, on one runner, so the expensive
+      # work is done once as the caches are shared.and reused.
+      - name: Option 1 -- run the script
+        run: .venv/bin/python src/denver.py run examples/${{ matrix.example }} -- echo "ok (script)"
+
+      - name: Option 2 -- run install from a wheel
+        run: /tmp/denver-wheel/bin/denver run examples/${{ matrix.example }} -- echo "ok (wheel)"
+
+      - name: Option 3 -- run installed in editable mode
+        run: /tmp/denver-editable/bin/denver run examples/${{ matrix.example }} -- echo "ok (editable)"
+
+      - name: Option 4 -- run the standalone executable
+        run: /tmp/denver run examples/${{ matrix.example }} -- echo "ok (binary)"
+
+      # A run must leave the checkout exactly as it found it. There should be neither
+      # modified nor untracked files in git
+      - name: Check the run left the checkout clean
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "ERROR: examples/${{ matrix.example }} left modified or untracked files behind"
+            git status --porcelain
+            git --no-pager diff
+            exit 1
+          fi

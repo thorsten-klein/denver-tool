@@ -1,0 +1,216 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm<7", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "denver-tool"
+dynamic = ["version"]
+description = "Development Environments as code -- reproducible, flexible, simple and fast"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+# denver's own default config format is YAML (denver.yml/denver.yaml),
+# parsed with PyYAML -- a required dependency, and the reason the floor can
+# be as low as 3.9. denver.toml is supported too, but only where tomllib is
+# importable (stdlib only from Python 3.11): on an older interpreter it's
+# simply not there, and denver says so instead of guessing.
+dependencies = ["pyyaml>=6"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.urls]
+Homepage = "https://github.com/thorsten-klein/denver-tool"
+Documentation = "https://github.com/thorsten-klein/denver-tool/blob/main/doc/README.md"
+Repository = "https://github.com/thorsten-klein/denver-tool"
+Issues = "https://github.com/thorsten-klein/denver-tool/issues"
+Changelog = "https://github.com/thorsten-klein/denver-tool/releases"
+
+[project.scripts]
+# Expose executable under own name so that 'uvx denver-tool==x.y.z' (or 'uv tool install denver-tool')
+# resolves it automatically (executable name must match the package name).
+denver-tool = "denver:main"
+
+# Additionally expose under a shorter name
+denver = "denver:main"
+
+[dependency-groups]
+lint = [
+    "bandit>=1.8.0,<2",
+    "complexipy>=7.0.0,<8",
+    "mypy~=1.14",
+    "pip-audit>=2.9.0,<3",
+    "pre-commit>=4.3.0,<5",
+    "pyright~=1.1",
+    "ruff~=0.13",
+    "types-pyyaml>=6.0.12.20250915,<7",
+]
+test = [
+    "coverage>=7.10,<8",
+    "pytest>=8.4,<10.0",
+    "pytest-xdist>=3.0.0,<4",
+    "pytest-cov>=7.0,<8",
+    "pytest-mock>=3.6.1,<4",
+    "pytest-flakefinder>=1.1.0,<2",
+    # pyyaml itself is already a core dependency (see [project] above); no
+    # need to repeat it here.
+]
+dev = [
+    "poethepoet~=0.37",
+    {include-group = "lint"},
+    {include-group = "test"},
+    {include-group = "conan-tools"},
+]
+# conan is not one of denver's own runtime dependencies: the conan_scripts
+# run inside the env's own venv, where the env's uv stage installs it (see
+# src/denver_providers/conan.py's module docstring). It's pulled in here only
+# so denver's own test suite can import and exercise conan_scripts/*.py.
+conan-tools = [
+    "conan>=2.31.1,<3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+py-modules = ["denver", "denver_errors"]
+
+# ship the generic provider engines alongside the denver module, plus the
+# non-code denver_assets/ dir (logo.svg/logo.txt -- see denver.print_logo).
+# Both are prefixed rather than named 'providers'/'assets': every one of
+# these is a *top-level* name in the environment denver is installed into,
+# and 'providers' is a real, unrelated distribution on PyPI that an
+# unprefixed package here would shadow.
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["denver_providers*", "denver_assets*"]
+
+[tool.setuptools.package-data]
+denver_assets = ["*"]
+
+# version is derived from git tags (setuptools-scm); fallback when no tag/git
+[tool.setuptools_scm]
+fallback_version = "1.0.0"
+
+[tool.coverage.run]
+source = ["denver", "denver_errors", "denver_providers"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+# examples/**/*.py are project-specific conan recipes and legacy
+# scratch, not denver's own package -- linting/formatting them is out of
+# scope here. .envs is denver's own runtime state dir (venvs, conan caches).
+extend-exclude = ["examples", ".envs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "PTH", "RET", "ARG", "C4", "RUF", "D"]
+ignore = [
+    "E501", # line length is enforced by the formatter, not the linter
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# unused fixture/mock-callback arguments are idiomatic pytest, not a smell;
+# a test's own name is its documentation, so docstrings aren't required.
+"tests/*" = ["ARG001", "ARG002", "ARG005", "D"]
+
+[tool.ruff.format]
+quote-style = "preserve"
+line-ending = "lf"
+# Enable preview mode for Github Annotations added in 0.13.3
+preview = true
+
+[tool.complexipy]
+paths = ["src", "tests"]
+max-complexity-allowed = 8 # good compromise
+failed = true
+color = "auto"
+sort = "asc"
+
+[tool.mypy]
+python_version = "3.9"
+files = ["src"]
+# conan_scripts run standalone (see catalog.py's docstring): their
+# sibling-module imports (get_rrev, DenverConanFile) only resolve via each
+# script's own sys.path[0] trick at real-run time, not under mypy's
+# package-based module resolution.
+[[tool.mypy.overrides]]
+module = ["get_rrev", "DenverConanFile"]
+ignore_missing_imports = true
+
+# conan ships no type stubs (see the conan-tools dependency group above:
+# it's denver's test-only, not a real runtime dependency).
+[[tool.mypy.overrides]]
+module = ["conan.*"]
+ignore_missing_imports = true
+
+[tool.pyright]
+pythonVersion = "3.9"
+include = ["src"]
+
+[tool.bandit]
+# scope to denver's own package, same as pyright/mypy
+exclude_dirs = ["examples", ".envs", "tests"]
+# denver's whole job is orchestrating other tools (git/docker/conan/sudo/bash)
+# as subprocesses -- these three fire on every single one of those call sites:
+#   B404 -- merely importing subprocess
+#   B603 -- subprocess.run/check_output called with a list argv and no shell=True
+#           (that's the *safe* pattern these checks exist to push people towards)
+#   B607 -- invoking a PATH-resolved executable ("git", "sudo", "bash", ...) rather
+#           than a hardcoded absolute path, which would break on every dev machine
+#   B606 -- os.execvpe() replacing the current process with a PATH-resolved
+#           executable, same reasoning as B607
+# Genuine subprocess-input risks are reviewed case by case instead (see e.g. the
+# url-scheme check next to get_rrev.py's urlretrieve call).
+skips = ["B404", "B603", "B606", "B607"]
+
+[tool.poe.tasks]
+all = ["pre-commit", "lint", "format", "mypy", "pyright", "bandit", "pip-audit", "complexity", "test", "docs"]
+"pre-commit" = "pre-commit run --all-files --show-diff-on-failure"
+format = "ruff format ."
+lint = "ruff check ."
+mypy = "mypy"
+pyright = "pyright"
+bandit = "bandit -c pyproject.toml -r src"
+"pip-audit" = "pip-audit --skip-editable"
+complexity = "complexipy"
+test = {cmd = "pytest -v -n=auto --cov-config=pyproject.toml --cov=denver --cov=denver_errors --cov=denver_providers --junitxml=junit.xml -o junit_family=legacy --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=100", env = {PYTHONIOENCODING = "utf-8"}}
+
+clean = "rm -rf dist/ build/ *.egg-info src/*.egg-info htmlcov/ .coverage coverage.xml"
+build = ["clean", {cmd = "uv build"}]
+pyinstaller = "scripts/create-python-exe.sh --output dist"
+
+# delegates the actual build to examples/doc-env (its own uv-managed venv
+# provides sphinx-build, denver's 'build-docs' stage runs it) -- '-- true'
+# runs that env's stages and exits instead of dropping into its shell, so
+# this is dogfooding, not a second recipe to keep in sync with that env's.
+docs = "src/denver.py run examples/doc-env -- echo 'Finished!'"
+"docs-clean" = "rm -rf doc/_build"

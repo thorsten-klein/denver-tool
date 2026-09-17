@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - develop
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+      - run: uv sync --group lint
+      - run: uv run poe pre-commit
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run poe mypy
+      - run: uv run poe pyright
+      - run: uv run poe bandit
+      - run: uv run poe pip-audit
+      - run: uv run poe complexity
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # the floor denver declares support for (pyproject.toml's
+        # requires-python) through the newest available, so a change that
+        # only works on one end doesn't slip through -- crossed with every
+        # OS denver supports, so a change that only works on one of those
+        # doesn't either. 3.9/3.10 also cover the one behavioural split in
+        # denver's own code: tomllib (denver.toml support) is stdlib only
+        # from 3.11, so those two legs are what actually exercise "no
+        # tomllib" instead of just asserting it in a monkeypatched test.
+        python-version: ["3.9", "3.10", "3.11", "3.13"]
+        os: [ubuntu-22.04, ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # denver derives its own version from the checkout's git tags (see
+          # denver.py's scm_version), and the default shallow, tagless
+          # checkout has none -- leaving it to answer 0.1.dev1, which no
+          # example's 'denver-version:' pin is satisfied by.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+      # the fish/zsh completion tests skip themselves (via shutil.which)
+      # when the shell isn't on PATH -- installing both here is what
+      # actually exercises them, rather than leaving them permanently
+      # skipped on every CI leg.
+      - name: Install fish and zsh (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fish zsh
+      - name: Install fish and zsh (macOS)
+        if: runner.os == 'macOS'
+        # HOMEBREW_NO_REQUIRE_TAP_TRUST: this step never touches the runner
+        # image's preinstalled aws/tap, so its trust status is not this
+        # step's business -- but brew checks every enabled tap regardless
+        # and warns about it on every 'install'.
+        run: brew install fish zsh
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
+      - run: uv sync --group dev --python ${{ matrix.python-version }}
+      - run: uv run poe test
+      # coverage/Sonar are properties of the code, not of the OS it ran
+      # on -- uploaded once, from one representative leg of the matrix,
+      # rather than once per OS.
+      - name: Upload coverage reports to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+      - name: SonarCloud Scan
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  build:
+    runs-on: ${{ matrix.os }}
+    needs: [lint, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # setuptools-scm derives the wheel's version from the git tags, so
+          # a tagless shallow checkout would build a 0.1.dev1 wheel rather
+          # than one named after the release this commit builds on.
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+      - run: uv build
+      # Installed-mode smoke test: denver's providers must actually be
+      # importable and --help must work from the built wheel, in a venv that
+      # (unlike this checkout) has no sibling src/ layout -- exactly the gap
+      # that let the installed-mode DENVER_DIR bug through (see denver.py's
+      # _default_denver_dir() docstring). --show-config resolves the env by
+      # path and bakes in every provider's defaults, so it's what actually
+      # exercises provider importability here.
+      #
+      # '-c denver-version=null' drops the example's own pin for this run
+      # (overrides are applied before the version gate). Between a pin being
+      # bumped and the release being tagged, no wheel built from this tree
+      # can satisfy it: a wheel is not a checkout, so denver.py's DEV_VERSION
+      # never applies, and setuptools-scm's dev version (1.0.5.dev17+g...) is
+      # a *pre-release*, which ranks below the release it anticipates by
+      # design. That's a true statement about the wheel and nothing to do
+      # with whether the providers import, which is all this step checks.
+      - run: |
+          python3 -m venv /tmp/denver-smoke-test
+          /tmp/denver-smoke-test/bin/pip install dist/*.whl
+          /tmp/denver-smoke-test/bin/denver --help
+          /tmp/denver-smoke-test/bin/denver run "$(pwd)/examples/simple-env" --show-config -c denver-version=null
