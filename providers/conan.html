@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=d56feecd"></script>
+      <script src="../_static/documentation_options.js?v=05ba6be2"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/b92380f04fcdad223caad83799e295283454b99d">1.6.7-2-gb92380f</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/a9a27c715dba73358ba15b688ba6c0692f72f54e">1.6.7-4-ga9a27c7</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -487,8 +487,11 @@ own entry to keep their catalog independent of what another entry does.</p>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">build</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">&quot;missing&quot;</span></code>) — passed as <code class="docutils literal notranslate"><span class="pre">--build=&lt;value&gt;</span></code> (a
 string or a list) to <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code>.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">install-args</span></code></strong> — extra literal <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> arguments.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">authentication</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>) — when <code class="docutils literal notranslate"><span class="pre">false</span></code>, <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> runs
-with <code class="docutils literal notranslate"><span class="pre">--no-remote</span></code>.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">authentication</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>) — when <code class="docutils literal notranslate"><span class="pre">false</span></code>, denver never logs in
+to or queries a conan remote: <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> runs with <code class="docutils literal notranslate"><span class="pre">--no-remote</span></code>, and
+the prepare/export steps skip remote login and export every recipe missing
+from the local cache. Use this when a remote is down or you have no
+credentials for it.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">profiles</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">host</span></code>/<code class="docutils literal notranslate"><span class="pre">build</span></code>, each a list; every entry becomes its own
 <code class="docutils literal notranslate"><span class="pre">-pr:h=&lt;value&gt;</span></code> / <code class="docutils literal notranslate"><span class="pre">-pr:b=&lt;value&gt;</span></code> flag, in list order. Empty by default
 (no explicit profile flags).</p></li>

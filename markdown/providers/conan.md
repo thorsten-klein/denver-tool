@@ -76,8 +76,11 @@ specific one. A stage with no conan available fails with `conan provider needs '
 - **`build`** (default `"missing"`) — passed as `--build=<value>` (a
   string or a list) to `conan install`.
 - **`install-args`** — extra literal `conan install` arguments.
-- **`authentication`** (default `true`) — when `false`, `conan install` runs
-  with `--no-remote`.
+- **`authentication`** (default `true`) — when `false`, denver never logs in
+  to or queries a conan remote: `conan install` runs with `--no-remote`, and
+  the prepare/export steps skip remote login and export every recipe missing
+  from the local cache. Use this when a remote is down or you have no
+  credentials for it.
 - **`profiles`** — `host`/`build`, each a list; every entry becomes its own
   `-pr:h=<value>` / `-pr:b=<value>` flag, in list order. Empty by default
   (no explicit profile flags).
