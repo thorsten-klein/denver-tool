@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/documentation_options.js?v=389eb717"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -48,6 +48,8 @@
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
+</div>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/064e56de782e5d381c61d795f6e562d2459001ef">1.6.7-1-g064e56d</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -594,13 +596,12 @@ reports an untagged tree against <code class="docutils literal notranslate"><spa
 suffix over (<code class="docutils literal notranslate"><span class="pre">1.1.0-17-gabc1234</span></code> — seventeen commits into developing 1.1.0,
 not a claim to be the release). So:</p>
 <ul class="simple">
-<li><p><strong>Bump <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> as soon as a cycle starts</strong>, i.e. at the first commit
-past the release tag. Two tests in <code class="docutils literal notranslate"><span class="pre">tests/test_dev_version.py</span></code> enforce it:
-<code class="docutils literal notranslate"><span class="pre">test_examples_run_from_a_checkout</span></code> fails if any example’s merged pin isn’t
-satisfied by what this checkout reports, and
-<code class="docutils literal notranslate"><span class="pre">test_dev_version_keeps_up_with_the_release_tags</span></code> fails as soon as there
-are commits past the newest tag and <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> still names that tag —
-which catches a forgotten bump before any pin has moved to expose it.</p></li>
+<li><p><strong>Bump <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> when something needs it</strong>, i.e. before an example
+pins the release now being developed.
+<code class="docutils literal notranslate"><span class="pre">test_examples_run_from_a_checkout</span></code> in <code class="docutils literal notranslate"><span class="pre">tests/test_dev_version.py</span></code> enforces
+it: it fails if any example’s merged pin isn’t satisfied by what this
+checkout reports. A <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> at or behind the newest tag is not an
+error — it simply has no effect (see below).</p></li>
 <li><p><strong>Tag exactly that number.</strong> Once the tag is pushed, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">describe</span></code>
 overtakes <code class="docutils literal notranslate"><span class="pre">DEV_VERSION</span></code> and it stops having any effect until the next
 bump, so a value left stale can only understate an untagged tree — never
