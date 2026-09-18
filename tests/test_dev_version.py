@@ -4,7 +4,7 @@ DEV_VERSION (see its comment in ``src/denver.py``) is what an untagged
 checkout reports instead of its stale ``git describe`` output, so that
 running denver from source works at every commit rather than only after a
 release. It is hand-maintained, so it is exactly the kind of thing that gets
-forgotten; these two tests are what notice.
+forgotten.
 
 * ``test_examples_run_from_a_checkout`` is the requirement itself, stated
   directly: every example must be runnable from this working tree, right
@@ -12,11 +12,9 @@ forgotten; these two tests are what notice.
   applied or not) and checks every example's pin against it -- so it fails
   whether the cause was a bumped pin, a forgotten DEV_VERSION bump, or
   DEV_VERSION being switched off while something still needed it.
-* ``test_dev_version_keeps_up_with_the_release_tags`` is the earlier warning
-  for the same mistake: once there are commits past the newest tag, this
-  tree is developing *something*, and DEV_VERSION has to name the release it
-  is heading for. That catches a forgotten bump at the first commit of a new
-  cycle, before any pin has moved to expose it.
+* ``test_dev_version_is_a_version`` only checks the constant parses. A
+  DEV_VERSION behind the newest tag is fine: the tag has overtaken it and
+  it simply has no effect until the next bump.
 
 Unlike the rest of the suite these read the real repository (its tags, its
 checked-in golden files) rather than synthetic fixtures -- that's the point:
@@ -91,41 +89,18 @@ def test_examples_run_from_a_checkout(env_name, monkeypatch):
     denver.validate_denver_version(config)  # dies if the pin is unmet
 
 
-def test_dev_version_keeps_up_with_the_release_tags():
-    """DEV_VERSION must not lag the tags: at least the newest, and past it once work starts.
+def test_dev_version_is_a_version():
+    """DEV_VERSION, when set, must parse -- _dev_version compares it against the tags.
 
-    Two ways to get it wrong, both caught here:
-
-    * **behind the newest tag** — a release has overtaken it, so it re-bases
-      nothing and only misstates what the tree is heading for;
-    * **equal to the newest tag, with commits past that tag** — a new cycle
-      has started and DEV_VERSION was never advanced, so this tree claims to
-      be the release it is already building on top of. This is the one that
-      would otherwise stay invisible until some example's pin moved.
-
-    ``DEV_VERSION = None`` deliberately switches the whole mechanism off, so
-    there is nothing to keep in sync and this skips -- whether that is safe
-    is not a matter of opinion, and ``test_examples_run_from_a_checkout``
-    settles it by checking what the checkout actually reports.
+    Deliberately *not* checked: DEV_VERSION lagging the newest tag (or
+    equalling it with commits past it). Once a tag has caught up, _dev_version
+    leaves ``git describe``'s own output untouched, so a stale value is inert
+    rather than wrong -- and a bump that is actually needed (an example
+    pinning an untagged release) is what ``test_examples_run_from_a_checkout``
+    fails on.
     """
     if denver.DEV_VERSION is None:
-        pytest.skip("DEV_VERSION is None -- the mechanism is off, nothing to keep in sync")
-    described = _git_describe()
-    if described is None:  # pragma: no cover -- only in a tagless clone/tarball
-        pytest.skip("this checkout has no reachable tags (shallow clone or tarball)")
-
-    latest_tag = described.partition("-")[0]
-    dev, released = denver.parse_version(denver.DEV_VERSION), denver.parse_version(latest_tag)
-    assert dev is not None, f"DEV_VERSION = {denver.DEV_VERSION!r} is not a version"
-
-    order = denver.compare_versions(dev, released)
-    assert order >= 0, (
-        f"DEV_VERSION = {denver.DEV_VERSION!r} is behind the latest release tag {latest_tag!r} -- "
-        f"bump it to the release now being developed, or set it to None."
+        pytest.skip("DEV_VERSION is None -- the mechanism is off")
+    assert denver.parse_version(denver.DEV_VERSION) is not None, (
+        f"DEV_VERSION = {denver.DEV_VERSION!r} is not a version"
     )
-    if described != latest_tag:  # commits exist past that tag
-        assert order > 0, (
-            f"DEV_VERSION = {denver.DEV_VERSION!r} is still the latest release tag {latest_tag!r}, but this "
-            f"tree has commits past it ({described}) -- bump DEV_VERSION to the release those commits are "
-            f"heading for, so a checkout reports what it actually contains."
-        )

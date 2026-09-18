@@ -198,13 +198,12 @@ reports an untagged tree against `DEV_VERSION` instead, carrying the commit
 suffix over (`1.1.0-17-gabc1234` — seventeen commits into developing 1.1.0,
 not a claim to be the release). So:
 
-- **Bump `DEV_VERSION` as soon as a cycle starts**, i.e. at the first commit
-  past the release tag. Two tests in `tests/test_dev_version.py` enforce it:
-  `test_examples_run_from_a_checkout` fails if any example's merged pin isn't
-  satisfied by what this checkout reports, and
-  `test_dev_version_keeps_up_with_the_release_tags` fails as soon as there
-  are commits past the newest tag and `DEV_VERSION` still names that tag —
-  which catches a forgotten bump before any pin has moved to expose it.
+- **Bump `DEV_VERSION` when something needs it**, i.e. before an example
+  pins the release now being developed.
+  `test_examples_run_from_a_checkout` in `tests/test_dev_version.py` enforces
+  it: it fails if any example's merged pin isn't satisfied by what this
+  checkout reports. A `DEV_VERSION` at or behind the newest tag is not an
+  error — it simply has no effect (see below).
 - **Tag exactly that number.** Once the tag is pushed, `git describe`
   overtakes `DEV_VERSION` and it stops having any effect until the next
   bump, so a value left stale can only understate an untagged tree — never
