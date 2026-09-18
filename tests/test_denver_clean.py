@@ -311,6 +311,28 @@ def test_clean_subcommand_warns_about_an_import_pointing_nowhere(make_env, caplo
     assert "points nowhere" in caplog.text
 
 
+def test_clean_subcommand_follows_a_bare_string_import(make_env):
+    base = make_env(name="base", config={"stages": []})
+    base_workdir = build_state(base)
+    leaf = make_env(name="leaf", config={"import": "../base", "stages": []})
+    leaf_workdir = build_state(leaf)
+
+    assert denver.main(["clean", str(leaf), "-y"]) == 0
+
+    assert not leaf_workdir.exists()
+    assert not base_workdir.exists()
+
+
+def test_clean_subcommand_warns_about_a_malformed_import(make_env, caplog):
+    env_dir = make_env(config={"import": {"a": 1}, "stages": []})
+    workdir = build_state(env_dir)
+
+    assert denver.main(["clean", str(env_dir), "-y"]) == 0
+
+    assert not workdir.exists()
+    assert "'import:' is neither a string nor a list of strings" in caplog.text
+
+
 # ---- confirmation -----------------------------------------------------------#
 def test_clean_subcommand_asks_to_confirm_each_directory_before_removing(make_env, monkeypatch):
     env_dir = make_env(config={"stages": []})
