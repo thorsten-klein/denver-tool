@@ -76,11 +76,22 @@ specific one. A stage with no conan available fails with `conan provider needs '
 - **`build`** (default `"missing"`) — passed as `--build=<value>` (a
   string or a list) to `conan install`.
 - **`install-args`** — extra literal `conan install` arguments.
-- **`authentication`** (default `true`) — when `false`, denver never logs in
-  to or queries a conan remote: `conan install` runs with `--no-remote`, and
-  the prepare/export steps skip remote login and export every recipe missing
-  from the local cache. Use this when a remote is down or you have no
-  credentials for it.
+- **`authentication`** (default `true`) — `true`, `false` or `"may-fail"`.
+  - `true`: denver authenticates to every enabled remote, and a remote that
+    fails to authenticate aborts the run.
+  - `false`: denver never logs in to or queries a conan remote. `conan install` runs with `--no-remote`, and the prepare/export steps skip
+    remote login and export every recipe missing from the local cache. Use
+    this when a remote is down or you have no credentials for it.
+  - `"may-fail"`: like `true`, but a remote that fails to authenticate
+    (wrong or missing credentials, 403, or unreachable) is warned about and
+    left out of the run instead of aborting it, without prompting for
+    credentials, even on a terminal (e.g. inside `docker compose run`). The
+    prepare step checks every enabled remote once, including ones a
+    `config:` directory’s `remotes.json` set up. Export then resolves recipes
+    against the remotes that authenticated, and `conan install` gets one
+    `-r=<remote>` for each of them, or `--no-remote` if none did. The
+    list of remotes that authenticated is kept in the conan home, as
+    `denver-usable-remotes.json`.
 - **`profiles`** — `host`/`build`, each a list; every entry becomes its own
   `-pr:h=<value>` / `-pr:b=<value>` flag, in list order. Empty by default
   (no explicit profile flags).

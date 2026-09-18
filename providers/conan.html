@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=b455ba3c"></script>
+      <script src="../_static/documentation_options.js?v=a7887f4c"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/ce8b8f479e5691f7db497989a11f7ddd9b268220">1.6.7-7-gce8b8f4</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/3ddab8afa0a746d56a91f3fa378d9591b5cef049">1.6.7-8-g3ddab8a</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -487,11 +487,25 @@ own entry to keep their catalog independent of what another entry does.</p>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">build</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">&quot;missing&quot;</span></code>) — passed as <code class="docutils literal notranslate"><span class="pre">--build=&lt;value&gt;</span></code> (a
 string or a list) to <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code>.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">install-args</span></code></strong> — extra literal <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> arguments.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">authentication</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>) — when <code class="docutils literal notranslate"><span class="pre">false</span></code>, denver never logs in
-to or queries a conan remote: <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> runs with <code class="docutils literal notranslate"><span class="pre">--no-remote</span></code>, and
-the prepare/export steps skip remote login and export every recipe missing
-from the local cache. Use this when a remote is down or you have no
-credentials for it.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">authentication</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>) — <code class="docutils literal notranslate"><span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">false</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;may-fail&quot;</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">true</span></code>: denver authenticates to every enabled remote, and a remote that
+fails to authenticate aborts the run.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">false</span></code>: denver never logs in to or queries a conan remote. <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> runs with <code class="docutils literal notranslate"><span class="pre">--no-remote</span></code>, and the prepare/export steps skip
+remote login and export every recipe missing from the local cache. Use
+this when a remote is down or you have no credentials for it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;may-fail&quot;</span></code>: like <code class="docutils literal notranslate"><span class="pre">true</span></code>, but a remote that fails to authenticate
+(wrong or missing credentials, 403, or unreachable) is warned about and
+left out of the run instead of aborting it, without prompting for
+credentials, even on a terminal (e.g. inside <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">compose</span> <span class="pre">run</span></code>). The
+prepare step checks every enabled remote once, including ones a
+<code class="docutils literal notranslate"><span class="pre">config:</span></code> directory’s <code class="docutils literal notranslate"><span class="pre">remotes.json</span></code> set up. Export then resolves recipes
+against the remotes that authenticated, and <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code> gets one
+<code class="docutils literal notranslate"><span class="pre">-r=&lt;remote&gt;</span></code> for each of them, or <code class="docutils literal notranslate"><span class="pre">--no-remote</span></code> if none did. The
+list of remotes that authenticated is kept in the conan home, as
+<code class="docutils literal notranslate"><span class="pre">denver-usable-remotes.json</span></code>.</p></li>
+</ul>
+</li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">profiles</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">host</span></code>/<code class="docutils literal notranslate"><span class="pre">build</span></code>, each a list; every entry becomes its own
 <code class="docutils literal notranslate"><span class="pre">-pr:h=&lt;value&gt;</span></code> / <code class="docutils literal notranslate"><span class="pre">-pr:b=&lt;value&gt;</span></code> flag, in list order. Empty by default
 (no explicit profile flags).</p></li>
