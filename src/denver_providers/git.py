@@ -41,7 +41,7 @@ class GitProvider(Provider):
     name = "git"
 
     #: every key this provider's stage section understands
-    KEYS = ("url", "path", "revision", "remote", "submodules")
+    KEYS = ("url", "path", "revision", "remote", "submodules", "clone-opts", "fetch-opts")
 
     #: keys that must be given, and must be a non-empty string
     REQUIRED_KEYS = ("url", "path", "revision")
@@ -63,6 +63,8 @@ class GitProvider(Provider):
         resolved["path"] = str(ctx.resolve_path(cfg["path"]))
         resolved["remote"] = (cfg.get("remote") or "").strip() or DEFAULT_REMOTE
         resolved["submodules"] = bool(cfg.get("submodules", False))
+        resolved["clone-opts"] = list(cfg.get("clone-opts") or [])
+        resolved["fetch-opts"] = list(cfg.get("fetch-opts") or [])
         return fill_unset(resolved, cls.KEYS)
 
     # ---- config validation -------------------------------------------------- #
@@ -87,6 +89,10 @@ class GitProvider(Provider):
         submodules = cfg.get("submodules")
         if submodules is not None and not isinstance(submodules, bool):
             die(f"git: 'submodules:' must be a boolean (got {submodules!r})")
+        for key in ("clone-opts", "fetch-opts"):
+            opts = cfg.get(key)
+            if opts is not None and not (isinstance(opts, list) and all(isinstance(opt, str) for opt in opts)):
+                die(f"git: '{key}:' must be a list of strings (got {opts!r})")
 
     # ---- lifecycle ----------------------------------------------------------- #
     def setup(self, ctx):
@@ -105,30 +111,59 @@ class GitProvider(Provider):
             die(f"git[{self.stage}]: --fast needs '{cfg['path']}' already checked out -- run once without --fast first")
 
     def _provision(self, ctx, cfg, path):
-        """Clone if 'path:' isn't a checkout yet, then fetch and move it (detached) onto 'revision:'."""
-        self._ensure_clone(ctx, path, cfg["url"], cfg["remote"])
-        self._ensure_checked_out(ctx, path, cfg["remote"], cfg["revision"])
+        """Bring 'path:' onto 'revision:' -- cloning, repointing the remote and fetching only when needed."""
+        if (path / ".git").exists():
+            info(f"git[{self.stage}]: already cloned: {path}")
+            url_changed = self._ensure_remote_url(ctx, path, cfg["remote"], cfg["url"])
+            self._ensure_checked_out(ctx, path, cfg, fetched=False, must_fetch=url_changed or ctx.force)
+        else:
+            self._clone(ctx, path, cfg["url"], cfg["remote"], cfg["clone-opts"])
+            self._ensure_checked_out(ctx, path, cfg, fetched=True, must_fetch=False)
         if cfg["submodules"]:
             self._update_submodules(ctx, path)
 
-    # ---- clone ----------------------------------------------------------------- #
-    def _ensure_clone(self, ctx, path, url, remote):
-        """Clone 'url:' into 'path:' unless it is already a checkout -- never re-clones over an existing one."""
+    # ---- clone / remote ---------------------------------------------------------- #
+    def _clone(self, ctx, path, url, remote, clone_opts):
+        """Clone 'url:' into 'path:', with 'clone-opts:' and the remote named 'remote:'."""
         banner(ctx, self.stage, "clone")
-        if (path / ".git").exists():
-            info(f"git[{self.stage}]: already cloned: {path}")
-            return
         ctx.mkdir(path.parent)
-        ctx.run(["git", "clone", "--origin", remote, "--", url, str(path)])
+        ctx.run(["git", "clone", "--origin", remote, *clone_opts, "--", url, str(path)])
+
+    def _ensure_remote_url(self, ctx, path, remote, url):
+        """Point 'remote:' of an existing checkout at 'url:' (adding it if missing). True if it had to change.
+
+        Compares the configured value ('remote.<name>.url'), not 'git remote
+        get-url', which applies url.<base>.insteadOf rewrites and would report
+        a difference that isn't one.
+        """
+        result = ctx.run(["git", "-C", str(path), "config", "--get", f"remote.{remote}.url"], capture=True, check=False)
+        current = result.stdout.strip() if result.returncode == 0 else ""
+        if current == url:
+            return False
+        banner(ctx, self.stage, "remote")
+        if current:
+            info(f"git[{self.stage}]: remote '{remote}' url changed: {current} -> {url}")
+            ctx.run(["git", "-C", str(path), "remote", "set-url", remote, url])
+        else:
+            info(f"git[{self.stage}]: adding remote '{remote}': {url}")
+            ctx.run(["git", "-C", str(path), "remote", "add", remote, url])
+        return True
 
     # ---- fetch / checkout -------------------------------------------------------- #
-    def _ensure_checked_out(self, ctx, path, remote, revision):
-        """Fetch 'remote:', then detach-checkout 'revision:' -- skipped if already exactly there."""
-        banner(ctx, self.stage, "fetch")
-        ctx.run(["git", "-C", str(path), "fetch", "--tags", "--prune", remote])
-        sha = self._resolve_revision(ctx, path, remote, revision)
+    def _ensure_checked_out(self, ctx, path, cfg, *, fetched, must_fetch):
+        """Detach-checkout 'revision:' -- from what is already local if possible, fetching only when it isn't.
+
+        ``fetched``: the checkout was just cloned, so everything the remote
+        advertises is already here. ``must_fetch``: fetch regardless (the
+        remote url changed, or --force).
+        """
+        remote, revision = cfg["remote"], cfg["revision"]
+        sha = "" if must_fetch else self._local_revision(ctx, path, remote, revision, fetched=fetched)
         if not sha:
-            return  # --dry-run only: _resolve_revision already reported why
+            self._fetch(ctx, path, remote, cfg["fetch-opts"])
+            sha = self._resolve_revision(ctx, path, remote, revision)
+            if not sha:
+                return  # --dry-run only: _resolve_revision already reported why
         current = ctx.run(["git", "-C", str(path), "rev-parse", "HEAD"], capture=True, check=False)
         if current.returncode == 0 and current.stdout.strip() == sha and not ctx.force:
             info(f"git[{self.stage}]: already at {revision} ({sha[:12]}): {path}")
@@ -142,6 +177,23 @@ class GitProvider(Provider):
             ctx.run(["git", "-C", str(path), "clean", "-fdx"])
         ctx.run(["git", "-C", str(path), "checkout", "--detach", sha])
 
+    def _local_revision(self, ctx, path, remote, revision, *, fetched):
+        """The sha 'revision:' names from what is already local, or "" if that needs a fetch first.
+
+        A branch (a '<remote>/<revision>' ref exists) moves, so its local
+        tip is only trusted straight after a fetch/clone -- otherwise it is
+        fetched every run, to follow it. A tag or sha is taken as is.
+        """
+        branch_sha = self._rev_parse(ctx, path, f"refs/remotes/{remote}/{revision}")
+        if branch_sha:
+            return branch_sha if fetched else ""
+        return self._rev_parse(ctx, path, revision)
+
+    def _fetch(self, ctx, path, remote, fetch_opts):
+        """Fetch every branch and tag of 'remote:', with 'fetch-opts:'."""
+        banner(ctx, self.stage, "fetch")
+        ctx.run(["git", "-C", str(path), "fetch", "--tags", "--prune", *fetch_opts, remote])
+
     def _resolve_revision(self, ctx, path, remote, revision):
         """The commit sha 'revision:' names, fetching it explicitly first if the generic fetch above didn't have it.
 
@@ -152,11 +204,11 @@ class GitProvider(Provider):
         genuinely doesn't have it, or refuses to serve an unadvertised
         commit -- see 'unreachable commits' in doc/providers/git.md.
         """
-        sha = self._rev_parse(ctx, path, revision)
+        sha = self._rev_parse_fetched(ctx, path, remote, revision)
         if sha:
             return sha
         ctx.run(["git", "-C", str(path), "fetch", remote, revision], check=False)
-        sha = self._rev_parse(ctx, path, revision)
+        sha = self._rev_parse_fetched(ctx, path, remote, revision)
         if sha:
             return sha
         if ctx.dry_run:
@@ -169,6 +221,15 @@ class GitProvider(Provider):
             return ""
         die(f"git[{self.stage}]: revision '{revision}' not found in {path} (fetched from '{remote}')")
         return ""  # pragma: no cover -- unreachable, die() above never returns; satisfies ruff's RET503
+
+    @classmethod
+    def _rev_parse_fetched(cls, ctx, path, remote, revision):
+        """Like _rev_parse, but a branch resolves to its fetched remote tip first.
+
+        Plain 'rev-parse main' would find the local branch the clone created,
+        which a fetch never moves -- the checkout would never follow the branch.
+        """
+        return cls._rev_parse(ctx, path, f"refs/remotes/{remote}/{revision}") or cls._rev_parse(ctx, path, revision)
 
     @staticmethod
     def _rev_parse(ctx, path, revision):
