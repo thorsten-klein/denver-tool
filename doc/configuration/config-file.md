@@ -71,6 +71,9 @@ see "Fail loud" in [`philosophy.md`](../concepts/philosophy.md)).
 - **`import`** — a list of environments (or config files) whose configuration
   is inherited as a base, before this file's own content is applied on top.
   See "Layering" below.
+- **`.init`** — git repositories or archives to bring in automatically on
+  every `denver run`, *before* the config is resolved, so `import:` can point
+  into them. See "Fetching repositories before resolving: `.init`" below.
 - **`stages`** — the ordered list of stage ids to run. This *is* the
   pipeline; order is significant, and each id must have a matching top-level
   section declaring its `provider:`.
@@ -340,6 +343,50 @@ copy-pasting it:
 A base env that only exists to be imported should set `runnable: false`, so
 starting it directly fails with an explanation instead of half-building
 something nobody meant to run.
+
+### Fetching repositories before resolving: `.init`
+
+`import:` only reads files that are already on disk. To import a manifest
+(a `denver.yml`) that lives in another repository or in a release archive,
+declare it under `.init: projects:` and point `import:` at where it lands:
+
+```yaml
+.init:
+  projects:
+    - provider: git
+      path: external/base-env          # relative to this file's directory
+      url: https://github.com/acme/base-env.git
+      revision: v1.2.0                 # a tag, a branch, or a commit sha
+      clone-opts: [--depth, "1"]
+    - provider: download
+      packages:
+        - name: tools-env
+          url: https://example.com/tools-env-1.0.tar.gz
+          sha256sum: "..."
+          unpack-dir: external/tools-env
+import:
+  - external/base-env
+  - external/tools-env
+```
+
+Each project is a [`git`](../providers/git.md) or
+[`download`](../providers/download.md) entry: it takes a `provider:` key plus
+exactly the keys a stage of that provider takes, and the same provider runs
+it. The generic stage keys (`env:`, `scripts:`, `depends-on:`, ...) are not
+accepted, because a project only puts files on disk. Paths and `${...}`
+resolve as they would in a stage of the declaring file: against its
+directory, with its own `DENVER_ENV_WORKDIR`. A `download` project reads that
+file's top-level `download-auth:`.
+
+Every `denver run` (including `--show-config`) runs `.init:` first, layer by
+layer across the whole `import:` chain. A layer's own projects run before its
+`import:` entries are followed. `--fast`/`--force`/`--ci` mean for a project
+what they mean for its provider's stage (under `--fast`, nothing is fetched,
+and a project that was never brought in fails). `--dry-run` does not apply:
+the config cannot be resolved without these files, so they are brought in for
+real. Inside a wrapper-relocated run, projects run as under `--fast`, since
+the outer run already brought them in. `denver clean` removes only what lives
+under the env's state directory (e.g. a path under `${DENVER_ENV_WORKDIR}`).
 
 ## Command-line overrides
 
