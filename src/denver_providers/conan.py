@@ -33,6 +33,15 @@ DEFAULT_DEPLOYER = CONAN_SCRIPTS_DIR / "extensions" / "symlink.py"
 # name of conan's own install tree (under ctx.env_workdir) and the buildenv
 # script `conan install` writes into it -- referenced from several stages below.
 CONAN_INSTALL_DIRNAME = ".conan"
+
+# 'authentication:''s third value besides true/false: use every remote that
+# authenticates, skip (with a warning, never a prompt) any that doesn't.
+AUTH_MAY_FAIL = "may-fail"
+
+# where recipes.py --prepare records the remotes that authenticated under
+# 'authentication: may-fail', inside the conan home -- keep in sync with
+# recipes.py's own USABLE_REMOTES_FILENAME.
+USABLE_REMOTES_FILENAME = "denver-usable-remotes.json"
 CONANBUILDENV_NAME = "conanbuildenv.sh"
 
 
@@ -58,6 +67,10 @@ class ConanProvider(Provider):
     )
 
     RECIPE_KEYS = ("dirs", "catalog", "export-tool")
+
+    # the conan home `conan config home` reported (see _ensure_profile); None
+    # until then, or when it couldn't say (--dry-run without conan yet)
+    _conan_home = None
 
     @classmethod
     def _resolve_recipe(cls, ctx, entry, *, index, default_exporter):
@@ -134,7 +147,7 @@ class ConanProvider(Provider):
         ]
 
         resolved["build"] = cfg.get("build", "missing")
-        resolved["authentication"] = bool(cfg.get("authentication", True))
+        resolved["authentication"] = cls._resolve_authentication(cfg)
         resolved["profiles"] = cls._resolve_profiles(cfg)
 
         config_dirs = cls._resolve_config_dirs(ctx, cfg)
@@ -144,6 +157,15 @@ class ConanProvider(Provider):
         cls._resolve_remote_settings(cfg, resolved)
 
         return fill_unset(resolved, cls.KEYS)
+
+    @staticmethod
+    def _resolve_authentication(cfg):
+        """'authentication:' as true, false or "may-fail" (default true) -- anything else dies."""
+        authentication = cfg.get("authentication", True)
+        if isinstance(authentication, bool) or authentication == AUTH_MAY_FAIL:
+            return authentication
+        die(f"conan: 'authentication:' must be true, false or \"{AUTH_MAY_FAIL}\", got {authentication!r}")
+        return None  # pragma: no cover -- die() never returns; only here to satisfy RET503
 
     @classmethod
     def _resolve_script_paths(cls, ctx, cfg, resolved):
@@ -246,7 +268,7 @@ class ConanProvider(Provider):
         self._install_config(ctx, conan, cfg)
         self._ensure_profile(ctx, conan)
 
-        if has_recipes or reconcile_remotes:
+        if has_recipes or reconcile_remotes or self._auth_may_fail(cfg):
             self._run_prepare(
                 ctx,
                 cfg,
@@ -370,6 +392,12 @@ class ConanProvider(Provider):
         if ctx.force:
             prepare_cmd += ["--force"]
         prepare_cmd += self._no_remote_args(cfg)
+        if self._auth_may_fail(cfg):
+            # never left over from an earlier run: export and install read it back
+            usable_remotes = self._usable_remotes_path()
+            if usable_remotes:
+                ctx.unlink(usable_remotes, missing_ok=True)
+            prepare_cmd += ["--authentication-may-fail"]
         ctx.run(prepare_cmd, step="prepare")
 
     def _export_recipes(self, ctx, cfg, python, recipes, base_classes_args):
@@ -380,12 +408,16 @@ class ConanProvider(Provider):
         # in another dir of the same entry. A catalog file is only written
         # where the entry's 'catalog:' names one.
         banner(ctx, self.stage, "export")
+        # under may-fail, export only considers the remotes prepare found
+        # usable -- a remote prepare gave up on isn't retried (or prompted
+        # for) a second time
+        may_fail_args = ["--authentication-may-fail"] if self._auth_may_fail(cfg) else []
         for recipe in recipes:
             if recipe["dirs"]:
-                ctx.run(self._export_cmd(cfg, python, recipe, base_classes_args))
+                ctx.run(self._export_cmd(cfg, python, recipe, base_classes_args, may_fail_args))
 
     @staticmethod
-    def _export_cmd(cfg, python, recipe, base_classes_args):
+    def _export_cmd(cfg, python, recipe, base_classes_args, may_fail_args=()):
         """The exporter's `--export` argv for one 'recipes:' entry, covering all of its dirs at once."""
         export_cmd = [python, recipe["export-tool"], "--export"]
         for recipe_dir in recipe["dirs"]:
@@ -393,12 +425,40 @@ class ConanProvider(Provider):
         export_cmd += ["--user", cfg["user"], "--channel", cfg["channel"]]
         if recipe["catalog"]:
             export_cmd += ["--export-catalog", recipe["catalog"]]
-        return export_cmd + base_classes_args + ConanProvider._no_remote_args(cfg)
+        return [*export_cmd, *base_classes_args, *ConanProvider._no_remote_args(cfg), *may_fail_args]
 
     @staticmethod
     def _no_remote_args(cfg):
         """recipes.py's --no-remote when 'authentication:' is off -- mirrors `conan install --no-remote`."""
         return [] if cfg["authentication"] else ["--no-remote"]
+
+    @staticmethod
+    def _auth_may_fail(cfg):
+        """Whether a remote failing to authenticate is skipped rather than fatal ('authentication: may-fail')."""
+        return cfg["authentication"] == AUTH_MAY_FAIL
+
+    def _usable_remotes_path(self):
+        """Where recipes.py --prepare records the remotes that authenticated, or None without a known conan home."""
+        return Path(self._conan_home) / USABLE_REMOTES_FILENAME if self._conan_home else None
+
+    def _remote_install_args(self, cfg):
+        """`conan install`'s remote selection: --no-remote, one -r= per usable remote, or conan's own default.
+
+        Under 'authentication: may-fail', only the remotes that authenticated
+        during prepare are passed (--no-remote if none did), so a failing
+        remote can't abort the install either. Under --dry-run prepare never
+        really runs, so the list is the last real run's, or missing (conan's
+        default applies then).
+        """
+        if not cfg["authentication"]:
+            return ["--no-remote"]
+        if not self._auth_may_fail(cfg):
+            return []
+        usable_remotes = self._usable_remotes_path()
+        if not usable_remotes or not usable_remotes.is_file():
+            return []
+        names = json.loads(usable_remotes.read_text())
+        return [f"-r={name}" for name in names] or ["--no-remote"]
 
     # ------------------------------------------------------------------ #
     def _write_remotes_json(self, ctx, remotes):
@@ -476,6 +536,7 @@ class ConanProvider(Provider):
             ctx.run([conan, "profile", "detect"])
             return
         home = result.stdout.strip()
+        self._conan_home = home
         if not (Path(home) / "profiles" / "default").is_file():
             ctx.run([conan, "profile", "detect"])
 
@@ -492,7 +553,7 @@ class ConanProvider(Provider):
         symlinks_dir = install_root / "symlinks"
         build_args = self._build_args(cfg)
         profile_args = self._profile_args(cfg)
-        extra_args = self._extra_install_args(cfg)
+        extra_args = self._extra_install_args(cfg) + self._remote_install_args(cfg)
         install_args = (build_args, profile_args, extra_args)
 
         skip, graph_hash = self._graph_unchanged(ctx, conan, install_root, conanfile, install_args)
@@ -594,8 +655,5 @@ class ConanProvider(Provider):
 
     @staticmethod
     def _extra_install_args(cfg):
-        """'install-args:' as configured, plus conan's --no-remote when 'authentication:' is off."""
-        extra_args = list(cfg.get("install-args") or [])
-        if not cfg["authentication"]:
-            extra_args.append("--no-remote")
-        return extra_args
+        """'install-args:' as configured."""
+        return list(cfg.get("install-args") or [])

@@ -136,12 +136,14 @@ def authenticate_remote(remote, *, force=False):
     TTY, prompt for credentials ourselves (bypassing whatever non-interactive
     source just failed) and retry once via user_login(). Non-interactive
     (no TTY, e.g. CI) re-raises instead of hanging on a prompt nobody can
-    answer.
+    answer. Under --authentication-may-fail it re-raises too, even on a
+    TTY (e.g. inside `docker compose run`): the remote is to be skipped
+    (see _usable_remotes), not to hold the run up on a credentials prompt.
     """
     try:
         conan_api.remotes.user_auth(remote, force=force)
     except AuthenticationException:
-        if not sys.stdin.isatty():
+        if _auth_may_fail or not sys.stdin.isatty():
             raise
         print(f"Remote '{remote.name}' needs authentication and the stored credentials didn't work.")
         _prompt_and_login(remote)
@@ -153,6 +155,32 @@ def authenticate_remote(remote, *, force=False):
 # because it's one per-process switch, set once in main().
 _no_remote = False
 
+# --authentication-may-fail (denver config's conan.authentication: may-fail):
+# a remote that refuses to authenticate is warned about and left out of this
+# run instead of aborting it. Same one-per-process switch as _no_remote.
+_auth_may_fail = False
+
+# Every way authenticating a remote can fail under --authentication-may-fail:
+# any conan error -- wrong/missing credentials, access refused, not reachable.
+_REMOTE_AUTH_ERRORS = (ConanException,)
+
+# _usable_remotes()'s answer, computed once per process: each remote is only
+# authenticated (and, under --authentication-may-fail, warned about) once,
+# not once per recipe that needs resolving.
+_usable_remotes_cache = None
+
+# Under --authentication-may-fail, --prepare writes the names of the remotes
+# that authenticated here, inside the conan home -- a fixed name rather than a
+# path from the command line, so nothing outside the conan home is ever
+# written. Later runs (export) only consider those, instead of trying a remote
+# prepare already gave up on a second time; the conan provider reads it too,
+# for `conan install -r=`. Keep in sync with conan.py's USABLE_REMOTES_FILENAME.
+USABLE_REMOTES_FILENAME = "denver-usable-remotes.json"
+
+# The names read back from USABLE_REMOTES_FILENAME (see _load_usable_remote_names);
+# None = no such list, consider every enabled remote.
+_usable_remote_names = None
+
 
 def _default_profiles():
     """The default (host, build) Profile pair, as consulted by both graph-loading functions below."""
@@ -161,13 +189,60 @@ def _default_profiles():
     return host, build
 
 
+def _warn_remote_skipped(remote, error):
+    """Say that ``remote`` is left out of this run because it failed to authenticate (--authentication-may-fail)."""
+    print(_YELLOW, end='')
+    print(f"\nWARNING: skipping conan remote '{remote.name}' ({remote.url}): authentication failed")
+    print(f"Reason: {error}")
+    print(_RESET)
+
+
+def _authenticates(remote) -> bool:
+    """Authenticate ``remote``; False if that failed under --authentication-may-fail (warned), else it raises."""
+    try:
+        authenticate_remote(remote)
+    except _REMOTE_AUTH_ERRORS as e:
+        if not _auth_may_fail:
+            raise
+        _warn_remote_skipped(remote, e)
+        return False
+    return True
+
+
+def _candidate_remotes():
+    """The enabled remotes worth trying -- narrowed to an earlier --prepare's usable ones, when it wrote any."""
+    remotes = conan_api.remotes.list(only_enabled=True)
+    if _usable_remote_names is None:
+        return remotes
+    return [r for r in remotes if r.name in _usable_remote_names]
+
+
+def _usable_remotes():
+    """Every enabled remote, authenticated -- minus those that failed to, under --authentication-may-fail.
+
+    Without --authentication-may-fail a failing remote raises, as before.
+    """
+    global _usable_remotes_cache  # computed once per process, see its definition
+    if _usable_remotes_cache is None:
+        _usable_remotes_cache = [r for r in _candidate_remotes() if _authenticates(r)]
+    return _usable_remotes_cache
+
+
+def _usable_remotes_file():
+    """Where --prepare records the usable remotes: USABLE_REMOTES_FILENAME in the conan home."""
+    return Path(conan_api.home_folder) / USABLE_REMOTES_FILENAME
+
+
+def write_usable_remotes():
+    """Record the names of _usable_remotes() as a JSON list -- for export, and the provider's `conan install -r=`."""
+    _usable_remotes_file().write_text(json.dumps([remote.name for remote in _usable_remotes()]))
+
+
 def get_deps_graph_remote(reference: RecipeReference):
-    """Resolve ``reference`` against the configured remotes, authenticating to each one first."""
+    """Resolve ``reference`` against the usable remotes (see _usable_remotes), authenticated once per process."""
     lockfile = conan_api.lockfile.get_lockfile()
     profile_host, profile_build = _default_profiles()
-    remotes = conan_api.remotes.list(only_enabled=True)
-    for remote in remotes:
-        authenticate_remote(remote)
+    remotes = _usable_remotes()
 
     with redirect():
         deps_graph = conan_api.graph.load_graph_requires(
@@ -675,6 +750,10 @@ def _login_remote(remote_name, remote, *, force):
         print(f"\nWARNING: Unable to connect to remote '{remote_name}' at {remote.url}")
         print(f"Reason: {e}")
         print(_RESET)
+    except _REMOTE_AUTH_ERRORS as e:
+        if not _auth_may_fail:
+            raise
+        _warn_remote_skipped(remote, e)
 
 
 def conan_login(remotes, *, force=False):
@@ -805,6 +884,13 @@ def _build_arg_parser():
         "denver config's conan.authentication: false",
     )
     parser.add_argument(
+        '--authentication-may-fail',
+        action='store_true',
+        help="warn about and skip a remote that fails to authenticate instead of aborting; --prepare records "
+        f"the usable remotes in <conan home>/{USABLE_REMOTES_FILENAME}, which later runs then stick to -- "
+        "denver config's conan.authentication: may-fail",
+    )
+    parser.add_argument(
         '--ci',
         action='store_true',
         help='run "create and upload conan packages that are missing remote"',
@@ -874,6 +960,14 @@ def _apply_base_classes_pythonpath(base_classes_dirs):
     os.environ['PYTHONPATH'] = ':'.join([os.getenv('PYTHONPATH', ""), *conan_pythonpath])
 
 
+def _load_usable_remote_names():
+    """The names an earlier --prepare recorded as usable, or None when it wrote none (e.g. it never ran)."""
+    path = _usable_remotes_file()
+    if not path.is_file():
+        return None
+    return set(json.loads(path.read_text()))
+
+
 def _load_remotes_json(remotes_json):
     """The denver config's ``conan.remotes:`` as the conan provider wrote it out; {} without a --remotes-json."""
     if not remotes_json:
@@ -912,16 +1006,21 @@ def _validate_catalog_args(parser, args):
 
 def main():
     """CLI entry point: parse args, prepare remotes, then generate/export/create/upload/ci as requested."""
-    global _no_remote  # one per-process switch, see its definition
+    global _no_remote, _auth_may_fail, _usable_remote_names  # one-per-process switches, see their definitions
     parser = _build_arg_parser()
     args = parser.parse_args()
     _no_remote = args.no_remote
+    _auth_may_fail = args.authentication_may_fail
+    if _auth_may_fail and not args.prepare:
+        _usable_remote_names = _load_usable_remote_names()
 
     _validate_remote_required(parser, args)
     _apply_base_classes_pythonpath(args.base_classes_dir)
 
     prepare(_load_remotes_json(args.remotes_json), cleanup=args.cleanup_remotes, force=args.force)
     if args.prepare:
+        if _auth_may_fail:
+            write_usable_remotes()
         return
 
     _resolve_remote_arg(parser, args)
