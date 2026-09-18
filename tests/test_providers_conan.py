@@ -544,6 +544,30 @@ def test_install_no_auth_via_config(make_context, run_recorder, which):
     assert any("--no-remote" in c for c in run_recorder.commands())
 
 
+def test_no_auth_passes_no_remote_to_prepare_and_export(make_context, run_recorder, which):
+    default_profile_ok(run_recorder)
+    config = {"conan": {"authentication": False}}
+    ctx = make_context(config=config)
+    (ctx.env_dir / "conanA").mkdir(parents=True)
+    _ensure_default_conanfile(ctx, config, {"dirs": ["conanA"]})
+    run_conan(config, ctx)
+    argvs = run_recorder.argvs()
+    assert "--no-remote" in next(a for a in argvs if "--prepare" in a)
+    assert "--no-remote" in next(a for a in argvs if "--export" in a)
+
+
+def test_auth_default_keeps_remotes_for_prepare_and_export(make_context, run_recorder, which):
+    default_profile_ok(run_recorder)
+    config = {"conan": {}}
+    ctx = make_context(config=config)
+    (ctx.env_dir / "conanA").mkdir(parents=True)
+    _ensure_default_conanfile(ctx, config, {"dirs": ["conanA"]})
+    run_conan(config, ctx)
+    argvs = run_recorder.argvs()
+    assert "--no-remote" not in next(a for a in argvs if "--prepare" in a)
+    assert "--no-remote" not in next(a for a in argvs if "--export" in a)
+
+
 def test_install_build_default_missing(make_context, run_recorder, which):
     default_profile_ok(run_recorder)
     config = {"conan": {}}

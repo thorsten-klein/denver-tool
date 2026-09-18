@@ -249,6 +249,7 @@ class ConanProvider(Provider):
         if has_recipes or reconcile_remotes:
             self._run_prepare(
                 ctx,
+                cfg,
                 python,
                 DEFAULT_RECIPES_EXPORTER,
                 base_classes_args,
@@ -344,7 +345,16 @@ class ConanProvider(Provider):
         ctx.source(buildenv)
 
     def _run_prepare(
-        self, ctx, python, recipes_exporter, base_classes_args, has_recipes, remotes, cleanup_remotes, reconcile_remotes
+        self,
+        ctx,
+        cfg,
+        python,
+        recipes_exporter,
+        base_classes_args,
+        has_recipes,
+        remotes,
+        cleanup_remotes,
+        reconcile_remotes,
     ):
         """Run the exporter's --prepare pass: base classes on PYTHONPATH, remotes reconciliation, or both."""
         # remotes-only work, always via the env-wide exporter: --prepare
@@ -359,6 +369,7 @@ class ConanProvider(Provider):
             prepare_cmd += ["--cleanup-remotes"]
         if ctx.force:
             prepare_cmd += ["--force"]
+        prepare_cmd += self._no_remote_args(cfg)
         ctx.run(prepare_cmd, step="prepare")
 
     def _export_recipes(self, ctx, cfg, python, recipes, base_classes_args):
@@ -382,7 +393,12 @@ class ConanProvider(Provider):
         export_cmd += ["--user", cfg["user"], "--channel", cfg["channel"]]
         if recipe["catalog"]:
             export_cmd += ["--export-catalog", recipe["catalog"]]
-        return export_cmd + base_classes_args
+        return export_cmd + base_classes_args + ConanProvider._no_remote_args(cfg)
+
+    @staticmethod
+    def _no_remote_args(cfg):
+        """recipes.py's --no-remote when 'authentication:' is off -- mirrors `conan install --no-remote`."""
+        return [] if cfg["authentication"] else ["--no-remote"]
 
     # ------------------------------------------------------------------ #
     def _write_remotes_json(self, ctx, remotes):
