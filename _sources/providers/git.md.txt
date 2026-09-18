@@ -1,8 +1,9 @@
 # git provider
 
 A `git` stage brings one git checkout into the environment, pinned to one
-revision: clone if it isn't there yet, otherwise fetch and move it — always
-detached, never on a branch — onto whatever `revision:` names now. It is
+revision: clone if it isn't there yet, otherwise move it — always detached,
+never on a branch — onto whatever `revision:` names now, fetching only when
+that commit isn't available locally (or is a branch, which moves). It is
 what the "git clone, then fetch/checkout a pinned tag by hand" shell script
 (see the worked example in [`custom`](custom.md)) looks like once it is a
 provider — the same job, but idempotent and `--fast`-aware without every
@@ -39,6 +40,11 @@ rather than `download`'s package-relative `"."`.)
   whatever it resolved to *this run*, the same guarantee a tag gives.
 - **`remote`** — the remote name a fresh clone is created under, and the one
   `revision:` is fetched/resolved against (default: `"origin"`).
+- **`clone-opts`** — extra arguments for the clone, as a list:
+  `git clone --origin <remote> <clone-opts> -- <url> <path>` (e.g.
+  `[--depth, "1"]`, `[--filter=blob:none]`). Default: none.
+- **`fetch-opts`** — extra arguments for every fetch, as a list:
+  `git fetch --tags --prune <fetch-opts> <remote>`. Default: none.
 - **`submodules`** — `true` runs `git submodule update --init` after
   checkout (default: `false`). Not recursive — a submodule that itself
   declares submodules needs those handled separately (most projects don't
@@ -57,18 +63,29 @@ package-relative `"."` a [`download`](download.md) package's own
 
 Per stage, in order:
 
-1. **Clone** — skipped when `path:` is already a git checkout (`path/.git`
-   exists). Never re-clones over one that's already there, whatever
-   `url:`/`revision:` say — a checkout cloned from a different url is a
-   config mistake to fix by hand (`denver clean` the env, or point `path:`
-   elsewhere), not something this provider silently redoes.
-2. **Fetch** — `git fetch --tags --prune <remote>`, every run: `revision:`
-   may be a branch that has moved, or a tag pushed after the checkout was
-   made, and this is how either is seen at all.
-3. **Checkout** — skipped when `path:` is already detached at exactly the
-   commit `revision:` resolves to. Otherwise: `git checkout --detach
-   <sha>`. A commit sha the fetch above didn't already have (see
-   "Unreachable commits" below) is fetched explicitly first.
+1. **Clone** — only when `path:` doesn't exist at all:
+   `git clone --origin <remote> <clone-opts> -- <url> <path>`. A fresh clone
+   already has every branch and tag, so no fetch follows it. An existing
+   `path:` is never cloned into. If it isn't a git checkout (no `path/.git`),
+   the stage fails, because every git command below would otherwise act on
+   whatever repository encloses it.
+2. **Remote url** — when the configured url of `remote:` (`git config
+   remote.<remote>.url`, not `git remote get-url`, which applies `insteadOf`
+   rewrites) differs from `url:`, it is updated with `git remote set-url`, or
+   added with `git remote add` if the remote doesn't exist. Nothing is
+   re-cloned.
+3. **Checkout, fetching only if needed**:
+   - `revision:` is looked up in what is already local. A tag or a commit sha
+     found there is used as is, with no network access.
+   - A branch (a `<remote>/<revision>` ref exists) moves, so it is always
+     fetched first, and resolves to the fetched `<remote>/<branch>` tip. That
+     is how a moving branch is followed.
+   - Otherwise (not local yet, the remote url just changed, or `--force`):
+     `git fetch --tags --prune <fetch-opts> <remote>`, then the lookup again.
+     A commit sha that fetch still didn't bring (see "Unreachable commits"
+     below) is fetched explicitly.
+   - Skipped when `path:` is already detached at exactly that commit;
+     otherwise `git checkout --detach <sha>`.
 4. **Submodules** — `git submodule sync && git submodule update --init`,
    only when `submodules: true`. Runs every time (there is no cheap way to
    tell "already up to date" apart from asking git, and asking is what
@@ -109,7 +126,7 @@ unchanged fetch cheap. `path:` is the whole of it:
   this (see [`custom`](custom.md)'s worked example) is the same ten-odd
   lines every project migrating off a hand-pinned git checkout has to get
   right: recognise an existing clone, never re-clone over it, move a
-  *moving* pin (a branch, a re-tagged release) forward without leaving the
+  *moving* pin (a branch) forward without leaving the
   tree on a branch a later `git pull` could then drift. Here that logic
   exists once.
 - **Always detached.** A stage's checkout is denver's own state, not
@@ -124,6 +141,9 @@ unchanged fetch cheap. `path:` is the whole of it:
   every `denver run` re-checks. A project needing nested submodules reaches
   for `custom` (or asks for it — this provider doesn't have a
   `submodules-recursive:` key yet).
+- **A tag is trusted once it is local.** A tag already in the checkout is
+  never fetched again, so a tag re-pointed on the remote is not picked up
+  until `--force` (which always fetches) — pin a moving target as a branch.
 - **`--fast`** skips clone/fetch/checkout/submodules entirely; it dies with
   a clear message if `path:` was never checked out — run once without
   `--fast` first. The generic `env:`/`env-prepend:`/`env-append:` keys still

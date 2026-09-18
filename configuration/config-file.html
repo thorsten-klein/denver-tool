@@ -179,7 +179,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#config-resolution">Config resolution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#layering">Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#layering">Layering</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fetching-repositories-before-resolving-init">Fetching repositories before resolving: <code class="docutils literal notranslate"><span class="pre">.init</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#command-line-overrides">Command-line overrides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#command-line-environment-variables">Command-line environment variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#environment-specific-cli-arguments">Environment-specific CLI arguments</a></li>
@@ -473,6 +476,9 @@ e.g. <code class="docutils literal notranslate"><span class="pre">denver-version
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">import</span></code></strong> — a list of environments (or config files) whose configuration
 is inherited as a base, before this file’s own content is applied on top.
 See “Layering” below.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">.init</span></code></strong> — git repositories or archives to bring in automatically on
+every <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span></code>, <em>before</em> the config is resolved, so <code class="docutils literal notranslate"><span class="pre">import:</span></code> can point
+into them. See “Fetching repositories before resolving: <code class="docutils literal notranslate"><span class="pre">.init</span></code>” below.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">stages</span></code></strong> — the ordered list of stage ids to run. This <em>is</em> the
 pipeline; order is significant, and each id must have a matching top-level
 section declaring its <code class="docutils literal notranslate"><span class="pre">provider:</span></code>.</p></li>
@@ -755,6 +761,47 @@ same-named one.</p></li>
 <p>A base env that only exists to be imported should set <code class="docutils literal notranslate"><span class="pre">runnable:</span> <span class="pre">false</span></code>, so
 starting it directly fails with an explanation instead of half-building
 something nobody meant to run.</p>
+<section id="fetching-repositories-before-resolving-init">
+<h3>Fetching repositories before resolving: <code class="docutils literal notranslate"><span class="pre">.init</span></code><a class="headerlink" href="#fetching-repositories-before-resolving-init" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">import:</span></code> only reads files that are already on disk. To import a manifest
+(a <code class="docutils literal notranslate"><span class="pre">denver.yml</span></code>) that lives in another repository or in a release archive,
+declare it under <code class="docutils literal notranslate"><span class="pre">.init:</span> <span class="pre">projects:</span></code> and point <code class="docutils literal notranslate"><span class="pre">import:</span></code> at where it lands:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">.init</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">projects</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">git</span>
+<span class="w">      </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external/base-env</span><span class="w">          </span><span class="c1"># relative to this file's directory</span>
+<span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://github.com/acme/base-env.git</span>
+<span class="w">      </span><span class="nt">revision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1.2.0</span><span class="w">                 </span><span class="c1"># a tag, a branch, or a commit sha</span>
+<span class="w">      </span><span class="nt">clone-opts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">--depth</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"1"</span><span class="p p-Indicator">]</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">download</span>
+<span class="w">      </span><span class="nt">packages</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tools-env</span>
+<span class="w">          </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://example.com/tools-env-1.0.tar.gz</span>
+<span class="w">          </span><span class="nt">sha256sum</span><span class="p">:</span><span class="w"> </span><span class="s">"..."</span>
+<span class="w">          </span><span class="nt">unpack-dir</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external/tools-env</span>
+<span class="nt">import</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external/base-env</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">external/tools-env</span>
+</pre></div>
+</div>
+<p>Each project is a <a class="reference internal" href="../providers/git.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">git</span></code></span></a> or
+<a class="reference internal" href="../providers/download.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">download</span></code></span></a> entry: it takes a <code class="docutils literal notranslate"><span class="pre">provider:</span></code> key plus
+exactly the keys a stage of that provider takes, and the same provider runs
+it. The generic stage keys (<code class="docutils literal notranslate"><span class="pre">env:</span></code>, <code class="docutils literal notranslate"><span class="pre">scripts:</span></code>, <code class="docutils literal notranslate"><span class="pre">depends-on:</span></code>, …) are not
+accepted, because a project only puts files on disk. Paths and <code class="docutils literal notranslate"><span class="pre">${...}</span></code>
+resolve as they would in a stage of the declaring file: against its
+directory, with its own <code class="docutils literal notranslate"><span class="pre">DENVER_ENV_WORKDIR</span></code>. A <code class="docutils literal notranslate"><span class="pre">download</span></code> project reads that
+file’s top-level <code class="docutils literal notranslate"><span class="pre">download-auth:</span></code>.</p>
+<p>Every <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span></code> (including <code class="docutils literal notranslate"><span class="pre">--show-config</span></code>) runs <code class="docutils literal notranslate"><span class="pre">.init:</span></code> first, layer by
+layer across the whole <code class="docutils literal notranslate"><span class="pre">import:</span></code> chain. A layer’s own projects run before its
+<code class="docutils literal notranslate"><span class="pre">import:</span></code> entries are followed. <code class="docutils literal notranslate"><span class="pre">--fast</span></code>/<code class="docutils literal notranslate"><span class="pre">--force</span></code>/<code class="docutils literal notranslate"><span class="pre">--ci</span></code> mean for a project
+what they mean for its provider’s stage (under <code class="docutils literal notranslate"><span class="pre">--fast</span></code>, nothing is fetched,
+and a project that was never brought in fails). <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> does not apply:
+the config cannot be resolved without these files, so they are brought in for
+real. Inside a wrapper-relocated run, projects run as under <code class="docutils literal notranslate"><span class="pre">--fast</span></code>, since
+the outer run already brought them in. <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span></code> removes only what lives
+under the env’s state directory (e.g. a path under <code class="docutils literal notranslate"><span class="pre">${DENVER_ENV_WORKDIR}</span></code>).</p>
+</section>
 </section>
 <section id="command-line-overrides">
 <h2>Command-line overrides<a class="headerlink" href="#command-line-overrides" title="Link to this heading"></a></h2>

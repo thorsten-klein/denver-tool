@@ -179,7 +179,10 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#config-resolution">Config resolution</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#layering">Layering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#layering">Layering</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../configuration/config-file.html#fetching-repositories-before-resolving-init">Fetching repositories before resolving: <code class="docutils literal notranslate"><span class="pre">.init</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-overrides">Command-line overrides</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#command-line-environment-variables">Command-line environment variables</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../configuration/config-file.html#environment-specific-cli-arguments">Environment-specific CLI arguments</a></li>
@@ -407,8 +410,9 @@
   <section id="git-provider">
 <h1>git provider<a class="headerlink" href="#git-provider" title="Link to this heading"></a></h1>
 <p>A <code class="docutils literal notranslate"><span class="pre">git</span></code> stage brings one git checkout into the environment, pinned to one
-revision: clone if it isn’t there yet, otherwise fetch and move it — always
-detached, never on a branch — onto whatever <code class="docutils literal notranslate"><span class="pre">revision:</span></code> names now. It is
+revision: clone if it isn’t there yet, otherwise move it — always detached,
+never on a branch — onto whatever <code class="docutils literal notranslate"><span class="pre">revision:</span></code> names now, fetching only when
+that commit isn’t available locally (or is a branch, which moves). It is
 what the “git clone, then fetch/checkout a pinned tag by hand” shell script
 (see the worked example in <a class="reference internal" href="custom.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">custom</span></code></span></a>) looks like once it is a
 provider — the same job, but idempotent and <code class="docutils literal notranslate"><span class="pre">--fast</span></code>-aware without every
@@ -443,6 +447,11 @@ this commit — never on a branch — so a moving branch name is pinned to
 whatever it resolved to <em>this run</em>, the same guarantee a tag gives.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">remote</span></code></strong> — the remote name a fresh clone is created under, and the one
 <code class="docutils literal notranslate"><span class="pre">revision:</span></code> is fetched/resolved against (default: <code class="docutils literal notranslate"><span class="pre">&quot;origin&quot;</span></code>).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">clone-opts</span></code></strong> — extra arguments for the clone, as a list:
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">--origin</span> <span class="pre">&lt;remote&gt;</span> <span class="pre">&lt;clone-opts&gt;</span> <span class="pre">--</span> <span class="pre">&lt;url&gt;</span> <span class="pre">&lt;path&gt;</span></code> (e.g.
+<code class="docutils literal notranslate"><span class="pre">[--depth,</span> <span class="pre">&quot;1&quot;]</span></code>, <code class="docutils literal notranslate"><span class="pre">[--filter=blob:none]</span></code>). Default: none.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">fetch-opts</span></code></strong> — extra arguments for every fetch, as a list:
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">fetch</span> <span class="pre">--tags</span> <span class="pre">--prune</span> <span class="pre">&lt;fetch-opts&gt;</span> <span class="pre">&lt;remote&gt;</span></code>. Default: none.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">submodules</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">true</span></code> runs <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">submodule</span> <span class="pre">update</span> <span class="pre">--init</span></code> after
 checkout (default: <code class="docutils literal notranslate"><span class="pre">false</span></code>). Not recursive — a submodule that itself
 declares submodules needs those handled separately (most projects don’t
@@ -461,17 +470,31 @@ package-relative <code class="docutils literal notranslate"><span class="pre">&q
 <h2>What runs, and what is skipped<a class="headerlink" href="#what-runs-and-what-is-skipped" title="Link to this heading"></a></h2>
 <p>Per stage, in order:</p>
 <ol class="arabic simple">
-<li><p><strong>Clone</strong> — skipped when <code class="docutils literal notranslate"><span class="pre">path:</span></code> is already a git checkout (<code class="docutils literal notranslate"><span class="pre">path/.git</span></code>
-exists). Never re-clones over one that’s already there, whatever
-<code class="docutils literal notranslate"><span class="pre">url:</span></code>/<code class="docutils literal notranslate"><span class="pre">revision:</span></code> say — a checkout cloned from a different url is a
-config mistake to fix by hand (<code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">clean</span></code> the env, or point <code class="docutils literal notranslate"><span class="pre">path:</span></code>
-elsewhere), not something this provider silently redoes.</p></li>
-<li><p><strong>Fetch</strong> — <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">fetch</span> <span class="pre">--tags</span> <span class="pre">--prune</span> <span class="pre">&lt;remote&gt;</span></code>, every run: <code class="docutils literal notranslate"><span class="pre">revision:</span></code>
-may be a branch that has moved, or a tag pushed after the checkout was
-made, and this is how either is seen at all.</p></li>
-<li><p><strong>Checkout</strong> — skipped when <code class="docutils literal notranslate"><span class="pre">path:</span></code> is already detached at exactly the
-commit <code class="docutils literal notranslate"><span class="pre">revision:</span></code> resolves to. Otherwise: <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">--detach</span> <span class="pre">&lt;sha&gt;</span></code>. A commit sha the fetch above didn’t already have (see
-“Unreachable commits” below) is fetched explicitly first.</p></li>
+<li><p><strong>Clone</strong> — only when <code class="docutils literal notranslate"><span class="pre">path:</span></code> doesn’t exist at all:
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">--origin</span> <span class="pre">&lt;remote&gt;</span> <span class="pre">&lt;clone-opts&gt;</span> <span class="pre">--</span> <span class="pre">&lt;url&gt;</span> <span class="pre">&lt;path&gt;</span></code>. A fresh clone
+already has every branch and tag, so no fetch follows it. An existing
+<code class="docutils literal notranslate"><span class="pre">path:</span></code> is never cloned into. If it isn’t a git checkout (no <code class="docutils literal notranslate"><span class="pre">path/.git</span></code>),
+the stage fails, because every git command below would otherwise act on
+whatever repository encloses it.</p></li>
+<li><p><strong>Remote url</strong> — when the configured url of <code class="docutils literal notranslate"><span class="pre">remote:</span></code> (<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">config</span> <span class="pre">remote.&lt;remote&gt;.url</span></code>, not <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">remote</span> <span class="pre">get-url</span></code>, which applies <code class="docutils literal notranslate"><span class="pre">insteadOf</span></code>
+rewrites) differs from <code class="docutils literal notranslate"><span class="pre">url:</span></code>, it is updated with <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">remote</span> <span class="pre">set-url</span></code>, or
+added with <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">remote</span> <span class="pre">add</span></code> if the remote doesn’t exist. Nothing is
+re-cloned.</p></li>
+<li><p><strong>Checkout, fetching only if needed</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">revision:</span></code> is looked up in what is already local. A tag or a commit sha
+found there is used as is, with no network access.</p></li>
+<li><p>A branch (a <code class="docutils literal notranslate"><span class="pre">&lt;remote&gt;/&lt;revision&gt;</span></code> ref exists) moves, so it is always
+fetched first, and resolves to the fetched <code class="docutils literal notranslate"><span class="pre">&lt;remote&gt;/&lt;branch&gt;</span></code> tip. That
+is how a moving branch is followed.</p></li>
+<li><p>Otherwise (not local yet, the remote url just changed, or <code class="docutils literal notranslate"><span class="pre">--force</span></code>):
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">fetch</span> <span class="pre">--tags</span> <span class="pre">--prune</span> <span class="pre">&lt;fetch-opts&gt;</span> <span class="pre">&lt;remote&gt;</span></code>, then the lookup again.
+A commit sha that fetch still didn’t bring (see “Unreachable commits”
+below) is fetched explicitly.</p></li>
+<li><p>Skipped when <code class="docutils literal notranslate"><span class="pre">path:</span></code> is already detached at exactly that commit;
+otherwise <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">--detach</span> <span class="pre">&lt;sha&gt;</span></code>.</p></li>
+</ul>
+</li>
 <li><p><strong>Submodules</strong> — <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">submodule</span> <span class="pre">sync</span> <span class="pre">&amp;&amp;</span> <span class="pre">git</span> <span class="pre">submodule</span> <span class="pre">update</span> <span class="pre">--init</span></code>,
 only when <code class="docutils literal notranslate"><span class="pre">submodules:</span> <span class="pre">true</span></code>. Runs every time (there is no cheap way to
 tell “already up to date” apart from asking git, and asking is what
@@ -512,7 +535,7 @@ unchanged fetch cheap. <code class="docutils literal notranslate"><span class="p
 this (see <a class="reference internal" href="custom.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">custom</span></code></span></a>’s worked example) is the same ten-odd
 lines every project migrating off a hand-pinned git checkout has to get
 right: recognise an existing clone, never re-clone over it, move a
-<em>moving</em> pin (a branch, a re-tagged release) forward without leaving the
+<em>moving</em> pin (a branch) forward without leaving the
 tree on a branch a later <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">pull</span></code> could then drift. Here that logic
 exists once.</p></li>
 <li><p><strong>Always detached.</strong> A stage’s checkout is denver’s own state, not
@@ -527,6 +550,9 @@ such a case) — every extra clone is bandwidth and time spent on a stage
 every <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span></code> re-checks. A project needing nested submodules reaches
 for <code class="docutils literal notranslate"><span class="pre">custom</span></code> (or asks for it — this provider doesn’t have a
 <code class="docutils literal notranslate"><span class="pre">submodules-recursive:</span></code> key yet).</p></li>
+<li><p><strong>A tag is trusted once it is local.</strong> A tag already in the checkout is
+never fetched again, so a tag re-pointed on the remote is not picked up
+until <code class="docutils literal notranslate"><span class="pre">--force</span></code> (which always fetches) — pin a moving target as a branch.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--fast</span></code></strong> skips clone/fetch/checkout/submodules entirely; it dies with
 a clear message if <code class="docutils literal notranslate"><span class="pre">path:</span></code> was never checked out — run once without
 <code class="docutils literal notranslate"><span class="pre">--fast</span></code> first. The generic <code class="docutils literal notranslate"><span class="pre">env:</span></code>/<code class="docutils literal notranslate"><span class="pre">env-prepend:</span></code>/<code class="docutils literal notranslate"><span class="pre">env-append:</span></code> keys still
