@@ -220,11 +220,9 @@ UNKNOWN_VERSION = "unknown (not installed)"
 # any effect until the next bump -- so a stale value can only ever understate
 # an untagged tree, never overstate a released one.
 #
-# Two tests keep it honest, so a forgotten bump can't go unnoticed: every
-# example must still run from this checkout, and DEV_VERSION must stay ahead
-# of the newest tag once there are commits past it (a new cycle has started,
-# so it has to name the release those commits are heading for) -- see
-# tests/test_dev_version.py.
+# A forgotten bump can't go unnoticed: every example must still run from
+# this checkout (see tests/test_dev_version.py). Lagging the newest tag is
+# not an error -- the value is simply inert then.
 DEV_VERSION = "1.6.6"
 
 
