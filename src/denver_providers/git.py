@@ -116,8 +116,13 @@ class GitProvider(Provider):
             die(f"git[{self.stage}]: --fast needs '{cfg['path']}' already checked out -- run once without --fast first")
 
     def _provision(self, ctx, cfg, path):
-        """Bring 'path:' onto 'revision:' -- cloning, repointing the remote and fetching only when needed."""
-        if (path / ".git").exists():
+        """Bring 'path:' onto 'revision:' -- cloning (only if it doesn't exist), repointing the remote, fetching only when needed."""
+        if path.exists():
+            if not (path / ".git").exists():
+                # every git command below would otherwise act on whatever repository encloses 'path:'
+                die(
+                    f"git[{self.stage}]: '{path}' exists but is not a git checkout -- remove it or point 'path:' elsewhere"
+                )
             info(f"git[{self.stage}]: already cloned: {path}")
             url_changed = self._ensure_remote_url(ctx, path, cfg["remote"], cfg["url"])
             self._ensure_checked_out(ctx, path, cfg, fetched=False, must_fetch=url_changed or ctx.force)

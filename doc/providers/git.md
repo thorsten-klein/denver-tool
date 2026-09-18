@@ -63,14 +63,17 @@ package-relative `"."` a [`download`](download.md) package's own
 
 Per stage, in order:
 
-1. **Clone** — only when `path:` is not a git checkout yet (`path/.git`
-   doesn't exist): `git clone --origin <remote> <clone-opts> -- <url> <path>`.
-   A fresh clone already has every branch and tag, so no fetch follows it.
-2. **Remote url** — for an existing checkout only: when the configured url
-   of `remote:` (`git config remote.<remote>.url`, not `git remote get-url`,
-   which applies `insteadOf` rewrites) differs from `url:`, it is updated with
-   `git remote set-url`, or added with `git remote add` if the remote doesn't
-   exist. Nothing is re-cloned.
+1. **Clone** — only when `path:` doesn't exist at all:
+   `git clone --origin <remote> <clone-opts> -- <url> <path>`. A fresh clone
+   already has every branch and tag, so no fetch follows it. An existing
+   `path:` is never cloned into. If it isn't a git checkout (no `path/.git`),
+   the stage fails, because every git command below would otherwise act on
+   whatever repository encloses it.
+2. **Remote url** — when the configured url of `remote:` (`git config
+   remote.<remote>.url`, not `git remote get-url`, which applies `insteadOf`
+   rewrites) differs from `url:`, it is updated with `git remote set-url`, or
+   added with `git remote add` if the remote doesn't exist. Nothing is
+   re-cloned.
 3. **Checkout, fetching only if needed**:
    - `revision:` is looked up in what is already local. A tag or a commit sha
      found there is used as is, with no network access.

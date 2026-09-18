@@ -375,3 +375,15 @@ def test_force_always_fetches(make_context, run_recorder):
     _revisions(run_recorder)
     run_git(config, ctx)
     assert _fetched(run_recorder)
+
+
+@pytest.mark.parametrize("content", [False, True], ids=["empty-dir", "non-empty-dir"])
+def test_existing_path_that_is_not_a_checkout_dies_without_running_git(make_context, run_recorder, content):
+    config = config_for({"url": URL, "path": "checkout", "revision": "1.0"})
+    ctx = make_context(config=config)
+    path = make_checkout(ctx.env_dir / "checkout", git=False)
+    if content:
+        (path / "file").write_text("x")
+    with pytest.raises(DenverError):
+        run_git(config, ctx)
+    assert not any(a[:1] == ["git"] for a in run_recorder.argvs())
