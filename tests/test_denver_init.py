@@ -100,8 +100,9 @@ def test_imported_layers_own_init_projects_run_too(tmp_path, remote):
 
 def test_git_project_unknown_revision_dies(tmp_path, remote):
     _commit(remote, "one")
+    config = _write_env(tmp_path / "env", [_git_project(remote, "no-such-ref")])
     with pytest.raises(DenverError):
-        denver.fetch_init_projects(_write_env(tmp_path / "env", [_git_project(remote, "no-such-ref")]))
+        denver.fetch_init_projects(config)
 
 
 # ---- provider: download -------------------------------------------------------#

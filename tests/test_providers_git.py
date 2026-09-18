@@ -255,8 +255,9 @@ def test_branch_revision_resolves_to_fetched_remote_tip_first(make_context, run_
 @pytest.mark.parametrize("key", ["clone-opts", "fetch-opts"])
 def test_opts_must_be_a_list_of_strings(make_context, key):
     config = config_for({"url": URL, "path": "checkout", "revision": "1.0", key: "--depth 1"})
+    ctx = make_context(config=config)
     with pytest.raises(DenverError):
-        run_git(config, make_context(config=config))
+        run_git(config, ctx)
 
 
 # ---- setup(): existing checkout -- remote url, local revision, fetch ---------#
