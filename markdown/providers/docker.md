@@ -75,7 +75,10 @@ before their first run.
   be — when present, `docker login <url>` runs automatically, credentials
   piped via stdin (never argv, never logged), right before the manifest
   check against that entry; an entry with neither is assumed
-  already-authenticated or public. Both fields go through denver’s normal
+  already-authenticated or public. Under `--verbose`, every check is
+  echoed (`+ docker manifest inspect <url>/<image>`) followed by a
+  `registry hit:`/`registry miss:` line, and a miss also prints the
+  check’s own stderr (auth error, unknown tag, …) indented below it. Both fields go through denver’s normal
   `${VAR}` interpolation, so a literal (`myusername`) and an
   env-var-sourced secret (`${DOCKER_PASSWORD_DOCKERHUB}`) are written the same
   way.
