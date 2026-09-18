@@ -73,6 +73,22 @@ def _relocation_mounts(ctx):
     return ["-v", f"{source}:{source}:ro"]
 
 
+def _verbose_note(ctx, message, result=None):
+    """Print ``message`` (plus ``result``'s captured stderr, indented) to stderr -- --verbose only, never under -q/-qq.
+
+    For a captured query whose outcome decides what happens next (a
+    registry's 'docker manifest inspect'): its stdout/stderr never reach
+    the terminal on their own, so without this a miss -- a typo'd url, an
+    auth error, a missing tag -- is indistinguishable from any other.
+    """
+    if ctx.quiet or not ctx.verbose:
+        return
+    print(message, file=sys.stderr)
+    stderr = (getattr(result, "stderr", None) or "").rstrip()
+    for line in stderr.splitlines():
+        print(f"    {line}", file=sys.stderr)
+
+
 class DockerProvider(Provider):
     """Relocates the final command into a docker compose service -- see doc/providers/docker.md for denver.toml keys."""
 
@@ -319,9 +335,11 @@ class DockerProvider(Provider):
             if registry.get("username"):
                 self._login_registry(ctx, exe, url, registry["username"], registry["password"])
             remote_ref = f"{url}/{image}"
-            result = ctx.run([exe, "manifest", "inspect", remote_ref], check=False, capture=True, echo=False)
+            result = ctx.run([exe, "manifest", "inspect", remote_ref], check=False, capture=True)
             if result.returncode == 0:
+                _verbose_note(ctx, f"registry hit: '{remote_ref}'")
                 return remote_ref
+            _verbose_note(ctx, f"registry miss: '{remote_ref}' (exit {result.returncode})", result)
         return None
 
     def _login_registry(self, ctx, exe, url, username, password):

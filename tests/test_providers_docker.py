@@ -296,6 +296,47 @@ def test_uses_first_registry_that_has_it(make_context, run_recorder, which):
     assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry2.example.com/myapp:dev"
 
 
+def test_verbose_reports_every_checked_registry_and_its_stderr(make_context, run_recorder, which, capsys):
+    config = {
+        "docker": docker_cfg(
+            image="myapp:dev",
+            **{"registries": [{"url": "registry1.example.com"}, {"url": "registry2.example.com"}]},
+        )
+    }
+    ctx = make_context(config=config, verbose=True)
+    write_compose(ctx)
+    run_recorder.responses["image inspect"] = lambda cmd: type("R", (), {"returncode": 1})()
+    run_recorder.responses["manifest inspect registry1.example.com/myapp:dev"] = lambda cmd: type(
+        "R", (), {"returncode": 1, "stderr": "unauthorized: authentication required\n"}
+    )()
+    run_recorder.responses["manifest inspect registry2.example.com/myapp:dev"] = lambda cmd: type(
+        "R", (), {"returncode": 0}
+    )()
+
+    run_docker(config, ctx)
+
+    err = capsys.readouterr().err
+    assert "+ docker manifest inspect registry1.example.com/myapp:dev" in err
+    assert "registry miss: 'registry1.example.com/myapp:dev' (exit 1)" in err
+    assert "    unauthorized: authentication required" in err
+    assert "+ docker manifest inspect registry2.example.com/myapp:dev" in err
+    assert "registry hit: 'registry2.example.com/myapp:dev'" in err
+
+
+def test_registry_checks_silent_without_verbose(make_context, run_recorder, which, capsys):
+    config = {"docker": docker_cfg(image="myapp:dev", **{"registries": [{"url": "registry1.example.com"}]})}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_recorder.responses["image inspect"] = lambda cmd: type("R", (), {"returncode": 1})()
+    run_recorder.responses["manifest inspect"] = lambda cmd: type("R", (), {"returncode": 1, "stderr": "boom\n"})()
+
+    run_docker(config, ctx)
+
+    err = capsys.readouterr().err
+    assert "registry miss" not in err
+    assert "boom" not in err
+
+
 def test_all_registries_miss_falls_back_to_build(make_context, run_recorder, which):
     config = {
         "docker": docker_cfg(
