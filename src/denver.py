@@ -378,7 +378,8 @@ def load_config_file(path):
     explains that only denver.yml/denver.yaml is supported on this
     interpreter -- anything else ('.yml'/'.yaml', or no recognised suffix)
     is read as YAML, denver's default format (PyYAML is a required
-    dependency, so it's always there).
+    dependency, so it's always there). A file that doesn't parse raises
+    ConfigReadError too, never the parser's own exception.
 
     TOML needs no "is this a mapping?" check -- its grammar makes that
     structurally impossible to get wrong: a document is always a table
@@ -395,14 +396,20 @@ def load_config_file(path):
                 f"this interpreter is older. Without it, only denver.yml/denver.yaml is supported."
             )
         with path.open("rb") as f:
-            return tomllib.load(f)
+            try:
+                return tomllib.load(f)
+            except tomllib.TOMLDecodeError as exc:
+                raise ConfigReadError(f"{path}: invalid TOML: {exc}") from exc
     return _load_yaml_config_file(path)
 
 
 def _load_yaml_config_file(path):
     """load_config_file's YAML branch -- denver's default format ('.yml'/'.yaml', or any other name)."""
     with path.open("rb") as f:
-        data = yaml.safe_load(f)
+        try:
+            data = yaml.safe_load(f)
+        except yaml.YAMLError as exc:
+            raise ConfigReadError(f"{path}: invalid YAML: {exc}") from exc
     if data is None:
         return {}
     if not isinstance(data, dict):
@@ -412,13 +419,8 @@ def _load_yaml_config_file(path):
 
 # Every exception load_config_file() can raise for a config that just plain
 # won't parse -- used by _readable_imports (clean's best-effort import-chain
-# walk) to tell "unreadable, skip it" apart from a real bug. tomllib.TOMLDecodeError
-# only exists to catch when this interpreter has tomllib at all (Python 3.11+).
-_CONFIG_READ_ERRORS = (
-    (OSError, yaml.YAMLError, ConfigReadError)
-    if tomllib is None
-    else (OSError, yaml.YAMLError, ConfigReadError, tomllib.TOMLDecodeError)
-)
+# walk) to tell "unreadable, skip it" apart from a real bug.
+_CONFIG_READ_ERRORS = (OSError, ConfigReadError)
 
 
 _UNSET = object()  # marks "this key has no value from a lower layer yet"
