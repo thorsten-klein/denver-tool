@@ -1,6 +1,6 @@
 """zephyr provider: manages a West workspace (Zephyr RTOS).
 
-Configured from denver.toml -> ``zephyr:``. The west executable defaults to
+Configured from the denver config -> ``zephyr:``. The west executable defaults to
 the first ``west`` on PATH (installed by an earlier uv stage), overridable
 via ``exe:``.
 
@@ -22,7 +22,7 @@ from .context import (
 )
 
 # extra `west update` args added on top of 'update-args:' whenever ctx.ci --
-# a fixed shallow-clone strategy, not a denver.toml key (see doc/providers/zephyr.md).
+# a fixed shallow-clone strategy, not a denver config key (see doc/providers/zephyr.md).
 CI_UPDATE_ARGS = ("--narrow", "-o=--depth=1")
 
 # west's own per-workspace marker dir, holding its config file.
@@ -38,7 +38,7 @@ def west_topdir(start):
 
 
 class ZephyrProvider(Provider):
-    """Manages a West workspace (Zephyr RTOS) -- see doc/providers/zephyr.md for denver.toml keys."""
+    """Manages a West workspace (Zephyr RTOS) -- see doc/providers/zephyr.md for its config keys."""
 
     name = "zephyr"
     KEYS = (
@@ -182,7 +182,7 @@ class ZephyrProvider(Provider):
 
         Never wiped by --force: an existing config holds settings (e.g.
         zephyr.base-prefer) a user may have set by hand, and _configure
-        already reconciles every key denver.toml cares about individually.
+        already reconciles every key the denver config cares about individually.
         """
         # bannered first (even though there's nothing to echo/run here today)
         # so a future addition to this step can't print ahead of any banner,
@@ -219,8 +219,8 @@ class ZephyrProvider(Provider):
         current = ctx.run([west, "config", "-l"], cwd=top, capture=True, echo=False, check=False).stdout
 
         # computed from the (already-resolved) west-yml, then any
-        # extra/overriding entries from denver.toml -- workspace topology,
-        # not denver.toml defaults, so it's computed right here.
+        # extra/overriding entries from the denver config -- workspace topology,
+        # not denver config defaults, so it's computed right here.
         west_config = {
             "manifest.path": os.path.relpath(west_yml.parent, top),
             "manifest.file": west_yml.name,

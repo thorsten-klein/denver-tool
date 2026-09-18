@@ -1,6 +1,6 @@
 """download provider: brings prebuilt release archives into the environment.
 
-Configured from denver.toml -> a stage declaring ``provider: download``,
+Configured from the denver config -> a stage declaring ``provider: download``,
 with one ``[[<stage>.packages]]`` entry per archive. Each entry is
 downloaded once into a persistent ``downloads/`` folder, checksum-verified,
 unpacked, and exposed through ``env-prepend:``/``env-append:``.
@@ -65,7 +65,7 @@ STAMP_NAME = ".denver-download"
 # it pins. Both are optional; giving both checks both.
 CHECKSUM_KEYS = (("sha256sum", "sha256"), ("md5sum", "md5"))
 
-# the top-level denver.toml key holding the credentials this provider
+# the top-level denver config key holding the credentials this provider
 # sends. Deliberately *not* a stage key: a token belongs to a server, not to
 # one stage's package list, so every stage and every package fetching from
 # that server is covered by the one entry, written once at the top of the
@@ -161,7 +161,7 @@ def package_mirrors(entry):
 
 # ---- authenticated downloads ------------------------------------------------ #
 def auth_entries(config):
-    """Every '[[download-auth]]' entry of the whole denver.toml, validated -- [] when the config declares none."""
+    """Every '[[download-auth]]' entry of the whole denver config, validated -- [] when the config declares none."""
     entries = config.get(AUTH_SECTION)
     if entries is None:
         return []
@@ -368,7 +368,7 @@ def _has_content_type(headers):
 
 
 class DownloadProvider(Provider):
-    """Downloads, verifies and unpacks prebuilt release archives -- see doc/providers/download.md for denver.toml keys."""
+    """Downloads, verifies and unpacks prebuilt release archives -- see doc/providers/download.md for its config keys."""
 
     name = "download"
     KEYS = ("packages",)

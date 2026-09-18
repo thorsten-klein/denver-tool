@@ -1,7 +1,7 @@
 """uv provider: a generic Python virtualenv managed with uv.
 
 Creates/activates the venv, installs requirements, applies venv patches.
-Configured from denver.toml -> ``uv:``.
+Configured from the denver config -> ``uv:``.
 
 Full key reference, worked examples and design notes: ``doc/providers/uv.md``.
 """
@@ -82,7 +82,7 @@ def _release_matches(wanted, actual):
 
 
 class UvProvider(Provider):
-    """A generic Python virtualenv managed with uv -- see doc/providers/uv.md for denver.toml keys."""
+    """A generic Python virtualenv managed with uv -- see doc/providers/uv.md for its config keys."""
 
     name = "uv"
     KEYS = (
@@ -266,7 +266,7 @@ class UvProvider(Provider):
         """One 'install-args:' entry as ``(args, output)``: a '$(cmd)' entry is run and split, anything else is the plain-interpolated literal.
 
         The shape check and the command that actually runs both come from
-        ``raw_entry`` (this entry as denver.toml wrote it, before plain
+        ``raw_entry`` (this entry as the denver config wrote it, before plain
         interpolate()) -- shell-interpolated (see interpolate_shell) rather
         than plain, since it is handed to `bash -c` verbatim. A substituted
         ``${VAR}`` value in a non-'$(...)' entry stays plain-interpolated

@@ -1,12 +1,12 @@
 """Shared runtime context for denver providers.
 
 The Context object is the single place that holds everything a provider
-needs: computed denver built-in paths, the merged denver.toml config, and the
+needs: computed denver built-in paths, the merged denver config, and the
 mutable environment (``env``) that providers build up and that the final
 command is launched with.
 
 Genericity principle: no provider hard-codes project-specific paths or
-values. Everything specific comes from denver.toml, where values may
+values. Everything specific comes from the denver config, where values may
 reference denver built-ins and each other through ``${VAR}`` interpolation.
 """
 
@@ -409,7 +409,7 @@ def _validate_exec_cmd(cmd):
 
     A resolved command is always denver's own doing (default_command()/
     resolve_command(), a wrapper's wrap(), or a script's own argv) -- sourced
-    from the same invoking user's own denver.toml/CLI, not a remote or
+    from the same invoking user's own denver config/CLI, not a remote or
     otherwise privileged party -- but a malformed 'command:'/script entry
     (e.g. an empty string) must not reach os.execvpe() as a bare, confusing
     OSError, and cmd[0] looking like a CLI flag (e.g. a stray '-c' from a
@@ -668,7 +668,7 @@ class Context:
         # ctx.run(..., step="...")'s auto-banner knows which stage it's
         # for without every call site having to pass self.stage itself.
         self.stage_id: str | None = None
-        # each stage's config section exactly as the denver.toml (after
+        # each stage's config section exactly as the denver config (after
         # stacking/overrides) spelled it, before any provider default was
         # filled in -- kept by denver.resolve_provider_defaults so a stage's
         # defaults can be resolved *again*, from scratch, right before it
@@ -686,9 +686,9 @@ class Context:
         # denver-owned working area for this env (venv, caches, logs, ...),
         # keyed on the config file rather than on the env dir's bare name --
         # see state_dir_for. config_path defaults to the conventional
-        # denver.toml so a provider driven directly (e.g. in tests) still gets
+        # denver.yml so a provider driven directly (e.g. in tests) still gets
         # a sensible location.
-        self.config_path = Path(config_path) if config_path else self.env_dir / "denver.toml"
+        self.config_path = Path(config_path) if config_path else self.env_dir / "denver.yml"
         self.env_workdir = state_dir_for(self.env_dir, self.config_path)
         self.logs_dir = self.env_workdir / ".logs"
 
@@ -954,7 +954,7 @@ class Context:
         """
         value = interpolate(value, self.variables)
         if not isinstance(value, (str, os.PathLike)):
-            die(f"expected a path in denver.toml, got a {type(value).__name__}: {value!r}")
+            die(f"expected a path in the denver config, got a {type(value).__name__}: {value!r}")
         p = Path(value).expanduser()
         if p.is_absolute():
             return p
@@ -1025,7 +1025,7 @@ class Context:
 
         Backs the generic per-stage 'env-prepend:'/'env-append:' keys (see
         GENERIC_STAGE_KEYS in denver.py): the value resolves exactly the way
-        any other denver.toml path does (Context.resolve_path -- against the
+        any other denver config path does (Context.resolve_path -- against the
         env dir, then imported base envs; an already-absolute value is left
         untouched), so a stage can point at a fixed location (its own
         checkout, a sibling stage's output) without a provider-specific
@@ -1180,7 +1180,7 @@ class Context:
         """Report a command that could not be started at all.
 
         A configured 'exe:' naming a file that isn't there, a script without
-        the execute bit, an unreadable cwd. That is a denver.toml problem, but
+        the execute bit, an unreadable cwd. That is a denver config problem, but
         Popen raises before check= ever applies, so main()'s
         CalledProcessError handler never sees it and the user gets a
         traceback whose frames name subprocess.py rather than the key at

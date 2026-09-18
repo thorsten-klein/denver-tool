@@ -190,7 +190,7 @@ def print_logo():
 # --------------------------------------------------------------------------- #
 # denver's own version
 #
-# Needed twice: for `--version`, and to check a denver.toml's
+# Needed twice: for `--version`, and to check a denver config's
 # 'denver-version:' requirement (see validate_denver_version). Both must
 # report the *running* denver in every supported way of running it -- an
 # installed wheel, an editable install, or the plain script out of a
@@ -591,7 +591,7 @@ def import_entries(value, where):
 
 
 def load_config(config_path, _seen=None) -> dict:
-    """Load a denver.toml and all of its imports into one merged config.
+    """Load a denver config and all of its imports into one merged config.
 
     Imports are merged first (base), then the importing file overlays on top,
     so a version-specific env can override values inherited from its base.
@@ -616,7 +616,7 @@ def load_config(config_path, _seen=None) -> dict:
     for entry in import_entries(raw.get("import"), config_path):
         merged = cast(dict, deep_merge(merged, load_config(resolve_import(entry, base_dir), _seen)))
 
-    # 'runnable' marks one specific denver.toml (e.g. a shared base meant only
+    # 'runnable' marks one specific denver config (e.g. a shared base meant only
     # to be imported, never started directly) -- it must never leak from an
     # imported base into a derived env's own resolved config, or every env
     # importing a 'runnable: false' base would incorrectly inherit it too.
@@ -828,7 +828,7 @@ def apply_config_overrides(config, specs):
     return config
 
 
-# Top-level denver.toml keys that aren't a stage's own config section.
+# Top-level denver config keys that aren't a stage's own config section.
 KNOWN_TOP_LEVEL_KEYS = {
     "version",
     "denver-version",
@@ -846,7 +846,7 @@ KNOWN_TOP_LEVEL_KEYS = {
 
 
 def validate_top_level_keys(config):
-    """Die on a top-level key that's neither a known denver.toml key nor a stage id declared in 'stages:'.
+    """Die on a top-level key that's neither a known denver config key nor a stage id declared in 'stages:'.
 
     Without this, a typo'd section (or one left behind after a stage was
     renamed/removed from 'stages:') is just silently ignored -- no stage
@@ -861,7 +861,7 @@ def validate_top_level_keys(config):
         )
 
 
-# the denver.toml schema version this denver understands; bump together with
+# the denver config schema version this denver understands; bump together with
 # an actual breaking change to the schema (doc/configuration/config-file.md
 # and each provider's doc/providers/*.md page are the schema's documentation).
 SUPPORTED_CONFIG_VERSION = "1.0"
@@ -870,7 +870,7 @@ SUPPORTED_CONFIG_VERSION = "1.0"
 def validate_config_version(config):
     """Die if 'version:' is set to a schema version this denver doesn't understand.
 
-    'version:' exists precisely so a future, incompatible denver.toml schema
+    'version:' exists precisely so a future, incompatible denver config schema
     change can be rejected with a clear message instead of silently
     misinterpreted -- so it must actually gate something, not just be
     accepted and ignored. Compared as a string so TOML's own numeric parsing
@@ -961,12 +961,12 @@ def _parse_version_requirement(part, spec):
 def validate_denver_version(config):
     """Die if 'denver-version:' isn't satisfied by the denver actually running.
 
-    A denver.toml using a key or behaviour only a newer denver knows would
+    A denver config using a key or behaviour only a newer denver knows would
     otherwise fail somewhere deep in a stage (or, worse, quietly do
     something else); this states the requirement up front, in the file that
     has it, and reports it as exactly that.
 
-    Distinct from 'version:', which pins the *schema* denver.toml is written
+    Distinct from 'version:', which pins the *schema* a denver config is written
     against (bumped only on a breaking schema change, see
     SUPPORTED_CONFIG_VERSION). This one pins the *tool*: a purely additive
     feature -- a new provider key, say -- never changes the schema version,
@@ -1091,7 +1091,7 @@ GENERIC_STAGE_KEYS = (
 def resolve_stage_section(stage, raw_section, config, ctx):
     """Resolve one stage's *raw* section into its complete effective one.
 
-    Always given the section as the denver.toml spelled it, never a section
+    Always given the section as the denver config spelled it, never a section
     this function already resolved: a resolver reads an unset key's default
     back as though the author had written it (``cfg.get("exe") or
     ctx.which(...)``), so feeding it its own output turns every default it
@@ -1253,7 +1253,7 @@ def resolve_env_dir(env_arg):
 
 
 def is_runnable_env(config_path):
-    """An env is runnable unless its denver.toml sets ``runnable: false``.
+    """An env is runnable unless its denver config sets ``runnable: false``.
 
     Used to reject starting a shared/base env directly (meant to be
     inherited via ``import:`` only) -- see its use in main() below.
@@ -1262,7 +1262,7 @@ def is_runnable_env(config_path):
 
 
 # --------------------------------------------------------------------------- #
-# Provider orchestration (denver.toml-driven)
+# Provider orchestration (denver-config-driven)
 # --------------------------------------------------------------------------- #
 def collect_import_dirs(config_path, _seen=None):
     """Directories of every env in the whole-file ``import:`` chain, nearest first.
@@ -1279,7 +1279,7 @@ def collect_import_dirs(config_path, _seen=None):
     """
     config_path, _seen = _register_seen(config_path, _seen)
     if not config_path.is_file():
-        # an env dir need not have its own denver.toml if -f/-c supply the
+        # an env dir need not have its own denver config if -f/-c supply the
         # whole config (see _load_cli_config) -- nothing to import from here.
         return []
     raw = load_config_file(config_path)
@@ -1317,13 +1317,13 @@ def collect_hook_entries(config_path, name, _seen=None):
     is never silently lost just because a derived env also declares one.
 
     Nothing is discovered from the directory layout: a ``hooks/<name>.sh``
-    (or ``hooks/<name>.user.sh``) sitting next to a ``denver.toml`` is only
-    ever run if that ``denver.toml`` actually lists it.
+    (or ``hooks/<name>.user.sh``) sitting next to a denver config is only
+    ever run if that config actually lists it.
     """
     config_path, _seen = _register_seen(config_path, _seen)
     if not config_path.is_file():
         # see collect_import_dirs's own guard -- an env dir need not have a
-        # denver.toml of its own when -f/-c supply the whole config.
+        # denver config of its own when -f/-c supply the whole config.
         return []
     raw = load_config_file(config_path)
     base_dir = config_path.parent
@@ -1450,7 +1450,7 @@ def expand_section_imports(config, env_dir):
 
         conan:
           import:
-          - ../zephyr-devshell/denver.toml:conan
+          - ../zephyr-devshell/denver.yml:conan
 
     The referenced sections are merged in (base-first), then the local keys
     override. Returns (expanded_config, extra_search_dirs, extra_hook_entries)
@@ -1624,7 +1624,7 @@ def reinvoke_command(config_path, forwarded, wrapper_stage_ids, *, options=None)
       _relocation_env for how the raw container environment itself gets
       them too);
     * the env's own 'denver-custom-args:' flags (``options.cli_args.argv``): the inner
-      denver re-reads the same denver.toml, so it declares the same flags --
+      denver re-reads the same denver config, so it declares the same flags --
       but nobody would have given them to it, and every one would quietly
       fall back to its 'default:';
     * -cf/--config-file and -c/--config (``options.cli_args.config_argv``): the inner
@@ -2043,7 +2043,7 @@ def list_named_scripts(env_dir, config_path, *, until_stage=None, skip_stages=()
     exist?" would fail for reasons having nothing to do with scripts.
     """
     # config_path may not exist -- see _load_cli_config's own is_file() guard: an
-    # env dir need not have its own denver.toml if -f/-c supply the whole config.
+    # env dir need not have its own denver config if -f/-c supply the whole config.
     config = load_config(config_path) if config_path.is_file() else {}
     config, _, _ = expand_section_imports(config, env_dir)
     stage_ids = filtered_stage_ids(config, env_dir, until_stage, skip_stages)
@@ -2284,7 +2284,7 @@ def run_stages(env_dir, config, config_path, forwarded, *, options=None):
     5 declared stages shows '[5/5] ... skipped by --skip', never silently
     drops to a 4-stage trail. This numbering needs no cross-process
     plumbing (unlike start_time): both the outer and any reinvoked inner
-    denver derive it identically, straight from the *same* denver.toml's
+    denver derive it identically, straight from the *same* denver config's
     'stages:' list, which --until/--skip never changes.
 
     Under ``dry_run`` every stage still runs in order and still resolves its
@@ -3262,14 +3262,14 @@ def _ordered_config(resolved, stage_ids):
 
 
 # --------------------------------------------------------------------------- #
-# denver.toml-declared CLI arguments ('denver-custom-args:')
+# denver-config-declared CLI arguments ('denver-custom-args:')
 #
 # An env may declare flags of its own: each 'denver-custom-args:' entry is one
 # ``parser.add_argument(*flags, **kwargs)`` call, so an env offering a
 # per-run knob ("which board?", "release or debug?") gets a real flag that
 # `denver run <env> --help` lists, instead of asking its users for a generic
 # `-c some.dotted.path=value`. What the user then passes is exported as
-# DENVER_ARG_<DEST> (see cli_arg_env), i.e. it reaches the denver.toml's own
+# DENVER_ARG_<DEST> (see cli_arg_env), i.e. it reaches the denver config's own
 # ${...} interpolation, every hook, every stage and the final command
 # through the one mechanism all of those already read.
 # --------------------------------------------------------------------------- #
@@ -3279,7 +3279,7 @@ ARG_ENV_PREFIX = "DENVER_ARG_"
 
 
 def add_config_args(parser, entries):
-    """Add every denver.toml 'denver-custom-args:' entry to ``parser`` as an ordinary argparse flag.
+    """Add every denver config 'denver-custom-args:' entry to ``parser`` as an ordinary argparse flag.
 
     ``entries`` is the raw 'denver-custom-args:' value (None when the env declares none).
     Each entry is a mapping: 'flags:' names the flag(s), everything else is
@@ -3344,7 +3344,7 @@ def _validate_flag(flag, entry):
 
 
 def _reject_type_key(flags, kwargs):
-    """Die on 'type:', which a denver.toml cannot express.
+    """Die on 'type:', which a denver config cannot express.
 
     argparse's ``type=`` is a *callable*, and TOML cannot express one -- a config file only ever hands
     over a string/number/bool/list/mapping. Accepting one anyway would mean denver
@@ -3420,7 +3420,7 @@ class CliArgs:
     environment gets to see (DENVER_ARG_<DEST> for every entry with a
     value), while ``argv`` is the user's own tokens, kept verbatim so a
     wrapper reinvocation can re-pass them (see reinvoke_command) -- the
-    inner denver re-reads the same denver.toml and would otherwise fall back
+    inner denver re-reads the same denver config and would otherwise fall back
     to each entry's 'default:'.
 
     ``config_argv`` (see _config_argv) is re-passed for the same reason:
@@ -3598,7 +3598,7 @@ def _shared_cache_dir():
 
 
 def _import_chain(config_path):
-    """Every denver.toml in ``config_path``'s whole-file 'import:' chain, nearest first.
+    """Every denver config in ``config_path``'s whole-file 'import:' chain, nearest first.
 
     Nothing here is fatal: a config that will not parse, or an 'import:'
     entry pointing nowhere, costs only the part of the chain below it and is
@@ -3803,7 +3803,7 @@ def _add_run_parser(subparsers, config_args):
         add_help=False,
         help="build/enter an env (or run one of its 'scripts:' entries, or just show its resolved config)",
         description="Build/enter <env>, or (with --scripts) run one of its 'scripts:' entries instead, or "
-        "(with --show-config) just print its fully resolved denver.toml.",
+        "(with --show-config) just print its fully resolved config.",
     )
     _add_help_flag(run_p)
     _add_env_positional(run_p)
@@ -3843,7 +3843,7 @@ def _add_run_parser(subparsers, config_args):
     run_p.add_argument(
         "--show-config",
         action="store_true",
-        help="print the fully resolved (deep-merged) denver.toml and exit, dropping every key left unset "
+        help="print the fully resolved (deep-merged) config and exit, dropping every key left unset "
         "so only keys with a value remain -- see --show-config-full for every key, unset ones included",
     )
     run_p.add_argument(
@@ -4423,7 +4423,7 @@ def _top_level_help():
 def _run_flag_help():
     """{flag: help text} for _RUN_FLAGS -- denver's own 'run' flags, sourced from build_arg_parser().
 
-    config_args=None, so this never loads or validates any env's own denver.toml -- see this function's
+    config_args=None, so this never loads or validates any env's own denver config -- see this function's
     caller, _completion_description_lookup, for where an env's own declared flags get theirs instead.
     """
     run_p = build_arg_parser().subcommand_parsers["run"]
@@ -4436,7 +4436,7 @@ def _completion_declared_flag_help(env_value):
     Reads the raw 'help:' key straight off each entry, deliberately without
     add_config_args' own validation (a dest collision, an unknown kwarg, ...)
     -- same best-effort spirit as _completion_declared_flags itself: a
-    malformed denver.toml must degrade a completion request, never die() it.
+    malformed denver config must degrade a completion request, never die() it.
     """
     config = _completion_config(env_value)
     entries = (config or {}).get("denver-custom-args")
@@ -4524,7 +4524,7 @@ def _complete_candidates_described(words):
 
 
 def _completion_path_candidates(cur):
-    """Directory/denver.toml completions for the <env> positional, honouring any 'dir/' prefix already in ``cur``."""
+    """Directory/config-file completions for the <env> positional, honouring any 'dir/' prefix already in ``cur``."""
     base, prefix = _completion_base_and_prefix(cur)
     names = [name for name in sorted(_listdir_or_empty(base)) if name.startswith(prefix)]
     candidates = [_completion_path_candidate(base, name) for name in names]
@@ -4757,7 +4757,7 @@ def _completion_script_fish(names, quoted):
     # drowned out by every file in the cwd -- unlike bash's '-o default', fish shows
     # filenames alongside custom candidates by default. That's exactly right for most
     # positions (denver's own __complete already returns the relevant directories/
-    # denver.toml files for the <env> positional itself, see _completion_path_candidate),
+    # config files for the <env> positional itself, see _completion_path_candidate),
     # but _PATH_VALUE_FLAGS (-c/--config/-cf/--config-file) take an arbitrary path
     # __complete can't enumerate -- so a second entry, gated by '-n __denver_expects_path'
     # and forcing files back on with '-F', covers just that one case.
@@ -5025,7 +5025,7 @@ def _run_resolved_cli(argv):
     # Handled here, ahead of everything below: none of the run-only
     # machinery -- '-e' env vars, the config-aware second parse, the
     # denver-version check -- applies to removing directories, and cleaning
-    # has to work for an env whose denver.toml is broken (see clean_env_and_imports).
+    # has to work for an env whose denver config is broken (see clean_env_and_imports).
     if preliminary.subcommand == "clean":
         _, config_path = resolve_env_dir(preliminary.env)
         clean_env_and_imports(
@@ -5175,10 +5175,10 @@ def _load_cli_config(args, config_path) -> dict:
 
     ``config_path`` not existing is tolerated here rather than reported --
     ``--help``/``--version``/``--license`` (handled right after this, in
-    _run_resolved_cli) must still work for a directory with no denver.toml
+    _run_resolved_cli) must still work for a directory with no denver config
     of its own, and -f/--config-file may yet supply the whole config even
     for a real run. See _require_config_source for where the "no
-    denver.toml" case actually gets reported, once neither of those
+    denver config" case actually gets reported, once neither of those
     excuses applies.
     """
     config = load_config(config_path) if config_path.is_file() else {}
@@ -5194,7 +5194,7 @@ def _load_cli_config(args, config_path) -> dict:
     validate_stage_filters(config, args.until, args.skip)
     validate_hooks_keys(config)
     # deep_merge/apply_config_overrides are typed for config *values* (a
-    # mapping, a list, a scalar); a whole denver.toml is always the mapping.
+    # mapping, a list, a scalar); a whole denver config is always the mapping.
     return cast(dict, config)
 
 

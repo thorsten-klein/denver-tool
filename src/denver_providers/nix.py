@@ -1,6 +1,6 @@
 """nix provider: brings a nix flake's devShell into the environment.
 
-Configured from denver.toml -> a stage declaring ``provider: nix``, with a
+Configured from the denver config -> a stage declaring ``provider: nix``, with a
 ``flake:`` of its own. The devShell's environment is fetched once with ``nix
 print-dev-env``, cached, and then *sourced into this process's own
 environment* -- denver never wraps the final command in ``nix develop
@@ -69,7 +69,7 @@ _VERSION_CHARS = "0123456789."
 
 # a flake *reference* rather than a path: 'github:owner/repo',
 # 'git+https://...', 'path:/abs/dir', 'flake:nixpkgs'. Anything else is a
-# filesystem path, resolved like every other denver.toml path.
+# filesystem path, resolved like every other denver config path.
 _FLAKE_REF_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
@@ -101,7 +101,7 @@ def install_instructions(version):
 
 
 class NixProvider(Provider):
-    """Sources a nix flake's devShell into the environment -- see doc/providers/nix.md for denver.toml keys."""
+    """Sources a nix flake's devShell into the environment -- see doc/providers/nix.md for its config keys."""
 
     name = "nix"
 
@@ -147,7 +147,7 @@ class NixProvider(Provider):
         """'flake:' as an absolute directory, or verbatim when it is a flake *reference* (``github:...``).
 
         Defaults to the env dir itself: the common case is a ``flake.nix``
-        living right next to the denver.yml that names this stage.
+        living right next to the denver config that names this stage.
         """
         value = flake or "."
         if _FLAKE_REF_RE.match(value):
@@ -227,7 +227,7 @@ class NixProvider(Provider):
     def _cache_file(self, ctx, cfg):
         """Where this stage's ``nix print-dev-env`` output is cached, for exactly these inputs.
 
-        The stage id is free-form text out of the denver.yml and it *names*
+        The stage id is free-form text out of the denver config and it *names*
         this file, so one containing a path separator (or '..') would put
         denver's own writes somewhere outside its state directory. Checked
         here, at the single place that turns config into a path, rather than

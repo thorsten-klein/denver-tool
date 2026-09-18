@@ -1,6 +1,6 @@
 """git provider: brings a git checkout into the environment, pinned to one revision.
 
-Configured from denver.toml -> a stage declaring ``provider: git``, with
+Configured from the denver config -> a stage declaring ``provider: git``, with
 ``url:``/``path:``/``revision:`` of its own. If ``path:`` doesn't exist yet
 it is cloned; otherwise the existing checkout is fetched and moved (detached,
 never on a branch) onto whatever commit ``revision:`` names -- a tag, a
@@ -36,7 +36,7 @@ DEFAULT_REMOTE = "origin"
 
 
 class GitProvider(Provider):
-    """Clones (or updates) a git checkout, pinned to one revision -- see doc/providers/git.md for denver.toml keys."""
+    """Clones (or updates) a git checkout, pinned to one revision -- see doc/providers/git.md for its config keys."""
 
     name = "git"
 

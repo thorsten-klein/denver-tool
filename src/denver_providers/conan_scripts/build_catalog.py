@@ -9,7 +9,7 @@ it, producing a name -> full_reference mapping.
 That mapping is a return value, not a file: recipes.py's generate_catalog()
 imports build() and hands ``Catalog.get_references()`` straight to its export
 step. A catalog.yml is only ever written when something explicitly asks for
-one -- ``--output`` here, ``--export-catalog`` in recipes.py, denver.yml's
+one -- ``--output`` here, ``--export-catalog`` in recipes.py, the denver config's
 ``conan.export-catalog:`` -- so running a build never leaves a generated
 file behind in the recipe tree.
 """
@@ -31,7 +31,7 @@ except ImportError:
 
 workdir = Path(__file__).parents[1]
 
-# denver.yml's conan.user:/conan.channel: (never a real environment variable
+# the denver config's conan.user:/conan.channel: (never a real environment variable
 # -- see ConanProvider's own docstring) default to these. Threaded explicitly
 # through Catalog/Recipe (see main()) rather than a module-level global so
 # construction stays reentrant and doesn't leak between denver's own tests.
@@ -372,13 +372,13 @@ def main():
         "--user",
         type=str,
         default=DEFAULT_CONAN_USER,
-        help="conan user for each generated reference (denver.yml's conan.user:)",
+        help="conan user for each generated reference (denver config's conan.user:)",
     )
     parser.add_argument(
         "--channel",
         type=str,
         default=DEFAULT_CONAN_CHANNEL,
-        help="conan channel for each generated reference (denver.yml's conan.channel:)",
+        help="conan channel for each generated reference (denver config's conan.channel:)",
     )
     args = parser.parse_args()
 
