@@ -316,6 +316,29 @@ def test_expand_section_imports_stacks_and_overrides(tmp_path):
     assert extra_hooks == {}
 
 
+def test_expand_section_imports_bare_string_is_a_one_item_list(tmp_path):
+    src_env = tmp_path / "src"
+    src_env.mkdir()
+    (src_env / "denver.yml").write_text("docker:\n  exe: docker\n")
+    env_dir = tmp_path / "env"
+    env_dir.mkdir()
+
+    expanded, extra_dirs, _ = denver.expand_section_imports({"docker": {"import": "../src"}}, env_dir)
+    assert expanded["docker"] == {"exe": "docker"}
+    assert extra_dirs == [src_env]
+
+
+def test_collect_import_dirs_bare_string_import(tmp_path):
+    base = tmp_path / "base"
+    base.mkdir()
+    (base / "denver.yml").write_text("{}\n")
+    env_dir = tmp_path / "env"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text("import: ../base\n")
+
+    assert denver.collect_import_dirs(env_dir / "denver.yml") == [base]
+
+
 def test_expand_section_imports_direct_file_ref(tmp_path):
     src_env = tmp_path / "src"
     src_env.mkdir()

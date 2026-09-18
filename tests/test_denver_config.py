@@ -486,6 +486,48 @@ def test_load_config_circular_import_dies(tmp_path):
         denver.load_config(a_dir / "denver.yml")
 
 
+def test_load_config_bare_string_import_is_a_one_item_list(tmp_path):
+    # iterated as-is, 'import: ../base' walked character by character, and its first
+    # '.' resolved back to env's own denver.yml -- a bogus "circular import" error
+    base_dir = tmp_path / "base"
+    base_dir.mkdir()
+    (base_dir / "denver.yml").write_text("uv:\n  python: 3.12.3\n")
+    env_dir = tmp_path / "env"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text("import: ../base\n")
+
+    cfg = denver.load_config(env_dir / "denver.yml")
+    assert cfg["uv"]["python"] == "3.12.3"
+
+
+@pytest.mark.parametrize("value", ["{a: 1}", "42", "[../base, 42]"])
+def test_load_config_malformed_import_dies(tmp_path, caplog, value):
+    (tmp_path / "denver.yml").write_text(f"import: {value}\n")
+    with pytest.raises(DenverError):
+        denver.load_config(tmp_path / "denver.yml")
+    assert "'import:' must be a string or a list of strings" in caplog.text
+    assert "circular" not in caplog.text
+
+
+def test_load_config_bare_string_section_import_is_rebased(tmp_path):
+    docker_src_dir = tmp_path / "docker_src"
+    docker_src_dir.mkdir()
+    (docker_src_dir / "denver.yml").write_text("docker:\n  exe: docker\n")
+    env_dir = tmp_path / "env"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text("docker:\n  import: ../docker_src\n")
+
+    cfg = denver.load_config(env_dir / "denver.yml")
+    assert cfg["docker"]["import"] == [str(docker_src_dir.resolve())]
+
+
+def test_load_config_malformed_section_import_dies(tmp_path, caplog):
+    (tmp_path / "denver.yml").write_text("docker:\n  import: {a: 1}\n")
+    with pytest.raises(DenverError):
+        denver.load_config(tmp_path / "denver.yml")
+    assert "'docker': 'import:' must be a string or a list of strings" in caplog.text
+
+
 # ---- typo hints ("did you mean") --------------------------------------------#
 def test_with_hint_close_match():
     assert denver._with_hint("stagse", ["stages", "version"]) == "'stagse' (did you mean 'stages'?)"

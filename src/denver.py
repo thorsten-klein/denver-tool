@@ -565,6 +565,29 @@ def resolve_import(entry, base_dir):
     return target
 
 
+def _import_list(value):
+    """The entries of an ``import:`` value as a list -- a bare string counts as one -- or None if malformed.
+
+    A bare string must never be iterated as-is: that walks it character by
+    character, and its first ``.`` then resolves back to the importing file itself.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list) and all(isinstance(entry, str) for entry in value):
+        return value
+    return None
+
+
+def import_entries(value, where):
+    """The entries of an ``import:`` value as a list (see _import_list), dying naming ``where`` if malformed."""
+    entries = _import_list(value)
+    if entries is None:
+        die(f"{where}: 'import:' must be a string or a list of strings, got {value!r}")
+    return entries
+
+
 def load_config(config_path, _seen=None) -> dict:
     """Load a denver.toml and all of its imports into one merged config.
 
@@ -583,9 +606,12 @@ def load_config(config_path, _seen=None) -> dict:
     # them later against the top-level env dir instead, which would be wrong
     # for a layer only reached through a whole-file 'import:' chain.
     base_dir = config_path.parent
-    raw = {key: _rebased_section_value(value, base_dir) for key, value in load_config_file(config_path).items()}
+    raw = {
+        key: _rebased_section_value(value, base_dir, f"{config_path}: '{key}'")
+        for key, value in load_config_file(config_path).items()
+    }
     merged: dict = {}
-    for entry in raw.get("import", []) or []:
+    for entry in import_entries(raw.get("import"), config_path):
         merged = cast(dict, deep_merge(merged, load_config(resolve_import(entry, base_dir), _seen)))
 
     # 'runnable' marks one specific denver.toml (e.g. a shared base meant only
@@ -624,7 +650,7 @@ def fetch_init_projects(config_path, ctx_flags=None, _seen=None):
     projects = _init_projects(raw.get(INIT_KEY), config_path)
     if projects:
         _run_init_projects(projects, raw, config_path, ctx_flags or {})
-    for entry in raw.get("import", []) or []:
+    for entry in import_entries(raw.get("import"), config_path):
         fetch_init_projects(resolve_import(entry, config_path.parent), ctx_flags, _seen)
 
 
@@ -681,11 +707,12 @@ def _run_init_projects(projects, raw, config_path, ctx_flags):
         stage.setup(ctx)
 
 
-def _rebased_section_value(value, base_dir):
+def _rebased_section_value(value, base_dir, where):
     """A single raw layer's section value, with its own ``import:`` entries (if any) rebased to ``base_dir``."""
     if not (isinstance(value, dict) and value.get("import")):
         return value
-    return {**value, "import": [_rebased_import_entry(entry, base_dir) for entry in value["import"]]}
+    entries = import_entries(value["import"], where)
+    return {**value, "import": [_rebased_import_entry(entry, base_dir) for entry in entries]}
 
 
 def _rebased_import_entry(entry, base_dir):
@@ -1249,7 +1276,7 @@ def collect_import_dirs(config_path, _seen=None):
         # whole config (see _load_cli_config) -- nothing to import from here.
         return []
     raw = load_config_file(config_path)
-    imported = [resolve_import(entry, config_path.parent) for entry in (raw.get("import", []) or [])]
+    imported = [resolve_import(entry, config_path.parent) for entry in import_entries(raw.get("import"), config_path)]
 
     dirs = [p.parent for p in imported]
     for imported_path in imported:
@@ -1295,7 +1322,7 @@ def collect_hook_entries(config_path, name, _seen=None):
     base_dir = config_path.parent
 
     entries = []
-    for imported_path in (resolve_import(entry, base_dir) for entry in (raw.get("import", []) or [])):
+    for imported_path in (resolve_import(entry, base_dir) for entry in import_entries(raw.get("import"), config_path)):
         entries += collect_hook_entries(imported_path, name, _seen)
     return entries + _own_hook_entries(raw, base_dir, name)
 
@@ -1462,7 +1489,7 @@ def _stacked_section(value, key, env_dir):
     merged = {}
     extra_dirs = []
     hook_entries = {}
-    for ref in value["import"]:
+    for ref in import_entries(value["import"], f"section '{key}'"):
         path, sep, section = ref.rpartition(":")
         path, section = (path, section) if sep else (ref, None)
         src_path = resolve_import(path, env_dir)
@@ -3578,8 +3605,12 @@ def _readable_imports(config_path):
         logger.warning(f"clean: cannot read {config_path} -- the envs it imports are left alone")
         return []
 
+    entries = _import_list(raw.get("import"))
+    if entries is None:
+        logger.warning(f"clean: {config_path}: 'import:' is neither a string nor a list of strings -- left alone")
+        return []
     targets = []
-    for entry in raw.get("import", []) or []:
+    for entry in entries:
         target = (config_path.parent / entry).resolve()
         if target.is_dir():
             target = _config_file_in_dir(target)

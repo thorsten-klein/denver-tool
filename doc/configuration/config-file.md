@@ -70,6 +70,7 @@ see "Fail loud" in [`philosophy.md`](../concepts/philosophy.md)).
   e.g. `denver-version = ">=1.0.4"`. See "Requiring a denver version" below.
 - **`import`** — a list of environments (or config files) whose configuration
   is inherited as a base, before this file's own content is applied on top.
+  A single entry may be given as a bare string (`import = "../base"`).
   See "Layering" below.
 - **`.init`** — git repositories or archives to bring in automatically on
   every `denver run`, *before* the config is resolved, so `import:` can point
