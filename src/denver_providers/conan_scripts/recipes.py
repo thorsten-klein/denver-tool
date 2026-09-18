@@ -2,7 +2,7 @@
 """Catalog tool: prepares conan remotes, then exports/creates/uploads recipes from a recipe catalog.
 
 Invoked by providers.conan.ConanProvider as a subprocess -- see
-ConanProvider's module docstring for the denver.yml keys that route to
+ConanProvider's module docstring for the denver config keys that route to
 --prepare/--export/--create/--upload/--ci here. Also runnable standalone for
 maintaining a recipe catalog outside of a denver run (--recipes/--remote).
 
@@ -12,7 +12,7 @@ recipes in one dir may require recipes in another.
 
 The catalog is built in memory (build_catalog.build()) and consumed straight
 from there; it is only written to disk when ``--export-catalog PATH`` says
-where (the unit's ``catalog:`` in denver.yml). ``--no-generate`` is the
+where (the unit's ``catalog:`` in the denver config). ``--no-generate`` is the
 mirror image: skip the build and read an existing catalog.yml given with
 ``--catalog-yml``.
 """
@@ -147,7 +147,7 @@ def authenticate_remote(remote, *, force=False):
         _prompt_and_login(remote)
 
 
-# --no-remote (denver.yml's conan.authentication: false): never log in to or
+# --no-remote (denver config's conan.authentication: false): never log in to or
 # query a remote -- recipes are resolved from the local cache alone, the same
 # as the `conan install --no-remote` that setting already implies. Module-level
 # because it's one per-process switch, set once in main().
@@ -365,12 +365,12 @@ def generate_catalog(recipes_dirs, *, user='denver', channel='snapshot', export_
     """Build one catalog covering every dir in ``recipes_dirs``, as {'name/version': reference}.
 
     Nothing is written to disk unless ``export_to`` is given (--export-catalog,
-    i.e. denver.yml's ``conan.export-catalog:``): the caller consumes the
+    i.e. the denver config's ``conan.export-catalog:``): the caller consumes the
     returned mapping directly, so a catalog.yml only ever appears where an env
     explicitly asked for one instead of turning up in the recipe tree as a
     side effect of every run.
 
-    ``user``/``channel`` (denver.yml's ``conan.user:``/``conan.channel:``,
+    ``user``/``channel`` (the denver config's ``conan.user:``/``conan.channel:``,
     threaded down from this script's own ``--user``/``--channel``, see
     main()) become every generated reference's user/channel.
     """
@@ -504,7 +504,7 @@ def _validate_remote_name(remote_name):
     """Return conan's own name for the remote called ``remote_name``, or raise ValueError if it has no such remote.
 
     A remote name is the one value here that comes from outside this module
-    -- denver.yml's ``conan.remotes:`` keys, or ``--remote`` on this
+    -- the denver config's ``conan.remotes:`` keys, or ``--remote`` on this
     script's own command line -- and it is interpolated into a bare
     ``-r=<name>`` argument. Rather than guessing at which shapes are safe,
     this checks the only thing that actually matters: that the name denotes
@@ -680,7 +680,7 @@ def _login_remote(remote_name, remote, *, force):
 def conan_login(remotes, *, force=False):
     """Authenticate to each enabled remote named in ``remotes``, unless already authenticated.
 
-    ``force`` (denver.toml's ``conan.keep-remotes:`` sibling, ``--force``
+    ``force`` (the denver config's ``conan.keep-remotes:`` sibling, ``--force``
     on this script's own CLI -- see main()) re-authenticates even if a
     remote already looks authenticated; never read from a real environment
     variable.
@@ -693,14 +693,14 @@ def conan_login(remotes, *, force=False):
 
 
 def prepare(remotes: dict[str, dict[str, str | bool]], *, cleanup: bool = False, force: bool = False):
-    """Reconcile the conan remotes configured via ``conan.remotes:`` in denver.toml.
+    """Reconcile the conan remotes configured via ``conan.remotes:`` in the denver config.
 
     A no-op when ``remotes`` is empty and ``cleanup`` is false: without an
     explicit, project-owned list of remotes, this must never touch the
     user's existing conan configuration by default -- in particular
     ``conan_enable_remotes`` disables every remote not named in ``remotes``,
     so calling it with an empty dict would silently disable all of them.
-    ``cleanup`` (denver.toml's ``not conan.keep-remotes:``, default on) opts
+    ``cleanup`` (the denver config's ``not conan.keep-remotes:``, default on) opts
     into exactly that: treating ``remotes`` as the *exhaustive* list even
     when it's empty, disabling every remote already present. ``force``
     (denver's own ``--force``) re-authenticates every remote regardless of
@@ -708,7 +708,9 @@ def prepare(remotes: dict[str, dict[str, str | bool]], *, cleanup: bool = False,
     remotes are still reconciled (that's local config) but never logged in to.
     """
     if not remotes and not cleanup:
-        print("Info: no conan remotes configured (denver.yml's conan.remotes:); leaving conan's remote config as-is.")
+        print(
+            "Info: no conan remotes configured (denver config's conan.remotes:); leaving conan's remote config as-is."
+        )
         return
     print_banner("Prepare conan remotes")
     conan_ensure_remotes(remotes)
@@ -782,14 +784,14 @@ def _build_arg_parser():
         '--remotes-json',
         type=Path,
         default=None,
-        help="path to a JSON file of {remote_name: {url, verify_ssl, enabled}} -- denver.toml's conan.remotes:, "
+        help="path to a JSON file of {remote_name: {url, verify_ssl, enabled}} -- denver config's conan.remotes:, "
         'written by the conan provider. Without it, remotes are left untouched.',
     )
     parser.add_argument(
         '--cleanup-remotes',
         action='store_true',
         help="treat --remotes-json's content as the exhaustive remote list even when empty, disabling every "
-        'other remote already present -- denver.toml\'s conan.keep-remotes: (default off)',
+        'other remote already present -- denver config\'s conan.keep-remotes: (default off)',
     )
     parser.add_argument(
         '--force',
@@ -800,7 +802,7 @@ def _build_arg_parser():
         '--no-remote',
         action='store_true',
         help='never log in to or query a remote; resolve recipes from the local cache only -- '
-        "denver.toml's conan.authentication: false",
+        "denver config's conan.authentication: false",
     )
     parser.add_argument(
         '--ci',
@@ -810,12 +812,12 @@ def _build_arg_parser():
     parser.add_argument(
         '--user',
         default='denver',
-        help='conan user for each generated reference -- denver.yml\'s conan.user: (default "denver")',
+        help='conan user for each generated reference -- denver config\'s conan.user: (default "denver")',
     )
     parser.add_argument(
         '--channel',
         default='snapshot',
-        help='conan channel for each generated reference -- denver.toml\'s conan.channel: (default "snapshot")',
+        help='conan channel for each generated reference -- denver config\'s conan.channel: (default "snapshot")',
     )
     parser.add_argument(
         '-d',
@@ -824,7 +826,7 @@ def _build_arg_parser():
         action='append',
         default=[],
         help='Directory searched for conan recipes (repeatable -- every dir given forms one catalog, '
-        "denver.toml's conan.recipes[].dirs:)",
+        "denver config's conan.recipes[].dirs:)",
     )
     parser.add_argument(
         '-b',
@@ -845,7 +847,7 @@ def _build_arg_parser():
         '--export-catalog',
         type=Path,
         default=None,
-        help="Write the generated catalog to this path -- denver.toml's conan.recipes[].catalog:. "
+        help="Write the generated catalog to this path -- denver config's conan.recipes[].catalog:. "
         'Without it, the catalog is built in memory only and no catalog.yml is written.',
     )
     parser.add_argument('recipes', nargs='*', help='Recipe folder names (one or more)')
@@ -873,7 +875,7 @@ def _apply_base_classes_pythonpath(base_classes_dirs):
 
 
 def _load_remotes_json(remotes_json):
-    """denver.yml's ``conan.remotes:`` as the conan provider wrote it out; {} without a --remotes-json."""
+    """The denver config's ``conan.remotes:`` as the conan provider wrote it out; {} without a --remotes-json."""
     if not remotes_json:
         return {}
     return json.loads(remotes_json.read_text())
@@ -882,7 +884,7 @@ def _load_remotes_json(remotes_json):
 def _resolve_remote_arg(parser, args):
     """Replace --remote with conan's own name for it, erroring out if conan has no such remote.
 
-    Called after prepare(), which is what puts denver.yml's 'remotes:' into
+    Called after prepare(), which is what puts the denver config's 'remotes:' into
     the conan home in the first place -- so this fails a typo'd (or otherwise
     unknown) --remote before the generate/export/create work rather than
     after it, and with the list of names that would have worked.
@@ -939,7 +941,7 @@ def _cli():
         print(
             "Hint: the remote refused access. Log in with 'conan remote login <remote>', "
             "set CONAN_LOGIN_USERNAME_<REMOTE>/CONAN_PASSWORD_<REMOTE>, or set "
-            "'conan: authentication: false' in denver.yml to work from the local cache only.",
+            "'conan: authentication: false' in the denver config to work from the local cache only.",
             file=sys.stderr,
         )
         sys.exit(1)

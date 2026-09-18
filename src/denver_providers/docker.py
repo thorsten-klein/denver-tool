@@ -1,7 +1,7 @@
 """docker provider: relocates the final command into a docker compose service.
 
 A *wrapper* provider (see providers/base.py) -- it does not build the local
-environment itself. Configured from denver.toml -> ``docker:``.
+environment itself. Configured from the denver config -> ``docker:``.
 
 Full key reference, worked examples and design notes: ``doc/providers/docker.md``.
 """
@@ -90,7 +90,7 @@ def _verbose_note(ctx, message, result=None):
 
 
 class DockerProvider(Provider):
-    """Relocates the final command into a docker compose service -- see doc/providers/docker.md for denver.toml keys."""
+    """Relocates the final command into a docker compose service -- see doc/providers/docker.md for its config keys."""
 
     name = "docker"
     kind = "wrapper"
@@ -208,7 +208,7 @@ class DockerProvider(Provider):
             die(f"docker[{self.stage}]: already running inside a container")
 
         # seed convenience variables BEFORE the config section is interpolated,
-        # so ${UID}/${GID} in denver.toml resolve correctly.
+        # so ${UID}/${GID} in the denver config resolve correctly.
         ctx.setdefault("UID", str(os.getuid()))
         ctx.setdefault("GID", str(os.getgid()))
 

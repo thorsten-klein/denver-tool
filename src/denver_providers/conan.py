@@ -4,7 +4,7 @@ Detects a conan profile, (re)generates + exports every ``recipes:`` entry,
 installs ``conanfile:`` (at most one -- a project only ever has a single
 dependency graph) via each ``deployers:`` script (the symlink deployer by
 default), then sources the resulting conanbuildenv.sh into ctx.env.
-Configured from denver.toml -> ``conan:``. ``conanfile:`` (what to install)
+Configured from the denver config -> ``conan:``. ``conanfile:`` (what to install)
 and ``recipes:`` (what to export into the local cache first) are
 independent: which recipes get exported has nothing to do with what the
 conanfile itself requires.
@@ -37,7 +37,7 @@ CONANBUILDENV_NAME = "conanbuildenv.sh"
 
 
 class ConanProvider(Provider):
-    """Provisions native tools via Conan and exposes them on PATH -- see doc/providers/conan.md for denver.toml keys."""
+    """Provisions native tools via Conan and exposes them on PATH -- see doc/providers/conan.md for its config keys."""
 
     name = "conan"
     KEYS = (

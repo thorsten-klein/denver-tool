@@ -589,7 +589,7 @@ def test_resolve_path_non_path_value_dies(make_context, caplog):
     ctx = make_context()
     with pytest.raises(DenverError):
         ctx.resolve_path(["conan/base_classes"])
-    assert "expected a path in denver.toml" in caplog.text
+    assert "expected a path in the denver config" in caplog.text
 
 
 def test_resolve_path_absolute(make_context, tmp_path):
