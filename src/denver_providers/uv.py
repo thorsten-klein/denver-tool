@@ -272,12 +272,16 @@ class UvProvider(Provider):
         ``${VAR}`` value in a non-'$(...)' entry stays plain-interpolated
         (``entry``): it becomes one literal `uv pip install` argv token,
         never reparsed by a shell, so quoting it would corrupt it instead
-        of protecting it.
+        of protecting it. The command runs with the env dir as its cwd.
         """
         if not (raw_entry.startswith("$(") and raw_entry.endswith(")")):
             return [entry], None
         shell_cmd = interpolate_shell(raw_entry[2:-1], ctx.variables)
-        output = ctx.run(["bash", "-c", shell_cmd], capture=True, echo=False).stdout
+        # run from the env dir, not wherever denver was invoked: a command
+        # like `west packages pip` locates its workspace from the cwd, and
+        # the env is what lives inside that workspace -- same base relative
+        # paths in the config already resolve against.
+        output = ctx.run(["bash", "-c", shell_cmd], cwd=ctx.env_dir, capture=True, echo=False).stdout
         return output.split(), output
 
     def _requirements_checksum(self, ctx, files, command_outputs):
