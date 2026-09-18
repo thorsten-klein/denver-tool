@@ -602,6 +602,87 @@ def load_config(config_path, _seen=None) -> dict:
     return cast(dict, deep_merge(merged, {k: v for k, v in raw.items() if k != "import"}))
 
 
+INIT_KEY = ".init"
+INIT_KEYS = ("projects",)
+# providers an '.init: projects:' entry may use -- each brings files onto disk, and nothing else
+INIT_PROVIDERS = ("git", "download")
+# top-level keys of the declaring file an '.init:' provider may read (download's credentials)
+INIT_SHARED_KEYS = ("download-auth",)
+
+
+def fetch_init_projects(config_path, ctx_flags=None, _seen=None):
+    """Run every ``.init: projects:`` entry across the whole-file ``import:`` chain.
+
+    Runs before the config is resolved, layer by layer: a layer's own projects
+    are brought in *before* its ``import:`` entries are followed, so an entry
+    may point into a checkout that only exists once its project ran. Each
+    project is set up by the very provider (``git``/``download``) a stage of
+    the same ``provider:`` uses; ``ctx_flags`` are that Context's run flags.
+    """
+    config_path, _seen = _register_seen(config_path, _seen)
+    if not config_path.is_file():
+        return
+    raw = load_config_file(config_path)
+    projects = _init_projects(raw.get(INIT_KEY), config_path)
+    if projects:
+        _run_init_projects(projects, raw, config_path, ctx_flags or {})
+    for entry in raw.get("import", []) or []:
+        fetch_init_projects(resolve_import(entry, config_path.parent), ctx_flags, _seen)
+
+
+def _init_projects(init, config_path):
+    """The validated ``projects:`` list of one layer's ``.init:`` section ([] if it has none)."""
+    if init is None:
+        return []
+    where = f"{config_path}: '{INIT_KEY}'"
+    if not isinstance(init, dict):
+        die(f"{where} must be a mapping")
+    unknown = sorted(set(init) - set(INIT_KEYS))
+    if unknown:
+        die(f"{where}: unknown key(s) {_list_with_hints(unknown, INIT_KEYS)}")
+    projects = init.get("projects") or []
+    if not isinstance(projects, list):
+        die(f"{where}: 'projects:' must be a list")
+    for index, project in enumerate(projects):
+        _validate_init_project(project, f"{where} project {index}")
+    return projects
+
+
+def _validate_init_project(project, where):
+    """Die unless one ``.init: projects:`` entry names an init provider and only that provider's keys."""
+    from denver_providers import PROVIDERS
+
+    if not isinstance(project, dict):
+        die(f"{where}: must be a mapping (got {project!r})")
+    provider = project.get("provider")
+    if provider not in INIT_PROVIDERS:
+        die(f"{where}: 'provider:' must be one of {', '.join(INIT_PROVIDERS)} (got {provider!r})")
+    allowed = ("provider", *PROVIDERS[provider].KEYS)
+    unknown = sorted(set(project) - set(allowed))
+    if unknown:
+        die(f"{where}: unknown key(s) {_list_with_hints(unknown, allowed)} for provider '{provider}'")
+
+
+def _run_init_projects(projects, raw, config_path, ctx_flags):
+    """Set up one layer's projects, in order, each as a stage ``.init[<n>]`` of that layer's own env.
+
+    Paths and ``${...}`` resolve exactly as in a stage of the declaring file:
+    against its directory, with its DENVER_ENV_WORKDIR.
+    """
+    from denver_providers import Context, make_stage
+
+    stage_ids = [f"{INIT_KEY}[{index}]" for index in range(len(projects))]
+    config = {key: raw[key] for key in INIT_SHARED_KEYS if key in raw}
+    config.update(zip(stage_ids, copy.deepcopy(projects)))
+    ctx = Context(config_path.parent, config, config_path=config_path, **ctx_flags)
+    ctx.stage_count = len(stage_ids)
+    for index, stage_id in enumerate(stage_ids, start=1):
+        stage = make_stage(stage_id, config)
+        config[stage_id] = type(stage).resolve_defaults(ctx, config[stage_id], config)
+        ctx.stage_index, ctx.stage_id = index, stage_id
+        stage.setup(ctx)
+
+
 def _rebased_section_value(value, base_dir):
     """A single raw layer's section value, with its own ``import:`` entries (if any) rebased to ``base_dir``."""
     if not (isinstance(value, dict) and value.get("import")):
@@ -720,6 +801,7 @@ KNOWN_TOP_LEVEL_KEYS = {
     "version",
     "denver-version",
     "import",
+    INIT_KEY,
     "stages",
     "command",
     "runnable",
@@ -4916,6 +4998,7 @@ def _run_resolved_cli(argv):
     os.environ.update(env_vars)
 
     env_dir, config_path = resolve_env_dir(preliminary.env)
+    _fetch_cli_init_projects(preliminary, config_path)
     config = _load_cli_config(preliminary, config_path)
 
     # Second pass, this time with the env's own 'denver-custom-args:' known: an unknown
@@ -5018,6 +5101,26 @@ def _handle_env_less_argv(preliminary, head):
         die("no environment given -- pass one, set $DENVER_ENV_DIR, or see `denver --help`")
 
     return False
+
+
+def _fetch_cli_init_projects(args, config_path):
+    """Run every ``.init:`` project of the env and its -f files, before any of them is resolved.
+
+    Deliberately never a --dry-run: the config itself is derived from what
+    these bring in (as with a sourced script). A run a wrapper relocated is
+    --fast here -- the outer run already brought everything in.
+    """
+    from denver_providers.context import RELOCATED_VAR
+
+    ctx_flags = {
+        "quiet": args.quiet,
+        "verbose": args.verbose,
+        "fast": args.fast or bool(os.environ.get(RELOCATED_VAR)),
+        "force": args.force,
+        "ci": args.ci,
+    }
+    for path in (config_path, *(Path(f) for f in args.config_file)):
+        fetch_init_projects(path, ctx_flags)
 
 
 def _load_cli_config(args, config_path) -> dict:
