@@ -757,6 +757,13 @@ def test_apply_config_override_parses_json_types():
     assert config["uv"]["requirements"] == ["a", "b"]
 
 
+@pytest.mark.parametrize(("raw", "expected"), [("True", True), ("False", False), ("FALSE", False), ("true", True)])
+def test_apply_config_override_booleans_any_case(raw, expected):
+    """YAML spells them 'True'/'False' -- left a string, 'False' would read as truthy."""
+    config = denver.apply_config_override({}, f"conan.authentication={raw}")
+    assert config["conan"]["authentication"] is expected
+
+
 def test_apply_config_override_bare_word_stays_a_string():
     """A value that isn't valid JSON on its own (e.g. a bare version string) falls back to a plain str."""
     config = denver.apply_config_override({}, "uv.python=3.12.3")

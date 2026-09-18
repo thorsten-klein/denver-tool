@@ -589,6 +589,18 @@ def test_prepare_passes_force_to_login(monkeypatch):
     assert seen["force"] is True
 
 
+def test_prepare_no_remote_reconciles_but_skips_login(monkeypatch):
+    calls = []
+    monkeypatch.setattr(recipes, "conan_ensure_remotes", lambda r: calls.append("ensure"))
+    monkeypatch.setattr(recipes, "conan_enable_remotes", lambda r: calls.append("enable"))
+    monkeypatch.setattr(recipes, "conan_login", lambda r, force=False: calls.append("login"))
+    monkeypatch.setattr(recipes, "_no_remote", True)
+
+    recipes.prepare({"conancenter": {"url": "http://conancenter"}})
+
+    assert calls == ["ensure", "enable"]
+
+
 # --------------------------------------------------------------------------- #
 # generate_catalog: built in memory; a file only when --export-catalog says so
 # --------------------------------------------------------------------------- #
@@ -733,6 +745,20 @@ def test_needs_export_true_when_graph_errors(monkeypatch):
     ref = RecipeReference.loads("foo/1.0@denver/snapshot")
     monkeypatch.setattr(recipes, "get_cache_path", lambda r: None)
     monkeypatch.setattr(recipes, "get_deps_graph_remote", lambda r: types.SimpleNamespace(error="boom"))
+    assert recipes.needs_export(ref) is True
+
+
+def test_needs_export_no_remote_never_queries_remotes(monkeypatch):
+    # conan.authentication: false -> anything missing from the local cache
+    # is exported, without logging in to (or even listing) any remote.
+    ref = RecipeReference.loads("foo/1.0@denver/snapshot")
+    monkeypatch.setattr(recipes, "get_cache_path", lambda r: None)
+    monkeypatch.setattr(recipes, "_no_remote", True)
+
+    def unexpected(r):
+        raise AssertionError("remote queried under --no-remote")
+
+    monkeypatch.setattr(recipes, "get_deps_graph_remote", unexpected)
     assert recipes.needs_export(ref) is True
 
 
@@ -1167,3 +1193,28 @@ def test_get_recipes_from_entries_falls_back_for_unknown_recipe(tmp_path):
     # the path still points somewhere concrete, for the error further down.
     recipes_ref = recipes.get_recipes_from_entries([tmp_path], {"gone/9.9": "gone/9.9@denver/snapshot"})
     assert next(iter(recipes_ref)) == (tmp_path / "gone" / "9.9" / "conanfile.py").absolute()
+
+
+def test_cli_reports_forbidden_without_traceback(monkeypatch, capsys):
+    def forbidden():
+        raise recipes.ForbiddenException("Permission denied for user: 'None': 403: Forbidden. [Remote: sdd]")
+
+    monkeypatch.setattr(recipes, "main", forbidden)
+    with pytest.raises(SystemExit) as exc:
+        recipes._cli()
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "ERROR: Permission denied for user: 'None'" in err
+    assert "conan remote login" in err
+    assert "Traceback" not in err
+
+
+def test_cli_reports_catalog_error(monkeypatch, capsys):
+    def broken():
+        raise recipes.CatalogError("Recipe path /nope does not exist!")
+
+    monkeypatch.setattr(recipes, "main", broken)
+    with pytest.raises(SystemExit) as exc:
+        recipes._cli()
+    assert exc.value.code == 1
+    assert capsys.readouterr().err == "ERROR: Recipe path /nope does not exist!\n"

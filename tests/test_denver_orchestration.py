@@ -1124,6 +1124,38 @@ def test_run_stages_disabled_stage_enabled_via_config_override(tmp_path, fake_pr
     assert exec_recorder["env"]["RAN_FAKESETUP2"] == "1"
 
 
+def test_reinvoke_command_forwards_config_argv(tmp_path):
+    options = denver.RunOptions(cli_args=denver.CliArgs(config_argv=["--config", "conan.authentication=false"]))
+    cmd = denver.reinvoke_command(tmp_path / "denver.yml", ["echo", "hi"], ["docker"], options=options)
+    assert cmd[cmd.index("--config") + 1] == "conan.authentication=false"
+    assert cmd.index("--config") < cmd.index("--")
+
+
+def test_main_carries_config_file_and_overrides_into_the_wrapper(tmp_path, fake_providers, exec_recorder, monkeypatch):
+    # -c/-cf shaped the config the outer run loaded; the inner (relocated)
+    # denver re-reads the env's own file, so it must get them re-passed too,
+    # or every stage inside the wrapper runs without them.
+    env_dir, _ = _env(
+        tmp_path,
+        {
+            "stages": ["fakewrap", "fakesetup"],
+            "fakewrap": {"provider": "fakewrap"},
+            "fakesetup": {"provider": "fakesetup"},
+        },
+    )
+    overlay = tmp_path / "overlay.yml"
+    overlay.write_text("fakesetup: {}\n")
+    monkeypatch.chdir(tmp_path)
+
+    denver.main(["run", str(env_dir), "-cf", "overlay.yml", "-c", "fakesetup.disabled=False", "--", "echo", "hi"])
+
+    relocated = exec_recorder["args"]
+    assert relocated[0] == "WRAPPED"
+    assert relocated[relocated.index("--config-file") + 1] == str(overlay.resolve())
+    assert relocated[relocated.index("--config") + 1] == "fakesetup.disabled=False"
+    assert relocated.index("--config") < relocated.index("--")
+
+
 def test_run_stages_disabled_wrapper_stage_stays_inactive(tmp_path, fake_providers, exec_recorder):
     env_dir, cfg_path = _env(tmp_path, {})
     config = {

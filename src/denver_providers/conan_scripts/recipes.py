@@ -34,7 +34,13 @@ import yaml
 from conan.api.conan_api import ConanAPI
 from conan.api.model import PkgReference, RecipeReference, Remote
 from conan.cli.commands.test import run_test
-from conan.internal.errors import AuthenticationException, ConanConnectionError, ConanException, NotFoundException
+from conan.internal.errors import (
+    AuthenticationException,
+    ConanConnectionError,
+    ConanException,
+    ForbiddenException,
+    NotFoundException,
+)
 from conan.internal.util.files import load
 
 CONANFILE_NAME = 'conanfile.py'
@@ -141,6 +147,13 @@ def authenticate_remote(remote, *, force=False):
         _prompt_and_login(remote)
 
 
+# --no-remote (denver.yml's conan.authentication: false): never log in to or
+# query a remote -- recipes are resolved from the local cache alone, the same
+# as the `conan install --no-remote` that setting already implies. Module-level
+# because it's one per-process switch, set once in main().
+_no_remote = False
+
+
 def _default_profiles():
     """The default (host, build) Profile pair, as consulted by both graph-loading functions below."""
     host = conan_api.profiles.get_profile([conan_api.profiles.get_default_host()])
@@ -175,6 +188,8 @@ def needs_export(reference: RecipeReference) -> bool:
     """True if ``reference`` isn't in the local cache and isn't resolvable from a remote either."""
     if get_cache_path(reference):
         return False
+    if _no_remote:
+        return True
     return bool(get_deps_graph_remote(reference).error)
 
 
@@ -689,7 +704,8 @@ def prepare(remotes: dict[str, dict[str, str | bool]], *, cleanup: bool = False,
     into exactly that: treating ``remotes`` as the *exhaustive* list even
     when it's empty, disabling every remote already present. ``force``
     (denver's own ``--force``) re-authenticates every remote regardless of
-    whether it already looks authenticated.
+    whether it already looks authenticated. Under ``--no-remote`` the
+    remotes are still reconciled (that's local config) but never logged in to.
     """
     if not remotes and not cleanup:
         print("Info: no conan remotes configured (denver.yml's conan.remotes:); leaving conan's remote config as-is.")
@@ -697,6 +713,9 @@ def prepare(remotes: dict[str, dict[str, str | bool]], *, cleanup: bool = False,
     print_banner("Prepare conan remotes")
     conan_ensure_remotes(remotes)
     conan_enable_remotes(remotes)
+    if _no_remote:
+        print("Info: conan.authentication: false -- not logging in to any conan remote.")
+        return
     conan_login(remotes, force=force)
 
 
@@ -776,6 +795,12 @@ def _build_arg_parser():
         '--force',
         action='store_true',
         help='re-authenticate to every remote even if already authenticated -- denver\'s own --force',
+    )
+    parser.add_argument(
+        '--no-remote',
+        action='store_true',
+        help='never log in to or query a remote; resolve recipes from the local cache only -- '
+        "denver.toml's conan.authentication: false",
     )
     parser.add_argument(
         '--ci',
@@ -885,8 +910,10 @@ def _validate_catalog_args(parser, args):
 
 def main():
     """CLI entry point: parse args, prepare remotes, then generate/export/create/upload/ci as requested."""
+    global _no_remote  # one per-process switch, see its definition
     parser = _build_arg_parser()
     args = parser.parse_args()
+    _no_remote = args.no_remote
 
     _validate_remote_required(parser, args)
     _apply_base_classes_pythonpath(args.base_classes_dir)
@@ -902,5 +929,25 @@ def main():
     print_banner("Done!")
 
 
+def _cli():
+    """Run main(), reporting conan/catalog failures as a one-line error instead of a traceback."""
+    try:
+        main()
+    except ForbiddenException as e:
+        sys.stdout.flush()  # keep the error after whatever main() already printed, even when piped
+        print(f"ERROR: {e}", file=sys.stderr)
+        print(
+            "Hint: the remote refused access. Log in with 'conan remote login <remote>', "
+            "set CONAN_LOGIN_USERNAME_<REMOTE>/CONAN_PASSWORD_<REMOTE>, or set "
+            "'conan: authentication: false' in denver.yml to work from the local cache only.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except (ConanException, CatalogError) as e:
+        sys.stdout.flush()
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 if __name__ == "__main__":
-    main()
+    _cli()

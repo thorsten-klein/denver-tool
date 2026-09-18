@@ -787,8 +787,13 @@ def _coerce_cli_value(raw_value):
 
     Parsed as JSON when that succeeds (numbers, true/false/null, quoted strings, arrays, objects),
     else kept as a plain string -- this is what lets '-c uv.python=3.12.3' stay the string "3.12.3"
-    (not valid JSON on its own) while '-c uv.no-index=true' still becomes the bool True.
+    (not valid JSON on its own) while '-c uv.no-index=true' still becomes the bool True. true/false
+    are matched case-insensitively, so YAML's 'True'/'False' become bools as well.
     """
+    if raw_value.lower() in ("true", "false"):
+        # YAML's spelling too ('True'/'FALSE'), which JSON rejects -- left a
+        # string, '-c conan.authentication=False' would read as truthy.
+        return raw_value.lower() == "true"
     try:
         return json.loads(raw_value)
     except json.JSONDecodeError:
@@ -1622,6 +1627,9 @@ def reinvoke_command(config_path, forwarded, wrapper_stage_ids, *, options=None)
       denver re-reads the same denver.toml, so it declares the same flags --
       but nobody would have given them to it, and every one would quietly
       fall back to its 'default:';
+    * -cf/--config-file and -c/--config (``options.cli_args.config_argv``): the inner
+      denver loads the env's own file again, so without them every stage
+      inside the wrapper (conan, uv, ...) would run without the overrides;
     * ``start_time`` (the hidden --start-time flag), the outer denver's own
       ``time.time()`` at the very start of this startup -- carried across so
       the "env started in Ns" line the inner denver prints right before
@@ -1680,6 +1688,7 @@ def _reinvoke_flags(options):
         flags += ["--env", f"{name}={value}"]
     if options.export_env:
         flags += ["--export-env", options.export_env]
+    flags += options.cli_args.config_argv
     return [*flags, "--start-time", repr(options.start_time)]
 
 
@@ -1956,6 +1965,7 @@ def _relocate_named_scripts(
         skip_stages=(*skip_stages, *_stage_ids_of(active_wrappers)),
         cli_argv=_cli_args(cli_args).argv,
         env_vars=env_vars,
+        config_argv=_cli_args(cli_args).config_argv,
     )
     ctx.exec(_wrap_cmd(ctx, cmd, active_wrappers, stage_index, len(stages)))
 
@@ -1974,15 +1984,15 @@ def _run_stage_scripts(ctx, stage_ids, name):
 
 
 def _relocated_run_cmd(
-    config_path, names, *, quiet, verbose=False, until_stage, skip_stages, cli_argv=(), env_vars=None
+    config_path, names, *, quiet, verbose=False, until_stage, skip_stages, cli_argv=(), env_vars=None, config_argv=()
 ):
     """The ``denver run <config> --scripts <name>`` argv (one pair per name) the wrapper re-invokes.
 
     This run's own filters are re-passed. ``cli_argv`` -- the tokens this
     env's own 'denver-custom-args:' flags consumed -- is re-passed for the same reason
     reinvoke_command does it: the inner denver declares the same flags and
-    would otherwise only see their defaults. ``env_vars`` (-e/--env) is
-    re-passed for the same reason.
+    would otherwise only see their defaults. ``env_vars`` (-e/--env) and
+    ``config_argv`` (-cf/-c, see _config_argv) are re-passed for the same reason.
     """
     cmd = ["python3", str(Path(__file__).resolve()), "run", str(config_path)]
     for name in names:
@@ -1994,7 +2004,7 @@ def _relocated_run_cmd(
         cmd += ["--skip", stage_id]
     for var_name, value in (env_vars or {}).items():
         cmd += ["--env", f"{var_name}={value}"]
-    return [*cmd, *cli_argv]
+    return [*cmd, *config_argv, *cli_argv]
 
 
 def _relocated_run_quiet_verbose_flags(quiet, verbose):
@@ -3404,20 +3414,26 @@ def _arg_value_text(value):
 
 
 class CliArgs:
-    """The env's own 'denver-custom-args:' as one invocation resolved them.
+    """The env's own 'denver-custom-args:' as one invocation resolved them, plus its -cf/-c config sources.
 
-    Two views of the same thing, both needed: ``env`` is what the
+    Two views of the custom args, both needed: ``env`` is what the
     environment gets to see (DENVER_ARG_<DEST> for every entry with a
     value), while ``argv`` is the user's own tokens, kept verbatim so a
     wrapper reinvocation can re-pass them (see reinvoke_command) -- the
     inner denver re-reads the same denver.toml and would otherwise fall back
     to each entry's 'default:'.
+
+    ``config_argv`` (see _config_argv) is re-passed for the same reason:
+    -cf/--config-file and -c/--config shaped the config this run loaded, and
+    the inner denver re-reading the env's own file would otherwise run
+    without them.
     """
 
-    def __init__(self, env=None, argv=()):
-        """Hold one invocation's 'denver-custom-args:' values: ``env`` to export, ``argv`` to re-pass."""
+    def __init__(self, env=None, argv=(), config_argv=()):
+        """Hold one invocation's custom-args values (``env`` to export, ``argv`` to re-pass) and its -cf/-c argv."""
         self.env = dict(env or {})
         self.argv = list(argv)
+        self.config_argv = list(config_argv)
 
 
 def _cli_args(cli_args):
@@ -5043,7 +5059,7 @@ def _run_resolved_cli(argv):
 
     _require_config_source(config_path, args.config_file)
 
-    cli_args = CliArgs(cli_arg_env(config.get("denver-custom-args"), args), extra_argv)
+    cli_args = CliArgs(cli_arg_env(config.get("denver-custom-args"), args), extra_argv, _config_argv(args))
 
     if _handle_config_subcommands(args, env_dir, config, config_path, cli_args=cli_args, env_vars=env_vars):
         return
@@ -5180,6 +5196,22 @@ def _load_cli_config(args, config_path) -> dict:
     # deep_merge/apply_config_overrides are typed for config *values* (a
     # mapping, a list, a scalar); a whole denver.toml is always the mapping.
     return cast(dict, config)
+
+
+def _config_argv(args):
+    """This invocation's -cf/--config-file and -c/--config as argv, for a wrapper reinvocation to re-pass.
+
+    Config files are made absolute: the inner denver's working directory
+    matches (see docker.py's --workdir), but an absolute path can't depend
+    on it. Files first, then overrides -- _load_cli_config applies them in
+    that order regardless of how they were interleaved on the command line.
+    """
+    argv = []
+    for config_file in args.config_file:
+        argv += ["--config-file", str(Path(config_file).resolve())]
+    for spec in args.config:
+        argv += ["--config", spec]
+    return argv
 
 
 def _require_config_source(config_path, config_files):
