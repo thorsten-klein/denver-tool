@@ -58,6 +58,47 @@ def test_load_config_file_yaml_non_mapping_top_level_dies(tmp_path):
         denver.load_config_file(p)
 
 
+def test_load_config_file_yaml_syntax_error_is_a_config_read_error(tmp_path):
+    p = tmp_path / "denver.yml"
+    p.write_text("foo: [\n")
+    with pytest.raises(denver.ConfigReadError, match="invalid YAML"):
+        denver.load_config_file(p)
+
+
+@requires_tomllib
+def test_load_config_file_toml_syntax_error_is_a_config_read_error(tmp_path):
+    p = tmp_path / "denver.toml"
+    p.write_text("a = \n")
+    with pytest.raises(denver.ConfigReadError, match="invalid TOML"):
+        denver.load_config_file(p)
+
+
+def test_load_config_file_toml_decode_error_is_a_config_read_error_on_any_interpreter(tmp_path, monkeypatch):
+    # the test above needs a real tomllib (Python 3.11+); this one covers the
+    # same except-branch everywhere, like test_load_config_file_toml_dispatches_to_tomllib
+    class FakeTomllib:
+        class TOMLDecodeError(ValueError):
+            pass
+
+        @classmethod
+        def load(cls, _f):
+            raise cls.TOMLDecodeError("bad")
+
+    monkeypatch.setattr(denver, "tomllib", FakeTomllib)
+    p = tmp_path / "denver.toml"
+    p.write_text("a = \n")
+    with pytest.raises(denver.ConfigReadError, match="invalid TOML: bad"):
+        denver.load_config_file(p)
+
+
+def test_main_reports_a_yaml_syntax_error_as_an_error_line_not_a_traceback(tmp_path, caplog):
+    (tmp_path / "denver.yml").write_text("foo: [\n")
+    with pytest.raises(SystemExit) as exc:
+        denver.main(["run", str(tmp_path), "--show-config"])
+    assert exc.value.code == 1
+    assert "invalid YAML" in caplog.text
+
+
 def test_load_config_file_toml_without_tomllib(tmp_path, monkeypatch):
     monkeypatch.setattr(denver, "tomllib", None)
     p = tmp_path / "denver.toml"
