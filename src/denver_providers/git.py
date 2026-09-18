@@ -80,9 +80,9 @@ class GitProvider(Provider):
         die_unless_required_strings(cfg, cls.REQUIRED_KEYS, "git")
         cls._validate_optional_keys(cfg)
 
-    @staticmethod
-    def _validate_optional_keys(cfg):
-        """Die unless 'remote:'/'submodules:', if given, are correctly typed."""
+    @classmethod
+    def _validate_optional_keys(cls, cfg):
+        """Die unless 'remote:'/'submodules:'/'clone-opts:'/'fetch-opts:', if given, are correctly typed."""
         remote = cfg.get("remote")
         if remote is not None and not isinstance(remote, str):
             die(f"git: 'remote:' must be a string (got {remote!r})")
@@ -90,9 +90,14 @@ class GitProvider(Provider):
         if submodules is not None and not isinstance(submodules, bool):
             die(f"git: 'submodules:' must be a boolean (got {submodules!r})")
         for key in ("clone-opts", "fetch-opts"):
-            opts = cfg.get(key)
-            if opts is not None and not (isinstance(opts, list) and all(isinstance(opt, str) for opt in opts)):
-                die(f"git: '{key}:' must be a list of strings (got {opts!r})")
+            cls._validate_string_list(cfg, key)
+
+    @staticmethod
+    def _validate_string_list(cfg, key):
+        """Die unless ``cfg[key]``, if given, is a list of strings."""
+        opts = cfg.get(key)
+        if opts is not None and not (isinstance(opts, list) and all(isinstance(opt, str) for opt in opts)):
+            die(f"git: '{key}:' must be a list of strings (got {opts!r})")
 
     # ---- lifecycle ----------------------------------------------------------- #
     def setup(self, ctx):

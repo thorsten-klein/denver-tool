@@ -10,6 +10,8 @@ values. Everything specific comes from denver.toml, where values may
 reference denver built-ins and each other through ``${VAR}`` interpolation.
 """
 
+from __future__ import annotations
+
 import errno
 import fcntl
 import hashlib
@@ -665,7 +667,7 @@ class Context:
         # denver.py right before calling a provider's setup()/wrap(), so
         # ctx.run(..., step="...")'s auto-banner knows which stage it's
         # for without every call site having to pass self.stage itself.
-        self.stage_id = None
+        self.stage_id: str | None = None
         # each stage's config section exactly as the denver.toml (after
         # stacking/overrides) spelled it, before any provider default was
         # filled in -- kept by denver.resolve_provider_defaults so a stage's
