@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=389eb717"></script>
+      <script src="../_static/documentation_options.js?v=d56feecd"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/064e56de782e5d381c61d795f6e562d2459001ef">1.6.7-1-g064e56d</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/b92380f04fcdad223caad83799e295283454b99d">1.6.7-2-gb92380f</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -477,6 +477,7 @@ becoming a float) doesn’t matter.</p></li>
 e.g. <code class="docutils literal notranslate"><span class="pre">denver-version</span> <span class="pre">=</span> <span class="pre">&quot;&gt;=1.0.4&quot;</span></code>. See “Requiring a denver version” below.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">import</span></code></strong> — a list of environments (or config files) whose configuration
 is inherited as a base, before this file’s own content is applied on top.
+A single entry may be given as a bare string (<code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">=</span> <span class="pre">&quot;../base&quot;</span></code>).
 See “Layering” below.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">.init</span></code></strong> — git repositories or archives to bring in automatically on
 every <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span></code>, <em>before</em> the config is resolved, so <code class="docutils literal notranslate"><span class="pre">import:</span></code> can point
