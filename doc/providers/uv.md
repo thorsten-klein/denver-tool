@@ -36,8 +36,10 @@ a stage with no `uv` on `PATH` fails with `uv[<stage>]: needs 'exe' on PATH`.
 - **`requirements`** — a list of `-r` files, installed together.
 - **`install-args`** — extra literal `uv pip install` arguments, e.g.
   `["--pre"]`. An entry wrapped as `$(...)` is instead run as a shell
-  command right before install; its stdout is split on whitespace and each
-  token appended as its own arg — the way to pull in a dynamically-computed
+  command right before install, from the env's own directory (not the one
+  denver was invoked from, so e.g. `west` finds the workspace the env lives
+  in); its stdout is split on whitespace and each token appended as its own
+  arg — the way to pull in a dynamically-computed
   set of packages (e.g. `$(west packages pip)`) without hand-maintaining a
   requirements file for them. This is also where to pass a uv-specific flag
   denver has no dedicated key for, e.g. `--link-mode=copy`. A `$(...)`

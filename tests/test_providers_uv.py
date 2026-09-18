@@ -457,6 +457,19 @@ def test_install_args_command_entry_used_as_literal_install_args(make_context, r
     assert "-r" not in argv
 
 
+def test_install_args_command_entry_runs_from_the_env_dir(make_context, run_recorder, which, tmp_path, monkeypatch):
+    # e.g. `west packages pip` finds its workspace from the cwd -- denver may
+    # be invoked from anywhere, but the env itself lives inside the workspace
+    monkeypatch.chdir(tmp_path)
+    config = {"uv": {"install-args": ["$(echo foo==1.0)"]}}
+    ctx = make_context(config=config)
+    run_recorder.responses["echo foo==1.0"] = lambda cmd: type("R", (), {"stdout": "foo==1.0\n", "returncode": 0})()
+
+    run_uv(config, ctx)
+    call = next(c for c in run_recorder.calls if "echo foo==1.0" in " ".join(map(str, c.cmd)))
+    assert call.kwargs["cwd"] == str(ctx.env_dir)
+
+
 def test_install_args_command_entry_and_requirements_file_combine(make_context, run_recorder, which):
     config = {"uv": {"requirements": ["r.txt"], "install-args": ["$(echo foo==1.0)"]}}
     ctx = make_context(config=config)
