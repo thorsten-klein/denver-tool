@@ -1,11 +1,12 @@
 """Tests for providers.conan.ConanProvider."""
 
 import hashlib
+import json
 
 import pytest
 
 from denver_errors import DenverError
-from denver_providers.conan import ConanProvider
+from denver_providers.conan import USABLE_REMOTES_FILENAME, ConanProvider
 
 
 def run_conan(config, ctx, stage="conan"):
@@ -566,6 +567,94 @@ def test_auth_default_keeps_remotes_for_prepare_and_export(make_context, run_rec
     argvs = run_recorder.argvs()
     assert "--no-remote" not in next(a for a in argvs if "--prepare" in a)
     assert "--no-remote" not in next(a for a in argvs if "--export" in a)
+
+
+def _prepare_writes_usable_remotes(run_recorder, conan_home, names):
+    """Make recipes.py --prepare record ``names`` in ``conan_home``, like the real one would."""
+
+    def respond(cmd):
+        (conan_home / USABLE_REMOTES_FILENAME).write_text(json.dumps(names))
+        return type("R", (), {"returncode": 0})()
+
+    run_recorder.responses["--prepare"] = respond
+
+
+def _may_fail_install_cmd(make_context, run_recorder, conan_home, conan_cfg, **ctx_kwargs):
+    # a throwaway conan home -- never the real ~/.conan2 of whoever runs the tests
+    default_profile_ok(run_recorder, home=str(conan_home))
+    config = {"conan": {"authentication": "may-fail", "keep-remotes": True, **conan_cfg}}
+    ctx = make_context(config=config, **ctx_kwargs)
+    _ensure_default_conanfile(ctx, config)
+    run_conan(config, ctx)
+    return next(a for a in run_recorder.argvs() if "install" in a and "conan" in str(a[0]))
+
+
+def test_auth_may_fail_runs_prepare_and_passes_flags(make_context, run_recorder, which, tmp_path):
+    # keep-remotes + no recipes would otherwise skip prepare -- may-fail
+    # still needs it, to find out which remotes authenticate
+    default_profile_ok(run_recorder, home=str(tmp_path))
+    config = {"conan": {"authentication": "may-fail", "keep-remotes": True}}
+    ctx = make_context(config=config)
+    (ctx.env_dir / "conanA").mkdir(parents=True)
+    _ensure_default_conanfile(ctx, config, {"dirs": ["conanA"]})
+    run_conan(config, ctx)
+    argvs = run_recorder.argvs()
+    assert "--authentication-may-fail" in next(a for a in argvs if "--prepare" in a)
+    assert "--authentication-may-fail" in next(a for a in argvs if "--export" in a)
+
+
+def test_auth_may_fail_drops_a_stale_usable_remotes_list_before_prepare(make_context, run_recorder, which, tmp_path):
+    stale = tmp_path / USABLE_REMOTES_FILENAME
+    stale.write_text('["gone"]')
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {})
+    assert not stale.exists()
+    assert "-r=gone" not in install
+
+
+def test_auth_may_fail_installs_from_usable_remotes_only(make_context, run_recorder, which, tmp_path):
+    _prepare_writes_usable_remotes(run_recorder, tmp_path, ["mirror", "other"])
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {})
+    assert "-r=mirror" in install
+    assert "-r=other" in install
+    assert "--no-remote" not in install
+
+
+def test_auth_may_fail_installs_without_remotes_when_none_authenticated(make_context, run_recorder, which, tmp_path):
+    _prepare_writes_usable_remotes(run_recorder, tmp_path, [])
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {})
+    assert "--no-remote" in install
+
+
+def test_auth_may_fail_without_usable_remotes_list_leaves_conan_default(make_context, run_recorder, which, tmp_path):
+    # prepare never wrote the list -- nothing to restrict to
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {})
+    assert not any(a.startswith("-r=") for a in install)
+    assert "--no-remote" not in install
+
+
+def test_auth_may_fail_without_a_known_conan_home_leaves_conan_default(make_context, run_recorder, which):
+    # --dry-run with no conan yet: `conan config home` can't answer, so
+    # there's no list to drop or read -- conan's default applies
+    run_recorder.responses["config home"] = lambda cmd: type("R", (), {"stdout": "", "stderr": "", "returncode": 1})()
+    config = {"conan": {"authentication": "may-fail", "keep-remotes": True}}
+    ctx = make_context(config=config, dry_run=True)
+    _ensure_default_conanfile(ctx, config)
+    run_conan(config, ctx)
+    assert not any(a.startswith("-r=") for c in run_recorder.argvs() for a in c)
+
+
+def test_auth_true_passes_no_may_fail_flags(make_context, run_recorder, which, tmp_path):
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {"authentication": True})
+    assert not any(a.startswith("-r=") for a in install)
+    assert not any("--authentication-may-fail" in a for a in run_recorder.argvs())
+
+
+@pytest.mark.parametrize("value", ["yes", "may_fail", 1], ids=["yes", "typo", "int"])
+def test_auth_invalid_value_dies(make_context, which, value):
+    config = {"conan": {"authentication": value}}
+    ctx = make_context(config=config)
+    with pytest.raises(DenverError, match="must be true, false or \"may-fail\""):
+        run_conan(config, ctx)
 
 
 def test_install_build_default_missing(make_context, run_recorder, which):

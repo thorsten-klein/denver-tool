@@ -19,9 +19,17 @@ from pathlib import Path
 import pytest
 import yaml
 from conan.api.model import PkgReference, RecipeReference, Remote
-from conan.internal.errors import AuthenticationException, ConanConnectionError, NotFoundException
+from conan.internal.errors import AuthenticationException, ConanConnectionError, ForbiddenException, NotFoundException
 
 from denver_providers.conan_scripts import recipes
+
+
+@pytest.fixture(autouse=True)
+def _fresh_per_process_state(monkeypatch):
+    """recipes.py keeps a few one-per-process switches/caches at module level (see main()) -- reset for every test."""
+    monkeypatch.setattr(recipes, "_usable_remotes_cache", None)
+    monkeypatch.setattr(recipes, "_auth_may_fail", False)
+    monkeypatch.setattr(recipes, "_usable_remote_names", None)
 
 
 # --------------------------------------------------------------------------- #
@@ -263,6 +271,83 @@ def test_get_deps_graph_remote_authenticates_each_remote(monkeypatch):
     assert authed == ["a", "b"]
 
 
+def test_usable_remotes_raises_on_auth_failure_by_default(monkeypatch):
+    api = _AuthFailsFor([Remote("a", "http://a")], {"a"}, AuthenticationException("wrong password"))
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    with pytest.raises(AuthenticationException):
+        recipes._usable_remotes()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [AuthenticationException("wrong password"), ForbiddenException("403"), ConanConnectionError("unreachable")],
+    ids=["auth", "forbidden", "connection"],
+)
+def test_usable_remotes_skips_a_failing_remote_when_may_fail(monkeypatch, capsys, error):
+    remotes = [Remote("a", "http://a"), Remote("locked", "http://locked"), Remote("c", "http://c")]
+    api = _AuthFailsFor(remotes, {"locked"}, error)
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+
+    assert [r.name for r in recipes._usable_remotes()] == ["a", "c"]
+    assert "skipping conan remote 'locked'" in capsys.readouterr().out
+
+
+def test_usable_remotes_skips_a_failing_remote_without_prompting_on_a_tty(monkeypatch, capsys):
+    # e.g. `docker compose run`, which gives the container a TTY: under
+    # --authentication-may-fail the remote is skipped, never prompted for
+    api = _AuthFailsFor(
+        [Remote("a", "http://a"), Remote("locked", "http://locked")], {"locked"}, AuthenticationException("x")
+    )
+    prompted = []
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_prompt_and_login", lambda r: prompted.append(r.name))
+    monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+
+    assert [r.name for r in recipes._usable_remotes()] == ["a"]
+    assert prompted == []
+    assert "skipping conan remote 'locked'" in capsys.readouterr().out
+
+
+def test_usable_remotes_authenticates_each_remote_once_per_process(monkeypatch):
+    api = FakeRemotesAPI([Remote("a", "http://a")])
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    recipes._usable_remotes()
+    recipes._usable_remotes()
+    assert api.auth_calls == [("a", False)]
+
+
+def test_usable_remotes_only_considers_the_names_prepare_found_usable(monkeypatch):
+    # export after prepare: a remote prepare gave up on is not retried (or
+    # prompted for) a second time
+    api = FakeRemotesAPI([Remote("a", "http://a"), Remote("locked", "http://locked")])
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_usable_remote_names", {"a"})
+    assert [r.name for r in recipes._usable_remotes()] == ["a"]
+    assert api.auth_calls == [("a", False)]
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"), [(None, None), ('["a", "b"]', {"a", "b"})], ids=["missing", "written"]
+)
+def test_load_usable_remote_names(monkeypatch, tmp_path, content, expected):
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(home_folder=str(tmp_path)))
+    if content is not None:
+        (tmp_path / recipes.USABLE_REMOTES_FILENAME).write_text(content)
+    assert recipes._load_usable_remote_names() == expected
+
+
+def test_write_usable_remotes(monkeypatch, tmp_path):
+    api = _AuthFailsFor([Remote("a", "http://a"), Remote("b", "http://b")], {"b"}, ForbiddenException("403"))
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api, home_folder=str(tmp_path)))
+    monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    recipes.write_usable_remotes()
+    assert json.loads((tmp_path / recipes.USABLE_REMOTES_FILENAME).read_text()) == ["a"]
+
+
 def test_get_deps_graph_local(monkeypatch):
     ref = RecipeReference.loads("foo/1.0@denver/snapshot")
     analyzed = []
@@ -425,6 +510,20 @@ class FakeRemotesAPI:
         return self._user_info.get(remote.name, {})
 
 
+class _AuthFailsFor(FakeRemotesAPI):
+    """FakeRemotesAPI whose user_auth() raises ``error`` for the remotes named in ``failing``."""
+
+    def __init__(self, remotes, failing, error):
+        super().__init__(remotes)
+        self._failing = set(failing)
+        self._error = error
+
+    def user_auth(self, remote, force=False):
+        super().user_auth(remote, force)
+        if remote.name in self._failing:
+            raise self._error
+
+
 def test_conan_remotes_list(monkeypatch):
     remotes = [Remote("a", "http://a"), Remote("b", "http://b")]
     monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=FakeRemotesAPI(remotes)))
@@ -533,6 +632,25 @@ def test_conan_login_warns_on_connection_error(monkeypatch, capsys):
     monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
     recipes.conan_login({"conancenter": {}})
     assert "Unable to connect" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "error", [AuthenticationException("wrong"), ForbiddenException("403")], ids=["auth", "forbidden"]
+)
+def test_conan_login_auth_failure_raises_by_default(monkeypatch, error):
+    api = _AuthFailsFor([Remote("conancenter", "http://conancenter")], {"conancenter"}, error)
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    with pytest.raises(type(error)):
+        recipes.conan_login({"conancenter": {}})
+
+
+def test_conan_login_auth_failure_warns_when_may_fail(monkeypatch, capsys):
+    api = _AuthFailsFor([Remote("conancenter", "http://conancenter")], {"conancenter"}, ForbiddenException("403"))
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    recipes.conan_login({"conancenter": {}})
+    assert "skipping conan remote 'conancenter'" in capsys.readouterr().out
 
 
 # --------------------------------------------------------------------------- #
@@ -976,6 +1094,33 @@ def test_main_prepare_only_returns_before_generate(monkeypatch, tmp_path):
     assert generate_called == []
 
 
+def test_main_prepare_writes_usable_remotes_under_may_fail(monkeypatch):
+    _stub_pipeline(monkeypatch)
+    written = []
+    monkeypatch.setattr(recipes, "write_usable_remotes", lambda: written.append(True))
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--prepare", "--authentication-may-fail"])
+    recipes.main()
+    assert written == [True]
+    assert recipes._auth_may_fail is True
+
+
+def test_main_export_reads_usable_remotes_under_may_fail(monkeypatch, tmp_path):
+    _stub_pipeline(monkeypatch)
+    monkeypatch.setattr(recipes, "_load_usable_remote_names", lambda: {"mirror"})
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--authentication-may-fail", "--recipes-dir", str(tmp_path)])
+    recipes.main()
+    assert recipes._usable_remote_names == {"mirror"}
+
+
+def test_main_prepare_writes_no_usable_remotes_without_the_flag(monkeypatch):
+    _stub_pipeline(monkeypatch)
+    written = []
+    monkeypatch.setattr(recipes, "write_usable_remotes", lambda: written.append(True))
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--prepare"])
+    recipes.main()
+    assert written == []
+
+
 def test_main_loads_remotes_json(monkeypatch, tmp_path):
     remotes = {"conancenter": {"url": "http://conancenter"}}
     remotes_json = tmp_path / "remotes.json"
@@ -1197,7 +1342,7 @@ def test_get_recipes_from_entries_falls_back_for_unknown_recipe(tmp_path):
 
 def test_cli_reports_forbidden_without_traceback(monkeypatch, capsys):
     def forbidden():
-        raise recipes.ForbiddenException("Permission denied for user: 'None': 403: Forbidden. [Remote: sdd]")
+        raise recipes.ForbiddenException("Permission denied for user: 'None': 403: Forbidden. [Remote: mirror]")
 
     monkeypatch.setattr(recipes, "main", forbidden)
     with pytest.raises(SystemExit) as exc:
