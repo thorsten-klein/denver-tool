@@ -295,9 +295,9 @@ def test_usable_remotes_skips_a_failing_remote_when_may_fail(monkeypatch, capsys
     assert "skipping conan remote 'locked'" in capsys.readouterr().out
 
 
-def test_usable_remotes_skips_a_failing_remote_without_prompting_on_a_tty(monkeypatch, capsys):
-    # e.g. `docker compose run`, which gives the container a TTY: under
-    # --authentication-may-fail the remote is skipped, never prompted for
+def test_usable_remotes_prompts_on_a_tty_when_may_fail(monkeypatch):
+    # e.g. `docker compose run`, which gives the container a TTY: the
+    # credentials prompt is still asked, and a working login keeps the remote
     api = _AuthFailsFor(
         [Remote("a", "http://a"), Remote("locked", "http://locked")], {"locked"}, AuthenticationException("x")
     )
@@ -307,9 +307,42 @@ def test_usable_remotes_skips_a_failing_remote_without_prompting_on_a_tty(monkey
     monkeypatch.setattr(recipes, "_auth_may_fail", True)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
 
+    assert [r.name for r in recipes._usable_remotes()] == ["a", "locked"]
+    assert prompted == ["locked"]
+
+
+@pytest.mark.parametrize(
+    "prompt_error",
+    [AuthenticationException("Wrong user or password"), EOFError()],
+    ids=["wrong-login", "eof"],
+)
+def test_usable_remotes_skips_a_remote_whose_prompted_login_fails_too(monkeypatch, capsys, prompt_error):
+    api = _AuthFailsFor(
+        [Remote("a", "http://a"), Remote("locked", "http://locked")], {"locked"}, AuthenticationException("x")
+    )
+
+    def failing_prompt(remote):
+        raise prompt_error
+
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_prompt_and_login", failing_prompt)
+    monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+
     assert [r.name for r in recipes._usable_remotes()] == ["a"]
-    assert prompted == []
     assert "skipping conan remote 'locked'" in capsys.readouterr().out
+
+
+def test_usable_remotes_skips_without_prompting_when_not_a_tty(monkeypatch):
+    api = _AuthFailsFor([Remote("locked", "http://locked")], {"locked"}, AuthenticationException("x"))
+    prompted = []
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_prompt_and_login", lambda r: prompted.append(r.name))
+    monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+
+    assert recipes._usable_remotes() == []
+    assert prompted == []
 
 
 def test_usable_remotes_authenticates_each_remote_once_per_process(monkeypatch):

@@ -136,14 +136,14 @@ def authenticate_remote(remote, *, force=False):
     TTY, prompt for credentials ourselves (bypassing whatever non-interactive
     source just failed) and retry once via user_login(). Non-interactive
     (no TTY, e.g. CI) re-raises instead of hanging on a prompt nobody can
-    answer. Under --authentication-may-fail it re-raises too, even on a
-    TTY (e.g. inside `docker compose run`): the remote is to be skipped
-    (see _usable_remotes), not to hold the run up on a credentials prompt.
+    answer. Under --authentication-may-fail the prompt is asked the same
+    way; if the credentials typed in fail too (or the prompt gets EOF), the
+    error propagates and the remote is skipped (see _usable_remotes).
     """
     try:
         conan_api.remotes.user_auth(remote, force=force)
     except AuthenticationException:
-        if _auth_may_fail or not sys.stdin.isatty():
+        if not sys.stdin.isatty():
             raise
         print(f"Remote '{remote.name}' needs authentication and the stored credentials didn't work.")
         _prompt_and_login(remote)
@@ -161,8 +161,10 @@ _no_remote = False
 _auth_may_fail = False
 
 # Every way authenticating a remote can fail under --authentication-may-fail:
-# any conan error -- wrong/missing credentials, access refused, not reachable.
-_REMOTE_AUTH_ERRORS = (ConanException,)
+# any conan error -- wrong/missing credentials, access refused, not reachable
+# -- including from authenticate_remote's interactive prompt, where EOF
+# (Ctrl-D) means "skip this remote" too. Ctrl-C still aborts the run.
+_REMOTE_AUTH_ERRORS = (ConanException, EOFError)
 
 # _usable_remotes()'s answer, computed once per process: each remote is only
 # authenticated (and, under --authentication-may-fail, warned about) once,
