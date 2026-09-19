@@ -84,9 +84,12 @@ specific one. A stage with no conan available fails with `conan provider needs '
     this when a remote is down or you have no credentials for it.
   - `"may-fail"`: like `true`, but a remote that fails to authenticate
     (wrong or missing credentials, 403, or unreachable) is warned about and
-    left out of the run instead of aborting it, without prompting for
-    credentials, even on a terminal (e.g. inside `docker compose run`). The
-    prepare step checks every enabled remote once, including ones a
+    left out of the run instead of aborting it. On a terminal (e.g. inside
+    `docker compose run`) denver first asks for a username and password,
+    the same as with `true`; if that login fails too, or the prompt gets an
+    empty input (Ctrl-D), the remote is skipped. Without a terminal (e.g.
+    CI) it is skipped right away. Each remote is asked for at most once per
+    run. The prepare step checks every enabled remote once, including ones a
     `config:` directory’s `remotes.json` set up. Export then resolves recipes
     against the remotes that authenticated, and `conan install` gets one
     `-r=<remote>` for each of them, or `--no-remote` if none did. The
