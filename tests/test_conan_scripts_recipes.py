@@ -1396,3 +1396,25 @@ def test_cli_reports_catalog_error(monkeypatch, capsys):
         recipes._cli()
     assert exc.value.code == 1
     assert capsys.readouterr().err == "ERROR: Recipe path /nope does not exist!\n"
+
+
+def test_cli_reports_get_rrev_error_without_traceback(monkeypatch, capsys):
+    rrev_error = recipes._import_build_catalog().get_rrev.GetRREVError
+
+    def broken():
+        raise rrev_error("Error: 'url' must be specified for x.sh in /recipe")
+
+    monkeypatch.setattr(recipes, "main", broken)
+    with pytest.raises(SystemExit) as exc:
+        recipes._cli()
+    assert exc.value.code == 1
+    assert capsys.readouterr().err == "ERROR: Error: 'url' must be specified for x.sh in /recipe\n"
+
+
+def test_cli_lets_unrelated_errors_through(monkeypatch):
+    def broken():
+        raise RuntimeError("a genuine bug")
+
+    monkeypatch.setattr(recipes, "main", broken)
+    with pytest.raises(RuntimeError, match="a genuine bug"):
+        recipes._cli()

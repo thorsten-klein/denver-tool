@@ -1050,6 +1050,15 @@ def _cli():
         sys.stdout.flush()
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
+    except Exception as e:
+        # GetRREVError lives in get_rrev, which can only be imported once main()
+        # has put --base-classes-dir on sys.path (see _import_build_catalog), so
+        # it can't be named in the clauses above.
+        if not isinstance(e, _import_build_catalog().get_rrev.GetRREVError):
+            raise
+        sys.stdout.flush()
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

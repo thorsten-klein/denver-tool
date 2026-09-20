@@ -146,7 +146,15 @@ def _reconcile_export_source_entry(
     if _is_git_tracked(conanfile_dir, exports_source_abs):
         return _reconcile_tracked_entry(entry, exports_source_abs)
     if not entry.get("url") and not entry.get("custom"):
-        raise GetRREVError(f"Error: 'url' must be specified for {exports_source} in {conanfile_dir}")
+        message = f"Error: 'url' must be specified for {exports_source} in {conanfile_dir}"
+        if exports_source_abs.exists():
+            # a file sitting right there just isn't known to git yet (e.g. a freshly copied recipe dir)
+            message += (
+                f"\nHint: '{exports_source}' exists but is not tracked by git, so it is treated as a "
+                "download that needs a 'url' (or 'custom') entry in conandata.yml. If it is meant to be "
+                f"part of the repo, stage it: git add {exports_source_abs}"
+            )
+        raise GetRREVError(message)
     return False
 
 
