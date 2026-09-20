@@ -52,7 +52,7 @@ jobs:
         # The rest of the full set is minutes of network- and docker-heavy
         # work per leg, so it is left to the develop push and to a manual
         # 'Run workflow'.
-        example: ${{ (github.event_name == 'pull_request' && fromJSON('["simple-env", "firmware-env", "nix-devshell"]')) || fromJSON('["simple-env", "raspberry-pico", "firmware-env", "nix-devshell", "zephyr-devshell-4.3.1"]') }}
+        example: ${{ (github.event_name == 'pull_request' && fromJSON('["simple-env", "firmware-env", "nix-devshell"]')) || fromJSON('["simple-env", "raspberry-pico", "firmware-env", "nix-devshell", "zephyr-devshell-4.3.1", "zephyr-devshell-4.4.1"]') }}
     steps:
       - uses: actions/checkout@v5
         with:

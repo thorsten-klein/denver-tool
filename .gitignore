@@ -22,6 +22,7 @@ bak
 # python build artifacts
 dist/
 build/
+builds/
 *.egg-info
 .venv
 .mypy*

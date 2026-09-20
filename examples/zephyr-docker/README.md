@@ -95,8 +95,8 @@ has to be *copied* in because git rewrites it in place rather than editing it
 
 This env is runnable on its own, but it is not part of the `Examples` CI
 matrix — building the image is slow and Docker-heavy. `simple-env`,
-`raspberry-pico` and `zephyr-devshell-4.3.1` are the three that run there;
-the last of those exercises this configuration transitively through its
+`raspberry-pico`, `zephyr-devshell-4.3.1` and `zephyr-devshell-4.4.1` are the
+ones that run there; the last two exercise this configuration transitively through its
 import chain.
 
 ## Next

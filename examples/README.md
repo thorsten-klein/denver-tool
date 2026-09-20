@@ -20,6 +20,7 @@ so an example that drifted out of sync with the code fails the build.
 | [`firmware-env`](firmware-env/) | `docker` → `uv` → `custom` → `conan` → `custom` | Four providers in one small env, built step by step in [`doc/quickstart/creating-environments.md`](../doc/quickstart/creating-environments.md). Also: a prebuilt binary installed by hand, right next to the same job done by conan |
 | [`zephyr-devshell`](zephyr-devshell/) | *(base — not runnable)* | The shared base: `import:`, layering, `runnable: false` |
 | [`zephyr-devshell-4.3.1`](zephyr-devshell-4.3.1/) | 5 stages | A full Zephyr RTOS setup. The patterns that only appear at scale |
+| [`zephyr-devshell-4.4.1`](zephyr-devshell-4.4.1/) | 5 stages | The same setup on Zephyr 4.4.1 with Zephyr SDK 1.0.1 — what moving a version env to a new release takes |
 | [`doc-env`](doc-env/) | `uv` → `custom` | Builds denver's own documentation with Sphinx — denver used on itself |
 
 ## Mapped onto the top-level walkthrough
