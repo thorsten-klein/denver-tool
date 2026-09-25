@@ -100,3 +100,5 @@ jobs:
           name: ${{ inputs.artifact }}-${{ matrix.name }}
           path: dist/denver-*-${{ matrix.name }}.tar.xz
           if-no-files-found: error
+          # develop keeps its builds for a month, other branch and PR builds only for two days.
+          retention-days: ${{ github.ref == 'refs/heads/develop' && 30 || 2 }}
