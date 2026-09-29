@@ -66,13 +66,13 @@ jobs:
           - fedora:latest
           - archlinux:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # only for examples/simple-env below; the binary carries its own
           # version, so this checkout needs no tags.
           ref: ${{ env.REF }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: denver-binary-x64-linux
 
@@ -103,11 +103,11 @@ jobs:
     needs: build
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ env.REF }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: denver-binary-arm64-macos
 
@@ -132,7 +132,7 @@ jobs:
     steps:
       # merge-multiple: safe here since each artifact has its own distinct
       # filename, so they can't collide in one folder.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           pattern: denver-binary*
           merge-multiple: true
