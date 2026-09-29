@@ -31,7 +31,7 @@ jobs:
 
   examples:
     needs: binary
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # the venvs below and uv's cache land on different filesystems on this
     # runner, so uv's default hardlinking can't work -- asking for a copy
     # up front avoids the "falling back to full copy" warning uv would

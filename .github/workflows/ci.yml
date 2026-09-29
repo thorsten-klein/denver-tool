@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
@@ -46,7 +46,7 @@ jobs:
         # from 3.11, so those two legs are what actually exercise "no
         # tomllib" instead of just asserting it in a monkeypatched test.
         python-version: ["3.9", "3.10", "3.11", "3.13"]
-        os: [ubuntu-22.04, ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, ubuntu-26.04, macos-latest]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -80,7 +80,7 @@ jobs:
       # on -- uploaded once, from one representative leg of the matrix,
       # rather than once per OS.
       - name: Upload coverage reports to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        if: matrix.os == 'ubuntu-24.04' && matrix.python-version == '3.13'
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -91,7 +91,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
       - name: SonarCloud Scan
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
+        if: matrix.os == 'ubuntu-24.04' && matrix.python-version == '3.13'
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -102,7 +102,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, ubuntu-26.04, macos-latest]
     steps:
       - uses: actions/checkout@v5
         with:

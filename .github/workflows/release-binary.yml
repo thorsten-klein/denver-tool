@@ -50,7 +50,7 @@ jobs:
   # and has to run an example end to end there.
   verify-linux:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -126,7 +126,7 @@ jobs:
     needs: [build, verify-linux, verify-macos]
     # nothing to attach when workflow_dispatch ran without a tag
     if: github.event_name == 'release' || inputs.tag != ''
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
