@@ -2750,7 +2750,8 @@ def _run_stages_directly(
     cmd = resolve_command(config, forwarded, in_container=ctx.in_container)
     run_hook(ctx, config_path, "pre-cmd")
     if export_env:
-        ctx.write_export_env(export_env)
+        banner = LOGO_PATH.read_text() if not quiet and LOGO_PATH.is_file() else None
+        ctx.write_export_env(export_env, banner=banner)
     ctx.exec(cmd)
 
 

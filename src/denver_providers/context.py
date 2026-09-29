@@ -818,11 +818,14 @@ class Context:
 
         The ``case`` guard is not decoration: without it this would re-prefix
         on every single prompt, growing PS1 to '(env) (env) (env) ...' line
-        after line. ``case`` rather than a bash-only conditional so a
-        POSIX-ish shell sourcing it doesn't choke.
+        after line. The match is "contains", not "starts with": VS Code's
+        shell integration wraps PS1 in its own escape sequences, so the
+        marker is no longer at the very start once it has been applied.
+        ``case`` rather than a bash-only conditional so a POSIX-ish shell
+        sourcing it doesn't choke.
         """
         prefix = self.prompt_prefix
-        return f'case "$PS1" in "{prefix}"*) ;; *) export PS1="{prefix}$PS1";; esac'
+        return f'case "$PS1" in *"{prefix}"*) ;; *) export PS1="{prefix}$PS1";; esac'
 
     def _prefix_prompt(self):
         """Mark the shell denver execs with ``prompt_prefix``, via each shell's own prompt variable.
@@ -1399,7 +1402,7 @@ class Context:
         except OSError as exc:
             die(f"failed to exec {cmd[0]}: {exc}")
 
-    def write_export_env(self, path):
+    def write_export_env(self, path, banner=None):
         """Dump what denver itself changed in the env as shell-sourceable 'export' lines to ``path``.
 
         Only keys whose value actually differs from this process's own
@@ -1426,11 +1429,17 @@ class Context:
         no longer tell that one apart from something truly inherited --
         cli_env_vars (denver's own CLI_ENV_VAR_NAMES bookkeeping) is what
         still remembers it was asked for on this invocation.
+
+        ``banner`` (text, e.g. the logo) is printed to stderr by the sourcing
+        shell when it is interactive, so a new terminal shows it on open.
         """
         if self.dry_run:
             self.dry_note(".", f"write env to {path}")
             return
-        Path(path).write_text("".join(self._changed_export_lines()))
+        lines = "".join(self._changed_export_lines())
+        if banner:
+            lines += f"case $- in *i*) printf '%s\\n' {shlex.quote(banner)} >&2;; esac\n"
+        Path(path).write_text(lines)
 
     def _changed_export_lines(self):
         cli_env_vars = self.cli_env_vars
