@@ -1068,3 +1068,28 @@ def test_resolve_command_leaves_non_string_tokens_untouched(make_context):
     # resolve_command must pass those through rather than crash on Path().
     ctx = make_context()
     assert ctx.resolve_command(["apply.sh", 1]) == ["apply.sh", 1]
+
+
+def test_prompt_command_does_not_restack_when_ps1_is_wrapped(make_context):
+    # VS Code shell integration puts its own escape sequence in front of PS1,
+    # so the marker is no longer the very first thing in it
+    ctx = make_context()
+    ps1 = subprocess.run(
+        [
+            "bash",
+            "-c",
+            f'PS1=$\'\\\\[\\\\e]633;A\\\\a\\\\]\'"{ctx.prompt_prefix}$ "; {ctx.prompt_command}; {ctx.prompt_command}; printf %s "$PS1"',
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert ps1.count(ctx.prompt_prefix) == 1
+
+
+def test_write_export_env_banner_printed_by_interactive_shells(make_context, tmp_path):
+    ctx = make_context()
+    out = tmp_path / "denver.env"
+    ctx.write_export_env(out, banner="LOGO 'x'")
+    run = lambda flag: subprocess.run(["bash", flag, "-c", f". {out}"], capture_output=True, text=True).stderr  # noqa: E731
+    assert "LOGO 'x'" in run("-i")
+    assert "LOGO" not in run("+i")
