@@ -20,7 +20,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # doc/conf.py reads the installed distribution's version, which
           # setuptools-scm derives from git tags -- a shallow checkout has
