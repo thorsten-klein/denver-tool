@@ -1,0 +1,22 @@
+name: Check the checkout is clean
+description: >-
+  Fails when the step before left modified or untracked files in git -- a run
+  must leave the checkout exactly as it found it (e.g. a regenerated
+  conandata.yml checksum that was never committed).
+inputs:
+  what:
+    description: What just ran, for the error message.
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        WHAT: ${{ inputs.what }}
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "::error::$WHAT left modified or untracked files behind"
+          git status --porcelain
+          git --no-pager diff
+          exit 1
+        fi

@@ -82,6 +82,9 @@ jobs:
           HOMEBREW_NO_REQUIRE_TAP_TRUST: 1
       - run: uv sync --group dev --python ${{ matrix.python-version }}
       - run: uv run poe test
+      - uses: ./.github/actions/check-clean
+        with:
+          what: the test run
       # coverage/Sonar are properties of the code, not of the OS it ran
       # on -- uploaded once, from one representative leg of the matrix,
       # rather than once per OS.
