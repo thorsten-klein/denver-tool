@@ -1,3 +1,8 @@
+# Compose names the project after the directory of the first compose file,
+# which is ../../zephyr-docker for every example layered on it -- without
+# a name of its own, this devcontainer would share the project (and the
+# running 'dev' container) with the other examples' devcontainers.
+name: zephyr-devshell-4-4-1
 services:
   dev:
     build: !reset # avoid re-building the container
