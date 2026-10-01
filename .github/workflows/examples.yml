@@ -112,26 +112,33 @@ jobs:
           tar -xf /tmp/denver-binary/denver-*-x64-linux.tar.xz -C /tmp
 
       # Every mode against the same example, on one runner, so the expensive
-      # work is done once as the caches are shared.and reused.
+      # work is done once as the caches are shared and reused. A run must leave
+      # the checkout exactly as it found it, so each is followed by a check that
+      # git shows neither modified nor untracked files.
       - name: Option 1 -- run the script
         run: .venv/bin/python src/denver.py run examples/${{ matrix.example }} -- echo "ok (script)"
+
+      - uses: ./.github/actions/check-clean
+        with:
+          what: examples/${{ matrix.example }} option 1
 
       - name: Option 2 -- run install from a wheel
         run: /tmp/denver-wheel/bin/denver run examples/${{ matrix.example }} -- echo "ok (wheel)"
 
+      - uses: ./.github/actions/check-clean
+        with:
+          what: examples/${{ matrix.example }} option 2
+
       - name: Option 3 -- run installed in editable mode
         run: /tmp/denver-editable/bin/denver run examples/${{ matrix.example }} -- echo "ok (editable)"
+
+      - uses: ./.github/actions/check-clean
+        with:
+          what: examples/${{ matrix.example }} option 3
 
       - name: Option 4 -- run the standalone executable
         run: /tmp/denver run examples/${{ matrix.example }} -- echo "ok (binary)"
 
-      # A run must leave the checkout exactly as it found it. There should be neither
-      # modified nor untracked files in git
-      - name: Check the run left the checkout clean
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "ERROR: examples/${{ matrix.example }} left modified or untracked files behind"
-            git status --porcelain
-            git --no-pager diff
-            exit 1
-          fi
+      - uses: ./.github/actions/check-clean
+        with:
+          what: examples/${{ matrix.example }} option 4
