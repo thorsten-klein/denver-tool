@@ -52,6 +52,9 @@ services:
       - ./configs/.gitconfig:$DOCKER_HOME/.config/git/config
       - $DENVER_GLOBAL_ENV_DIR/.git-data:$DOCKER_HOME/.git-data
 
+      # netrc credentials (curl -n, pip, west, ...), prepared by denver's 'netrc' stage
+      - $DENVER_NETRC_FILE:$DOCKER_HOME/.netrc
+
       # shell configs/history
       - ./configs/config.fish:$DOCKER_HOME/.config/fish/config.fish
       - ./configs/.bash_aliases:$DOCKER_HOME/.bash_aliases

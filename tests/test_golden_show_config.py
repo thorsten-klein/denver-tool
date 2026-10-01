@@ -39,6 +39,7 @@ import denver_providers.zephyr as zephyr_provider
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GOLDEN_DIR = Path(__file__).resolve().parent / "golden"
 FAKE_WEST_TOPDIR = "/fake-west-topdir"
+FAKE_HOME = "/fake-home"
 # newer than any 'denver-version:' an example can plausibly pin
 FAKE_DENVER_VERSION = "999.0.0"
 
@@ -63,6 +64,9 @@ def _resolve_show_config_full(env_name, monkeypatch, capsys, which):
     so both fake the same things the same way.
     """
     monkeypatch.setenv("WEST_TOPDIR", FAKE_WEST_TOPDIR)
+    # paths under ~ (the netrc stage's) must not show this machine's home dir
+    monkeypatch.setenv("HOME", FAKE_HOME)
+    monkeypatch.delenv("DENVER_GLOBAL_ENV_DIR", raising=False)
     # zephyr's 'west-yml:' fallback walks for the outermost enclosing .git
     # independently of WEST_TOPDIR -- real on this machine (this checkout may
     # itself be nested inside another .git, e.g. via git-nested), so it's

@@ -1,10 +1,11 @@
 version: 1.0
-denver-version: '>=1.6.6'
+denver-version: '>=1.7.0'
 hooks:
   env:
   - <REPO>/examples/zephyr-devshell/hooks/env.sh
   post-conan: null
   post-docker: null
+  post-netrc: null
   post-uv: null
   post-uv-zephyr: null
   post-zephyr: null
@@ -12,15 +13,37 @@ hooks:
   pre-conan: null
   pre-docker:
   - <REPO>/examples/zephyr-docker/create-env.sh
+  pre-netrc: null
   pre-uv: null
   pre-uv-zephyr: null
   pre-zephyr: null
 stages:
+- netrc
 - docker
 - conan
 - uv
 - zephyr
 - uv-zephyr
+netrc:
+  provider: netrc
+  description: null
+  disabled: false
+  depends-on: []
+  skip-on-success: []
+  skip-on-failure: []
+  env: {}
+  env-prepend: {}
+  env-append: {}
+  scripts: null
+  endpoints: {}
+  expiry-warning: 7
+  machines: []
+  path: /fake-home/.denver/zephyr-docker/.netrc
+  prompt-interactive: true
+  recheck-after: 86400
+  seed-from: /fake-home/.netrc
+  timeout: 5
+  verify: true
 docker:
   provider: docker
   description: null

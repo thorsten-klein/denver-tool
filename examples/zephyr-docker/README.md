@@ -83,7 +83,7 @@ has to be *copied* in because git rewrites it in place rather than editing it
 
 | Path | What it is |
 |---|---|
-| `denver.toml` | One `docker` stage |
+| `denver.yml` | A `netrc` stage (the container's `.netrc`, tokens checked) and a `docker` stage |
 | `docker-compose.yml` | The `dev` service: image, mounts, user, devices |
 | `create-env.sh` | Renders the `.env` Compose reads (`hooks: pre-docker:`) |
 | `container/Dockerfile` | The image itself |

@@ -1,10 +1,12 @@
 version: 1.0
 # minimum denver (the tool) this env needs -- see doc/configuration/config-file.md
-denver-version: ">=1.6.6"
+denver-version: ">=1.7.0"
 
 # Runs the command inside a docker compose service. The 'docker' provider
 # (src/denver_providers/docker.py) builds the image and runs the service.
+# 'netrc' runs first: it prepares the .netrc the container mounts and checks its tokens.
 stages:
+- netrc
 - docker
 
 # create-env.sh generates the full compose env-file itself (dynamic bits:
@@ -14,6 +16,19 @@ stages:
 hooks:
   pre-docker:
   - create-env.sh
+
+# Persistent .netrc for the container, copied once from your ~/.netrc.
+# It is mounted in docker-compose.yml as ${DENVER_NETRC_FILE}.
+# Add machines to write entries from environment variables, e.g.:
+#   machines:
+#   - url: artifacts.example.com
+#     username: ci-bot
+#     token: ${ARTIFACTS_TOKEN}
+# Skip the token check with 'verify: false'.
+netrc:
+  provider: netrc
+  path: ${DENVER_GLOBAL_ENV_DIR:-~/.denver/zephyr-docker}/.netrc
+  seed-from: ~/.netrc
 
 docker:
   provider: docker

@@ -36,7 +36,8 @@ SCRIPTDIR=$(realpath $(dirname $BASH_SOURCE))
 
         tmp="$OUTPUT_DIR/$name.tmp"
         echo "Downloading $name ..."
-        curl --fail --location --silent --show-error --retry 3 --retry-delay 2 \
+        # use the .netrc from the 'netrc' stage (else ~/.netrc) for mirrors that need a login
+        curl -n ${DENVER_NETRC_FILE:+--netrc-file "$DENVER_NETRC_FILE"} --fail --location --silent --show-error --retry 3 --retry-delay 2 \
             --output "$tmp" "$url"
 
         sha256="$(sha256sum "$tmp" | awk '{print $1}')"

@@ -223,7 +223,7 @@ UNKNOWN_VERSION = "unknown (not installed)"
 # A forgotten bump can't go unnoticed: every example must still run from
 # this checkout (see tests/test_dev_version.py). Lagging the newest tag is
 # not an error -- the value is simply inert then.
-DEV_VERSION = None
+DEV_VERSION = "1.7.0"
 
 
 def scm_version():
