@@ -112,6 +112,9 @@ render_env_file() {
     echo "DOCKER_HOME=/home/ubuntu"
     echo "DENVER_DIR=$DENVER_DIR"
     echo "DENVER_GLOBAL_ENV_DIR=$DENVER_GLOBAL_ENV_DIR"
+    # also in the .env so tools that run 'docker compose' without denver's
+    # environment (the VS Code devcontainer CLI) can still resolve the mount
+    echo "DENVER_NETRC_FILE=${DENVER_NETRC_FILE:-$DENVER_GLOBAL_ENV_DIR/.netrc}"
     echo "JETBRAINS_LICENSE_SERVER=$JETBRAINS_LICENSE_SERVER"
     echo "CONAN_HOME=$DENVER_GLOBAL_ENV_DIR/.conan"
     echo "PYTHONPATH=$DENVER_DIR/envs/zephyr-devshell/conan/base_classes"
