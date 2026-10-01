@@ -11,6 +11,10 @@ services:
     #network_mode: host # for DISPLAY
     env_file:
       - .env
+    # docker's init (tini) as PID 1: forwards signals (Ctrl+C, docker stop) to
+    # the command and reaps zombies -- as PID 1 itself the command would
+    # ignore SIGTERM/SIGINT unless it installs a handler
+    init: true
     user: ${HOST_UID:-1000}:${HOST_GID:-1000}
     privileged: true
     volumes:
