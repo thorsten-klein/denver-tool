@@ -1,6 +1,6 @@
 version: 1.0
 # minimum denver (the tool) this env needs -- see doc/configuration/config-file.md
-denver-version: ">=1.6.6"
+denver-version: ">=1.7.0"
 
 # Shared base for all zephyr-devshell-<version> environments.
 #
@@ -21,11 +21,18 @@ runnable: false
 # entry is a stage id; its section must always declare 'provider: <name>'
 # explicitly (never guessed from the id).
 stages:
+- netrc
 - docker
 - conan
 - uv
 - zephyr
 - uv-zephyr
+
+# The netrc stage (the .netrc the container mounts, tokens checked) is stacked
+# from ../zephyr-docker too. Here its download.sh recipes use it for curl.
+netrc:
+  import:
+  - ../zephyr-docker
 
 # The docker provider's config is stacked from the standalone zephyr-docker env
 # (which declares 'provider: docker' itself), including its 'default-cmd:'
