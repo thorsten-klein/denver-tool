@@ -1,7 +1,7 @@
 #!/bin/bash -e
-# Shared by postStartCommand and postAttachCommand (see devcontainer.json) --
-# kept in one file rather than the same one-liner pasted into both, which
-# would only drift apart the moment either needed a tweak.
+# Run by postAttachCommand (see devcontainer.json). Not also by
+# postStartCommand: VS Code attaches after every start, so that would only
+# run it twice in a row.
 #
 # Brings up conan/uv/zephyr/uv-zephyr -- fast on repeat calls, thanks to each
 # stage's own skip-on-success check -- and writes the resulting environment
@@ -13,7 +13,7 @@
 # parent->child, never to a sibling process started later. Writing them out
 # as 'export KEY=VALUE' lines and sourcing that file from every new shell's
 # rc is the standard workaround (same trick direnv/nvm use). Run again on
-# every start/attach rather than once, since neither /tmp nor a bare append
+# every attach rather than once, since neither /tmp nor a bare append
 # to ~/.bashrc is guaranteed to survive a container recreation.
 
 SELF_DIR=$(dirname $(realpath "${BASH_SOURCE[0]}"))

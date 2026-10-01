@@ -159,14 +159,13 @@ the image, so this always runs straight off the checkout that's already
 there: this whole repo lives inside the workspace `docker-compose.yml`
 bind-mounts in full, `src/` included.
 
-Once the container is up, `postStartCommand`/`postAttachCommand` both call
-`refresh-env.sh` — the same script, not the same command pasted twice, so it
-can't drift. It re-invokes denver (`--skip docker`: this already runs
+Once the container is up, `postAttachCommand` calls
+`refresh-env.sh`. It re-invokes denver (`--skip docker`: this already runs
 *inside* the container the docker stage would relocate into, and its
 `setup()` refuses to do that a second time) to bring up
 `conan`/`uv`/`zephyr`/`uv-zephyr`, exports the result to `/tmp/denver.env`,
-and makes sure `~/.bashrc` sources it. Both hooks run it, and every time
-(not once): a VS Code terminal is never a child process of whatever ran
+and makes sure `~/.bashrc` sources it. It runs on every attach
+(not once, and not additionally on start, since VS Code attaches after every start): a VS Code terminal is never a child process of whatever ran
 this script, so denver's own exports can only reach it by being written out
 and re-sourced — the same trick `direnv`/`nvm` use — and neither `/tmp` nor
 a bare append to `~/.bashrc` is guaranteed to survive a container restart,
@@ -183,7 +182,7 @@ env and isn't this one's to patch.
 | `.devcontainer/devcontainer.json` | Opens this same container in VS Code — see point 7 above |
 | `.devcontainer/docker-compose.devcontainer.yml` | `!reset`s `build:` so VS Code only ever uses the pre-built image |
 | `.devcontainer/denver.sh` | Every hook's shared way to re-invoke denver straight off this checkout — see point 7 above |
-| `.devcontainer/refresh-env.sh` | `postStartCommand`/`postAttachCommand`'s shared script — see point 7 above |
+| `.devcontainer/refresh-env.sh` | `postAttachCommand`'s script — see point 7 above |
 | `conan/conanfile.py` / `catalog.yml` | The tool set for 4.4.1, pinned by revision |
 | `conan/recipes/python-cache/denver/` | Wheel cache; `requirements.final.txt` is the generated lockfile |
 | `conan/recipes/west-blobs-cache/denver/` | Pre-cached west blobs (`blobs.txt`) |

@@ -8,7 +8,6 @@
   "workspaceFolder": "${localWorkspaceFolder}",
   "initializeCommand": "${localWorkspaceFolder}/.devcontainer/denver.sh run ${localWorkspaceFolder} --until docker -- echo Done",
   "overrideCommand": true,
-  "postStartCommand": "${localWorkspaceFolder}/.devcontainer/refresh-env.sh",
   "postAttachCommand": "${localWorkspaceFolder}/.devcontainer/refresh-env.sh",
   "shutdownAction": "stopCompose"
 }
