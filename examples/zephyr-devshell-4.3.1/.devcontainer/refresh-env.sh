@@ -5,7 +5,7 @@
 #
 # Brings up conan/uv/zephyr/uv-zephyr -- fast on repeat calls, thanks to each
 # stage's own skip-on-success check -- and writes the resulting environment
-# to /tmp/denver.env, then makes sure ~/.bashrc sources it.
+# to /tmp/denver.env, then makes sure every new bash, zsh and fish picks it up.
 #
 # Why this dance at all: a VS Code terminal is never a child process of
 # whatever ran this script, so the environment variables denver just built
@@ -26,3 +26,13 @@ ENV_DIR=$(realpath "$SELF_DIR/..")
 
 SOURCE_LINE='[ -f /tmp/denver.env ] && . /tmp/denver.env'
 grep -qxF "$SOURCE_LINE" ~/.bashrc 2>/dev/null || echo "$SOURCE_LINE" >> ~/.bashrc
+
+# zsh can source the same file. Not from ~/.zshrc, though: that is a bind
+# mount of a tracked file (zephyr-docker/configs/.zshrc), so the line goes
+# into ~/.zshenv, limited to interactive shells like the ~/.bashrc one.
+ZSH_LINE='[[ -o interactive && -f /tmp/denver.env ]] && . /tmp/denver.env'
+grep -qxF "$ZSH_LINE" ~/.zshenv 2>/dev/null || echo "$ZSH_LINE" >> ~/.zshenv
+
+# fish can't source bash syntax -- denver-env.fish translates it (see there)
+mkdir -p ~/.config/fish/conf.d
+cp "$SELF_DIR/denver-env.fish" ~/.config/fish/conf.d/denver-env.fish

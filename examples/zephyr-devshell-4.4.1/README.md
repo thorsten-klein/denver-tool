@@ -174,6 +174,13 @@ only a rebuild always re-triggers it. Patched into the user's own
 `/etc/bash.bashrc`, since that image is shared by every `zephyr-devshell-*`
 env and isn't this one's to patch.
 
+zsh and fish terminals get the same env. zsh sources the file from
+`~/.zshenv` (`~/.zshrc` is a bind mount of a tracked file, so nothing is
+appended there). fish can't read bash syntax, so `denver-env.fish`, copied
+into `~/.config/fish/conf.d/`, lets bash evaluate the file and sets the
+variables it exports in fish. It also prepends `SHELL_PROMPT_PREFIX` to the
+prompt on fish versions older than 4.8, which don't read it themselves.
+
 ## Files
 
 | Path | What it is |
@@ -183,6 +190,7 @@ env and isn't this one's to patch.
 | `.devcontainer/docker-compose.devcontainer.yml` | `!reset`s `build:` so VS Code only ever uses the pre-built image |
 | `.devcontainer/denver.sh` | Every hook's shared way to re-invoke denver straight off this checkout — see point 7 above |
 | `.devcontainer/refresh-env.sh` | `postAttachCommand`'s script — see point 7 above |
+| `.devcontainer/denver-env.fish` | Imports `/tmp/denver.env` into interactive fish shells (installed by `refresh-env.sh`) |
 | `conan/conanfile.py` / `catalog.yml` | The tool set for 4.4.1, pinned by revision |
 | `conan/recipes/python-cache/denver/` | Wheel cache; `requirements.final.txt` is the generated lockfile |
 | `conan/recipes/west-blobs-cache/denver/` | Pre-cached west blobs (`blobs.txt`) |
