@@ -49,6 +49,7 @@ class NetrcProvider(Provider):
     """Maintains and verifies a .netrc file -- see doc/providers/netrc.md for its config keys."""
 
     name = "netrc"
+    host_side = True
 
     #: every key this provider's stage section understands
     KEYS = (

@@ -2607,7 +2607,15 @@ def _run_stages_via_wrapper(
     skip_state,
     options,
 ):
-    """Host side: prepare the wrapper(s), then relocate execution into them (see run_stages)."""
+    """Host side: prepare the wrapper(s), then relocate execution into them (see run_stages).
+
+    A setup stage marked ``host_side`` (netrc: the wrapper's own config needs
+    its result) runs here too, in its pipeline position, and is skipped by
+    the denver that lands inside.
+    """
+    host_setups = [s for s in setups if s.host_side]
+    setups = [s for s in setups if not s.host_side]
+    host_ids = set(_stage_ids_of(active_wrappers)) | set(_stage_ids_of(host_setups))
     # Same single ordered walk as _run_stages_directly, for the same reason:
     # each declared stage reports in its own pipeline position. A *runnable*
     # setup stage is passed over silently here -- it runs inside the wrapper,
@@ -2626,7 +2634,7 @@ def _run_stages_via_wrapper(
             config,
             config_path,
             stage,
-            run_ids=set(_stage_ids_of(active_wrappers)),
+            run_ids=host_ids,
             report_ids=report_ids,
             skip_state=skip_state,
             quiet=options.quiet,
@@ -2641,7 +2649,7 @@ def _run_stages_via_wrapper(
     else:
         # setup providers run *inside* the wrapper: re-invoke denver there
         _note_not_previewed(ctx, "stages", setups, active_wrappers)
-        cmd = reinvoke_command(config_path, forwarded, _stage_ids_of(active_wrappers), options=options)
+        cmd = reinvoke_command(config_path, forwarded, sorted(host_ids, key=skip_state.stage_index.get), options=options)
 
     cmd = _wrap_cmd(ctx, cmd, active_wrappers, skip_state.stage_index, skip_state.total)
     # with no setup stages nothing re-invokes, so this is where the env is ready

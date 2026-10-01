@@ -51,6 +51,9 @@ class Provider:
     #: "setup" providers build the local environment; "wrapper" providers
     #: relocate the final command (e.g. into a container).
     kind: str = "setup"
+    #: a "setup" provider that must still run on the host when a wrapper
+    #: relocates the rest (e.g. what the wrapper's own config consumes).
+    host_side: bool = False
     #: every denver config key this provider's section understands -- shown
     #: (as null if unset) in --show-config; see resolve_defaults.
     KEYS: tuple[str, ...] = ()
