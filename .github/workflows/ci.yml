@@ -9,6 +9,12 @@ on:
     - opened
     - synchronize
     - reopened
+  # weekly on develop (scheduled runs always use the default branch), so a
+  # breaking change in a dependency, runner image or upstream download shows
+  # up even in a week without any commit
+  schedule:
+  - cron: '0 18 * * 5'
+    timezone: Europe/Berlin
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
