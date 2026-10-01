@@ -14,6 +14,7 @@ PROVIDERS = {
     "custom": CustomProvider,
     "download": DownloadProvider,
     "git": GitProvider,
+    "netrc": NetrcProvider,
     "nix": NixProvider,
 }
 ```
@@ -110,6 +111,7 @@ clear message. A provider with no such state (`custom`) skips itself.
 | `zephyr` | setup | Init/update a West workspace, apply patches, fetch blobs, set `ZEPHYR_BASE` | `west`, `git` |
 | `download` | setup | Fetch release archives, verify checksums, unpack, extend `PATH` | HTTP(S) |
 | `git` | setup | Clone or fetch a checkout, pinned to one revision (detached) | `git` |
+| `netrc` | setup | Prepare a `.netrc`, write `machines:` into it, check its tokens | none (HTTP only) |
 | `nix` | setup | Evaluate a flake's devShell once, cache it, source it into the environment | `nix`, `git` |
 | `docker` | wrapper | Build/enter a compose service, re-invoke denver inside it | `docker compose` |
 | `custom` | setup, or wrapper with `launcher:` | Run one command, source a script, or relocate the final command | whatever the command is |

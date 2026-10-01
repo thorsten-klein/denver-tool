@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="_static/favicon.svg"/>
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=d670838b"></script>
+      <script src="_static/documentation_options.js?v=425da990"></script>
       <script src="_static/doctools.js?v=9a2dae69"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -49,7 +49,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/41da03031e0fadd9243b1a9035e64390c48cfc55">1.6.9-6-g41da030</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/992bf1e1990c440b169cedb13a0d653ffa36ecfc">1.6.9-7-g992bf1e</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -247,6 +247,14 @@
 <li class="toctree-l2"><a class="reference internal" href="providers/git.html#unreachable-commits">Unreachable commits</a></li>
 <li class="toctree-l2"><a class="reference internal" href="providers/git.html#where-things-go">Where things go</a></li>
 <li class="toctree-l2"><a class="reference internal" href="providers/git.html#design-notes">Design notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="providers/netrc.html">netrc provider</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="providers/netrc.html#keys">Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="providers/netrc.html#tokens">Tokens</a></li>
+<li class="toctree-l2"><a class="reference internal" href="providers/netrc.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="providers/netrc.html#prompts">Prompts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="providers/netrc.html#notes">Notes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="providers/nix.html">nix provider</a><ul>
@@ -505,10 +513,13 @@ notes on the patterns it supports and how it behaves under
 <tr class="row-odd"><td><p><a class="reference internal" href="providers/git.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">git</span></code></span></a></p></td>
 <td><p>Clone/fetch a git checkout, pinned to one revision</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="providers/nix.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">nix</span></code></span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="providers/netrc.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">netrc</span></code></span></a></p></td>
+<td><p>Keep a <code class="docutils literal notranslate"><span class="pre">.netrc</span></code> in order and check that its tokens still work</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="providers/nix.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">nix</span></code></span></a></p></td>
 <td><p>Source a nix flake’s devShell into the environment</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="providers/custom.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">custom</span></code></span></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="providers/custom.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">custom</span></code></span></a></p></td>
 <td><p>Escape hatch: an arbitrary command, sourced script or launcher</p></td>
 </tr>
 </tbody>
@@ -522,6 +533,7 @@ notes on the patterns it supports and how it behaves under
 <li><p><a class="reference internal" href="providers/zephyr.html"><span class="std std-doc">zephyr</span></a></p></li>
 <li><p><a class="reference internal" href="providers/download.html"><span class="std std-doc">download</span></a></p></li>
 <li><p><a class="reference internal" href="providers/git.html"><span class="std std-doc">git</span></a></p></li>
+<li><p><a class="reference internal" href="providers/netrc.html"><span class="std std-doc">netrc</span></a></p></li>
 <li><p><a class="reference internal" href="providers/nix.html"><span class="std std-doc">nix</span></a></p></li>
 <li><p><a class="reference internal" href="providers/custom.html"><span class="std std-doc">custom</span></a></p></li>
 </ul>
