@@ -2594,6 +2594,13 @@ def _announce_skip(ctx, stage_id, reason, skip_state):
     skip_banner(ctx, stage_id, reason)
 
 
+def _split_host_side(active_wrappers, setups):
+    """``(ids of the stages that run on the host, the setup stages left for inside the wrapper)``."""
+    host_setups = [s for s in setups if s.host_side]
+    inner_setups = [s for s in setups if not s.host_side]
+    return set(_stage_ids_of(active_wrappers)) | set(_stage_ids_of(host_setups)), inner_setups
+
+
 def _run_stages_via_wrapper(
     ctx,
     config,
@@ -2613,9 +2620,7 @@ def _run_stages_via_wrapper(
     its result) runs here too, in its pipeline position, and is skipped by
     the denver that lands inside.
     """
-    host_setups = [s for s in setups if s.host_side]
-    setups = [s for s in setups if not s.host_side]
-    host_ids = set(_stage_ids_of(active_wrappers)) | set(_stage_ids_of(host_setups))
+    host_ids, setups = _split_host_side(active_wrappers, setups)
     # Same single ordered walk as _run_stages_directly, for the same reason:
     # each declared stage reports in its own pipeline position. A *runnable*
     # setup stage is passed over silently here -- it runs inside the wrapper,
@@ -2649,7 +2654,9 @@ def _run_stages_via_wrapper(
     else:
         # setup providers run *inside* the wrapper: re-invoke denver there
         _note_not_previewed(ctx, "stages", setups, active_wrappers)
-        cmd = reinvoke_command(config_path, forwarded, sorted(host_ids, key=skip_state.stage_index.get), options=options)
+        cmd = reinvoke_command(
+            config_path, forwarded, sorted(host_ids, key=skip_state.stage_index.get), options=options
+        )
 
     cmd = _wrap_cmd(ctx, cmd, active_wrappers, skip_state.stage_index, skip_state.total)
     # with no setup stages nothing re-invokes, so this is where the env is ready
