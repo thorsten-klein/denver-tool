@@ -40,7 +40,9 @@ stage, see [Configuration](../configuration/config-file.md).)
   - **`overwrite`** — default `false`. If the host is already in the file, `false` keeps it and
     `true` replaces it.
   - **`verify`** — `false` skips the check for this host.
-- **`verify`** — check the tokens. Default: `true`.
+- **`verify`** — check the tokens. Default: `true`. A boolean turns the check on or off for every
+  host. A list of URLs or host names (only the host is used) checks just those hosts and leaves the
+  others alone; an empty list checks nothing.
 - **`prompt-interactive`** — ask for a token on a terminal. Default: `true`. See “Prompts”.
 - **`endpoints`** — `host: url` pairs: the URL to check that host against (Basic auth).
 - **`expiry-warning`** — warn when a GitHub token ends within this many days. Default: `7`.
