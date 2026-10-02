@@ -80,7 +80,7 @@ class NetrcProvider(Provider):
         resolved["path"] = str(ctx.resolve_path(cls._optional_string(cfg, "path") or DEFAULT_PATH))
         seed = cls._optional_string(cfg, "seed-from")
         resolved["seed-from"] = str(ctx.resolve_path(seed)) if seed else None
-        resolved["verify"] = cls._bool(cfg, "verify", default=True)
+        resolved["verify"] = cls._verify_setting(ctx, cfg.get("verify"))
         resolved["prompt-interactive"] = cls._bool(cfg, "prompt-interactive", default=True)
         resolved["expiry-warning"] = cls._number(cfg, "expiry-warning", default=7, whole=True)
         resolved["recheck-after"] = cls._number(cfg, "recheck-after", default=24 * 3600)
@@ -109,6 +109,20 @@ class NetrcProvider(Provider):
         if not isinstance(value, bool):
             die(f"netrc: '{key}:' must be a boolean (got {value!r})")
         return value
+
+    @staticmethod
+    def _verify_setting(ctx, value):
+        """'verify:' as a bool (default True) or a list of hosts, from the URLs/hosts written; dies for anything else."""
+        if value is None:
+            return True
+        if isinstance(value, bool):
+            return value
+        if not (isinstance(value, list) and all(isinstance(v, str) for v in value)):
+            die(f"netrc: 'verify:' must be a boolean or a list of URLs (got {value!r})")
+        hosts = [host_of(interpolate(v, ctx.variables)) for v in value]
+        if not all(hosts):
+            die(f"netrc: 'verify:' has an entry without a host (got {value!r})")
+        return list(dict.fromkeys(hosts))
 
     @staticmethod
     def _number(cfg, key, *, default, whole=False, positive=False):
@@ -264,7 +278,7 @@ class NetrcProvider(Provider):
             return token.strip()
         if self._interactive(ctx, cfg):
             prompt = f"netrc[{self.stage}]: token for {machine['username']}@{host} ({machine['token']} is empty): "
-            check = cfg["verify"] and machine["verify"] is not False
+            check = self._is_verified(cfg, host) and machine["verify"] is not False
             token, _ = self._ask_checked(cfg, host, machine["username"], prompt, check=check)
             if token:
                 return token
@@ -309,9 +323,10 @@ class NetrcProvider(Provider):
     def _verify(self, ctx, cfg, path, machines):
         """Check every token in ``path``; ask for a new one where it was rejected; fail if one stays rejected."""
         skip = self._skipped_hosts(machines)
-        entries = [e for e in self._read_entries(path) if e.host not in skip]
+        entries = [e for e in self._read_entries(path) if e.host not in skip and self._is_verified(cfg, e.host)]
         state = ctx.env_workdir / f"{self.stage}.netrc-verified.json"
-        key = f"{netrc_verify.digest(path)}:{','.join(sorted(skip))}"
+        only = ",".join(cfg["verify"]) if isinstance(cfg["verify"], list) else ""
+        key = f"{netrc_verify.digest(path)}:{','.join(sorted(skip))}:{only}"
         if not entries or netrc_verify.remembered(state, key, cfg["recheck-after"]):
             return
         verdicts = self._renew_rejected(ctx, cfg, path, self._check(cfg, path, entries), machines)
@@ -324,6 +339,12 @@ class NetrcProvider(Provider):
     def _skipped_hosts(machines):
         """The hosts with 'verify: false'."""
         return {host_of(m["url"]) for m in machines if m["verify"] is False}
+
+    @staticmethod
+    def _is_verified(cfg, host):
+        """True if the stage's 'verify:' covers ``host``: true, or a list that names it."""
+        verify = cfg["verify"]
+        return host in verify if isinstance(verify, list) else bool(verify)
 
     @staticmethod
     def _remember(state, key, verdicts):
