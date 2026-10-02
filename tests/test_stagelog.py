@@ -151,6 +151,17 @@ def test_pump_stops_quietly_when_the_log_is_already_closed(tmp_path):
     os.close(out_write)
 
 
+def test_pump_stops_quietly_when_reading_fails(tmp_path):
+    # a closed pty raises OSError on Linux but reads b"" on macOS, so force the error here
+    tee = StageTee(tmp_path / "a")
+    read_end, write_end = os.pipe()
+    os.close(read_end)
+
+    tee._pump(read_end, write_end, 1)  # returns instead of raising OSError (bad file descriptor)
+
+    os.close(write_end)
+
+
 def test_stage_tee_is_thread_safe_enough_to_run_on_a_worker_thread(tmp_path, capfd):
     # also works from another thread
     def work():
