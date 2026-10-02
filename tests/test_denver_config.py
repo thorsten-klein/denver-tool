@@ -317,7 +317,7 @@ def test_load_config_rebases_section_import_reached_via_whole_file_import(tmp_pa
         textwrap.dedent("""\
         docker:
           import:
-          - ../docker_src
+          - ../docker_src:docker
         """)
     )
 
@@ -331,7 +331,7 @@ def test_load_config_rebases_section_import_reached_via_whole_file_import(tmp_pa
     )
 
     cfg = denver.load_config(env_dir / "denver.yml")
-    assert cfg["docker"]["import"] == [str(docker_src_dir.resolve())]
+    assert cfg["docker"]["import"] == [str(docker_src_dir.resolve()) + ":docker"]
 
 
 def test_load_config_then_expand_section_imports_resolves_across_whole_file_import(tmp_path):
@@ -352,7 +352,7 @@ def test_load_config_then_expand_section_imports_resolves_across_whole_file_impo
         textwrap.dedent("""\
         docker:
           import:
-          - ../docker_src
+          - ../docker_src:docker
         """)
     )
 
@@ -386,7 +386,7 @@ def test_load_config_rebases_section_import_overwrite_marker_left_untouched(tmp_
         docker:
           import:
           - <overwrite>
-          - ../docker_src
+          - ../docker_src:docker
         """)
     )
 
@@ -400,7 +400,7 @@ def test_load_config_rebases_section_import_overwrite_marker_left_untouched(tmp_
     )
 
     cfg = denver.load_config(env_dir / "denver.yml")
-    assert cfg["docker"]["import"] == ["<overwrite>", str(docker_src_dir.resolve())]
+    assert cfg["docker"]["import"] == ["<overwrite>", str(docker_src_dir.resolve()) + ":docker"]
 
 
 def test_load_config_runnable_false_does_not_leak_through_import(tmp_path):
@@ -556,10 +556,10 @@ def test_load_config_bare_string_section_import_is_rebased(tmp_path):
     (docker_src_dir / "denver.yml").write_text("docker:\n  exe: docker\n")
     env_dir = tmp_path / "env"
     env_dir.mkdir()
-    (env_dir / "denver.yml").write_text("docker:\n  import: ../docker_src\n")
+    (env_dir / "denver.yml").write_text("docker:\n  import: ../docker_src:docker\n")
 
     cfg = denver.load_config(env_dir / "denver.yml")
-    assert cfg["docker"]["import"] == [str(docker_src_dir.resolve())]
+    assert cfg["docker"]["import"] == [str(docker_src_dir.resolve()) + ":docker"]
 
 
 def test_load_config_malformed_section_import_dies(tmp_path, caplog):

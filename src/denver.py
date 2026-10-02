@@ -1443,10 +1443,10 @@ def expand_section_imports(config, env_dir):
 
         docker:
           import:
-          - ../zephyr-docker      # stack that env's `docker:` section here
+          - ../zephyr-docker:docker   # stack that env's `docker:` section here
 
-    An entry may also point directly at a config file and/or name an explicit
-    source section with ``path:section``::
+    Every entry names its source section as ``path:section``; ``path`` may be
+    an env directory or directly a config file::
 
         conan:
           import:
@@ -1498,10 +1498,11 @@ def _stacked_section(value, key, env_dir):
     hook_entries = {}
     for ref in import_entries(value["import"], f"section '{key}'"):
         path, sep, section = ref.rpartition(":")
-        path, section = (path, section) if sep else (ref, None)
+        if not (sep and path and section):
+            die(f"section '{key}': import '{ref}' must name the source section as 'path:section' (e.g. '{ref}:{key}')")
         src_path = resolve_import(path, env_dir)
         src_config = load_config(src_path)
-        merged = deep_merge(merged, src_config.get(section or key) or {})
+        merged = deep_merge(merged, src_config.get(section) or {})
         extra_dirs.append(src_path.parent)
         for name in src_config.get("hooks") or {}:
             entries = _own_hook_entries(src_config, src_path.parent, name)
