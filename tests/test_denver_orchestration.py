@@ -618,6 +618,10 @@ _REINVOKE_FIELD_OVERRIDES = {
     "export_env": "/tmp/exported.env",
 }
 
+# Set with RunOptions.with_log() instead of a constructor argument (so the
+# constructor stays short).
+_REINVOKE_LOG_VALUE = "20261002-071712-123123"
+
 # dry_run is deliberately not forwarded: reinvoke_command's argv is only ever
 # handed to Context.exec(), which itself never really execs under --dry-run
 # (see its own docstring) -- it prints the command and returns instead -- so
@@ -663,6 +667,12 @@ def test_reinvoke_command_forwards_every_run_option(tmp_path):
             "it is read on the outer invocation but never re-passed to the inner "
             "one, so a wrapper reinvocation (e.g. docker) silently drops it"
         )
+
+    logging = denver.RunOptions(start_time=100.0).with_log(_REINVOKE_LOG_VALUE)
+    logging_argv = denver.reinvoke_command(config_path, ["echo", "hi"], ["docker"], options=logging)
+    assert logging_argv != baseline_argv
+    assert "--log" in logging_argv
+    assert logging_argv[logging_argv.index("--log-run") + 1] == _REINVOKE_LOG_VALUE
 
 
 # ---- run_stages -------------------------------------------------------------#

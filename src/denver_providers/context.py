@@ -12,6 +12,8 @@ reference denver built-ins and each other through ``${VAR}`` interpolation.
 
 from __future__ import annotations
 
+import atexit
+import contextlib
 import errno
 import fcntl
 import hashlib
@@ -20,12 +22,15 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from denver_errors import die
+from denver_providers.stagelog import KEEP_RUNS, StageTee, log_only, logging_active, prune_runs, sync_window_size
 
 # Every line a --dry-run emits starts with '[dry-run ', so the whole preview
 # can be grepped/filtered out of a terminal session in one go (e.g. `grep
@@ -105,6 +110,25 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", str
 logger = logging.getLogger("denver")
 
 
+class _LogOnlyHandler(logging.Handler):
+    """With -q the console hides log lines. This puts them in the log files."""
+
+    def emit(self, record):
+        """Write the hidden line to the log files."""
+        if _quiet_level >= 1 and record.levelno < logging.ERROR:
+            log_only(f"{record.levelname}: {record.getMessage()}")
+
+
+def _console_filter(record):
+    """With -q, show only errors on the console."""
+    return _quiet_level < 1 or record.levelno >= logging.ERROR
+
+
+logger.addHandler(_LogOnlyHandler())
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(_console_filter)
+
+
 # --------------------------------------------------------------------------- #
 # Small logging helpers, backed by the stdlib logging module
 # --------------------------------------------------------------------------- #
@@ -139,7 +163,7 @@ _quiet_level = 0
 _verbose = False
 
 
-def set_quiet(level, verbose=False):
+def set_quiet(level, verbose=False, *, log_files=False):
     """Silence denver-emitted messages across every provider module (by level), or restore normal logging.
 
     Level 1 (-q) covers info/warn/banner()/stage_banner()/skip_banner() and
@@ -154,11 +178,22 @@ def set_quiet(level, verbose=False):
 
     ``verbose`` (-v/--verbose) is independent of the level -- see the
     ``_verbose`` global's own docstring for how the two combine.
+
+    ``log_files`` (--log): the logger stays at INFO so the log files get
+    everything. The console hides the lines itself (``_console_filter``).
     """
     global _quiet_level, _verbose
     _quiet_level = level
     _verbose = verbose
-    logger.setLevel(logging.ERROR if level >= 1 else logging.INFO)
+    logger.setLevel(logging.ERROR if level >= 1 and not log_files else logging.INFO)
+
+
+def emit(text, *, shown=True):
+    """Print ``text`` if ``shown``. If not, only the log files get it."""
+    if shown:
+        print(text, file=sys.stderr)
+    else:
+        log_only(text)
 
 
 def banner(ctx, stage, message):
@@ -184,11 +219,9 @@ def banner(ctx, stage, message):
     """
     # printed directly (not via logger.info) so it isn't prefixed with
     # "INFO: " -- it's a visual progress marker, not a log line.
-    if _quiet_level >= 1 or not _verbose:
-        return
     text = f"[{ctx.stage_index}/{ctx.stage_count}] {stage} - {message}"
     line = "-" * (len(text) + 4)
-    print(f"\033[93m{line}\n| {text} |\n{line}\033[39m", file=sys.stderr)
+    emit(f"\033[93m{line}\n| {text} |\n{line}\033[39m", shown=_quiet_level < 1 and _verbose)
 
 
 def stage_banner(ctx, stage, provider_name):
@@ -210,10 +243,8 @@ def stage_banner(ctx, stage, provider_name):
     finer "substage" detail -v adds; -q/-qq still hide it, same as
     everything else denver prints.
     """
-    if _quiet_level >= 1:
-        return
     text = f"[{ctx.stage_index}/{ctx.stage_count}] stage '{stage}' ({provider_name})"
-    print(f"\033[93m-- {text}\033[39m", file=sys.stderr)
+    emit(f"\033[93m-- {text}\033[39m", shown=_quiet_level < 1)
 
 
 def skip_banner(ctx, stage, reason):
@@ -225,10 +256,8 @@ def skip_banner(ctx, stage, reason):
     a whole-stage skip did no work, so a full box would overstate it. Same
     default-quiet-level visibility as stage_banner(), hidden at -q/-qq.
     """
-    if _quiet_level >= 1:
-        return
     text = f"[{ctx.stage_index}/{ctx.stage_count}] stage '{stage}' {reason}"
-    print(f"\033[93m-- {text}\033[39m", file=sys.stderr)
+    emit(f"\033[93m-- {text}\033[39m", shown=_quiet_level < 1)
 
 
 def dry_run_legend():
@@ -389,6 +418,33 @@ def interpolate_shell(value, variables):
 def _argv(cmd):
     """A command with every element stringified, the way subprocess/os.exec want it."""
     return [str(c) for c in cmd]
+
+
+def _wait_for(proc):
+    """Wait for ``proc`` the way a shell does. Returns its exit code.
+
+    ^C is left to the child, SIGTERM is passed on, and the log ptys follow the window size.
+    """
+    handlers = {
+        signal.SIGINT: signal.signal(signal.SIGINT, signal.SIG_IGN),
+        signal.SIGTERM: signal.signal(signal.SIGTERM, lambda signum, _frame: proc.send_signal(signum)),
+        signal.SIGWINCH: signal.signal(signal.SIGWINCH, lambda _signum, _frame: sync_window_size()),
+    }
+    try:
+        code = proc.wait()
+    finally:
+        for signum, handler in handlers.items():
+            signal.signal(signum, handler)
+    return 128 - code if code < 0 else code  # killed by signal N: 128 + N
+
+
+def _log_streams(stdout, stderr):
+    """Write a command's captured stdout and stderr to the log files."""
+    for fd, stream in ((1, stdout), (2, stderr)):
+        if isinstance(stream, bytes):
+            stream = stream.decode(errors="replace")
+        if stream:
+            log_only(stream.rstrip("\n"), fd)
 
 
 def _printable(cmd):
@@ -691,6 +747,10 @@ class Context:
         self.config_path = Path(config_path) if config_path else self.env_dir / "denver.yml"
         self.env_workdir = state_dir_for(self.env_dir, self.config_path)
         self.logs_dir = self.env_workdir / ".logs"
+        # log files (--log): off unless start_run_log() is called
+        self.stage_logs = False
+        self._run_log_dir = None
+        self._run_tee = None
 
         # venv lives under the workdir; host and in-docker venvs are kept apart.
         # venv_dir is the default; venv_dir_for(name) gives a per-stage venv so
@@ -791,6 +851,51 @@ class Context:
         marker = self.env_workdir.parent / ".gitignore"
         if not marker.exists():
             self.write_text(marker, "# denver's own state for this env -- not part of the project.\n*\n")
+
+    @property
+    def run_log_dir(self):
+        """The log folder of this run: ``.logs/runs/<YYYYmmdd-HHMMSS-microseconds>``.
+
+        It is named after the start time. Old folders are deleted when it is created.
+        """
+        if self._run_log_dir is None:
+            runs = self.logs_dir / "runs"
+            runs.mkdir(parents=True, exist_ok=True)
+            prune_runs(runs, KEEP_RUNS - 1)
+            self._run_log_dir = runs / datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+            self._run_log_dir.mkdir()
+        return self._run_log_dir
+
+    def start_run_log(self, run_id=None):
+        """Start writing ``run.stdout.log`` and ``run.stderr.log`` (all output of this run) and the stage files.
+
+        ``run_id`` is the folder name from the outer denver (--log-run). Then
+        this run uses that folder and continues its ``run.*.log`` files.
+        The folder is printed on stdout, unless -q is given or this is the inner denver.
+        It stops in ``exec()``, or at exit if there is no exec.
+        """
+        self.stage_logs = True
+        set_quiet(self.quiet, self.verbose, log_files=True)
+        if run_id:
+            self._run_log_dir = self.logs_dir / "runs" / run_id
+            self._run_log_dir.mkdir(parents=True, exist_ok=True)
+        if not self.quiet and not run_id:
+            print(f"Log files: {self.run_log_dir}")
+        self._run_tee = StageTee(self.run_log_dir / "run", append=bool(run_id))
+        self._run_tee.__enter__()
+        atexit.register(self.stop_run_log)
+
+    def stop_run_log(self):
+        """Stop writing the ``run.*.log`` files. Does nothing if it is not running."""
+        tee, self._run_tee = self._run_tee, None
+        if tee is not None:
+            tee.__exit__(None, None, None)
+
+    def stage_log(self, stage_id, stage_index):
+        """Write what a stage prints to ``NN-<stage id>.stdout.log`` and ``.stderr.log``. Does nothing if logging is off."""
+        if not self.stage_logs:
+            return contextlib.nullcontext()
+        return StageTee(self.run_log_dir / f"{stage_index:02d}-{stage_id}")
 
     @property
     def prompt_prefix(self):
@@ -1139,16 +1244,34 @@ class Context:
             return self._dry_run_command(cmd, printable, cwd=cwd, env=env, query=query, input=input)
         self._echo_command(printable, echo)
         try:
-            return subprocess.run(
+            return self._run_logged(cmd, cwd=cwd, env=env, check=check, capture=capture, input=input, echo=echo)
+        except OSError as exc:
+            self._die_unstartable(printable, exc)
+
+    def _run_logged(self, cmd, *, cwd, env, check, capture, input, echo):
+        """``subprocess.run``, and the output also goes to the log files.
+
+        That includes output the console does not show (-qq, ``capture``).
+        With ``echo=False`` (a secret) nothing is logged.
+        """
+        capture_for_log = logging_active() and echo and not capture and self.quiet >= 2
+        logged = logging_active() and echo and (capture or capture_for_log)
+        try:
+            result = subprocess.run(
                 _argv(cmd),
                 cwd=str(cwd) if cwd else None,
                 env=env,
                 check=check,
                 text=True,
-                **self._run_kwargs(capture=capture, input=input),
+                **self._run_kwargs(capture=capture or capture_for_log, input=input),
             )
-        except OSError as exc:
-            self._die_unstartable(printable, exc)
+        except subprocess.CalledProcessError as exc:
+            if logged:
+                _log_streams(exc.stdout, exc.stderr)
+            raise
+        if logged:
+            _log_streams(result.stdout, result.stderr)
+        return result
 
     def _child_env(self, extra_env):
         """ctx.env plus this call's own ``extra_env`` overrides, every value stringified."""
@@ -1158,9 +1281,12 @@ class Context:
         return env
 
     def _echo_command(self, printable, echo):
-        """Print the '+ cmd' echo -- only under --verbose (and never under --quiet/-qq), unless the caller silenced it."""
-        if echo and not self.quiet and self.verbose:
-            print(f"+ {printable}", file=sys.stderr)
+        """Print the '+ cmd' echo -- only under --verbose (and never under --quiet/-qq), unless the caller silenced it.
+
+        The log files always get it, unless ``echo=False``.
+        """
+        if echo:
+            emit(f"+ {printable}", shown=not self.quiet and self.verbose)
 
     def _run_kwargs(self, *, capture, input):
         """The subprocess.run kwargs implied by ``capture``, -qq, and an ``input`` payload.
@@ -1336,9 +1462,10 @@ class Context:
             capture_output=True,
             check=False,
         )
+        script_output, _, env_blob = result.stdout.partition(f"{sentinel}\0")
+        _log_streams(script_output, result.stderr)
         if result.returncode != 0:
             die(f"failed to source {scripts}: {result.stderr.strip()}")
-        _, _, env_blob = result.stdout.partition(f"{sentinel}\0")
         return env_blob
 
     def _absorb_env(self, env_blob):
@@ -1354,8 +1481,12 @@ class Context:
             key, _, value = entry.partition("=")
             self.env[key] = value
 
-    def exec(self, cmd):
+    def exec(self, cmd, *, log=True):
         """Replace the current process with ``cmd`` using the context env.
+
+        With --log (and ``log``) the command runs as a child instead, so its
+        output can be logged (``NN-cmd.*.log`` and ``run.*.log``). denver then
+        exits with the command's exit code.
 
         Under --dry-run the command is reported and this returns normally
         instead -- every caller treats exec() as the last thing it does, so
@@ -1382,8 +1513,7 @@ class Context:
         # "INFO: exec: ..." -- a different, inconsistent prefix for what is
         # otherwise the exact same "here is the command about to run" line),
         # gated on quiet/verbose the same way _echo_command is.
-        if not self.quiet and self.verbose:
-            print(f"+ exec: {_printable(cmd)}", file=sys.stderr)
+        emit(f"+ exec: {_printable(cmd)}", shown=not self.quiet and self.verbose)
         sys.stderr.flush()
         # Resolve the program to a concrete file *before* handing it to the
         # kernel, rather than leaving the PATH search to execvpe: the lookup
@@ -1397,10 +1527,24 @@ class Context:
         program = shutil.which(cmd[0], path=self.env.get("PATH"))
         if not program:
             die(f"exec: command not found on this environment's PATH: {cmd[0]!r}")
+        if log and self._run_tee is not None:
+            self._run_command_logged(program, cmd)
+        # the process becomes the command: stop logging
+        self.stop_run_log()
         try:
             os.execvpe(program, cmd, self.env)
         except OSError as exc:
             die(f"failed to exec {cmd[0]}: {exc}")
+
+    def _run_command_logged(self, program, cmd):
+        """Run the final command as a child with its output logged, then exit with its exit code."""
+        try:
+            with StageTee(self.run_log_dir / f"{self.stage_count + 1:02d}-cmd"):
+                code = _wait_for(subprocess.Popen(cmd, executable=program, env=self.env))
+        except OSError as exc:
+            die(f"failed to run {cmd[0]}: {exc}")
+        self.stop_run_log()
+        sys.exit(code)
 
     def write_export_env(self, path, banner=None):
         """Dump what denver itself changed in the env as shell-sourceable 'export' lines to ``path``.
