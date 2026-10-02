@@ -373,9 +373,9 @@ copy-pasting it:
   needs to state what's actually different for it.
 - **Section-level `import:`** stacks just one section from another env,
   e.g. a `docker:` section pulling in a shared base's `docker:` config
-  without inheriting that base's *entire* stack. An entry can point at a
-  specific section by name (`path:section`) instead of always the
-  same-named one.
+  without inheriting that base's *entire* stack. Every entry names the
+  source section explicitly as `path:section` (e.g. `../zephyr-docker:docker`),
+  so it is clear what is imported; a bare path is an error.
 
 A base env that only exists to be imported should set `runnable: false`, so
 starting it directly fails with an explanation instead of half-building

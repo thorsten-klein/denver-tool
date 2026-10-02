@@ -1211,7 +1211,7 @@ def test_main_show_config_expands_section_stacking(tmp_path, capsys):
         - docker
         docker:
           import:
-          - ../src
+          - ../src:docker
           provider: docker
           compose:
             default-cmd: '!override'

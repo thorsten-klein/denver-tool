@@ -309,7 +309,7 @@ def test_expand_section_imports_stacks_and_overrides(tmp_path):
     env_dir.mkdir()
     # 'service' conflicts with the stacked-in value, so overriding it deliberately
     # needs '!' -- see test_denver_config.py's deep_merge conflict tests
-    config = {"docker": {"import": ["../src"], "service": "!override"}}
+    config = {"docker": {"import": ["../src:docker"], "service": "!override"}}
     expanded, extra_dirs, extra_hooks = denver.expand_section_imports(config, env_dir)
     assert expanded["docker"] == {"exe": "docker", "service": "override"}
     assert extra_dirs == [src_env]
@@ -323,7 +323,7 @@ def test_expand_section_imports_bare_string_is_a_one_item_list(tmp_path):
     env_dir = tmp_path / "env"
     env_dir.mkdir()
 
-    expanded, extra_dirs, _ = denver.expand_section_imports({"docker": {"import": "../src"}}, env_dir)
+    expanded, extra_dirs, _ = denver.expand_section_imports({"docker": {"import": "../src:docker"}}, env_dir)
     assert expanded["docker"] == {"exe": "docker"}
     assert extra_dirs == [src_env]
 
@@ -351,7 +351,7 @@ def test_expand_section_imports_direct_file_ref(tmp_path):
 
     env_dir = tmp_path / "env"
     env_dir.mkdir()
-    config = {"docker": {"import": ["../src/denver.yml"]}}
+    config = {"docker": {"import": ["../src/denver.yml:docker"]}}
     expanded, extra_dirs, extra_hooks = denver.expand_section_imports(config, env_dir)
     assert expanded["docker"] == {"exe": "docker"}
     assert extra_dirs == [src_env]
@@ -376,6 +376,14 @@ def test_expand_section_imports_explicit_section_ref(tmp_path):
     assert expanded["conan"] == {"base-classes": ["conan/base_classes"]}
     assert extra_dirs == [src_env]
     assert extra_hooks == {}
+
+
+def test_expand_section_imports_requires_a_section(tmp_path):
+    env_dir = tmp_path / "env"
+    env_dir.mkdir()
+    for ref in ("../src", "../src:", ":docker"):
+        with pytest.raises(DenverError):
+            denver.expand_section_imports({"docker": {"import": [ref]}}, env_dir)
 
 
 def test_expand_section_imports_no_imports_passthrough(tmp_path):
@@ -1730,7 +1738,7 @@ def test_run_stages_stacking_used_by_stage(tmp_path, fake_providers, exec_record
         """)
     )
     env_dir, cfg_path = _env(tmp_path, {})
-    config = {"stages": ["fakewrap"], "fakewrap": {"import": ["../src"], "provider": "fakewrap"}}
+    config = {"stages": ["fakewrap"], "fakewrap": {"import": ["../src:fakewrap"], "provider": "fakewrap"}}
     denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
     assert exec_recorder["args"] == ["WRAPPED", "echo", "hi"]
 

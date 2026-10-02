@@ -140,6 +140,8 @@ def test_endpoints_are_interpolated(make_context):
         {"path": " "},
         {"seed-from": 1},
         {"verify": "yes"},
+        {"verify": [1]},
+        {"verify": [""]},
         {"prompt-interactive": 1},
         {"expiry-warning": 1.5},
         {"expiry-warning": -1},
@@ -374,6 +376,31 @@ def test_verify_off(ctx_for, fake_check, tmp_path):
     entry_file(tmp_path)
     run(ctx_for({"verify": False}))
     assert fake_check.calls == []
+
+
+def test_verify_list_checks_only_those_hosts(ctx_for, fake_check, tmp_path):
+    entry_file(tmp_path, "machine h login u password p\nmachine other login u password p\n")
+    run(ctx_for({"verify": ["https://h/x"]}))
+    assert fake_check.calls == [["h"]]
+
+
+def test_verify_list_resolves_to_hosts(make_context):
+    cfg = resolved(make_context(), verify=["https://a.b:8443/x", "c.d", "a.b"])
+    assert cfg["verify"] == ["a.b", "c.d"]
+
+
+def test_verify_empty_list_checks_nothing(ctx_for, fake_check, tmp_path):
+    entry_file(tmp_path)
+    run(ctx_for({"verify": []}))
+    assert fake_check.calls == []
+
+
+def test_asked_token_is_not_checked_for_a_host_outside_the_verify_list(ctx_for, monkeypatch, tmp_path):
+    check = FakeCheck(monkeypatch)
+    interactive(monkeypatch, [SECRET])
+    run(ctx_for({"machines": [machine()], "verify": ["elsewhere"]}))
+    assert SECRET in (tmp_path / "netrc").read_text()
+    assert check.calls == []
 
 
 def test_nothing_to_verify(ctx_for, fake_check):

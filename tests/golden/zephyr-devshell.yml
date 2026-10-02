@@ -44,7 +44,7 @@ netrc:
   recheck-after: 86400
   seed-from: /fake-home/.netrc
   timeout: 5
-  verify: true
+  verify: false
 docker:
   provider: docker
   description: null
