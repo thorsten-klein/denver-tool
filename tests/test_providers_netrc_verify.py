@@ -6,6 +6,7 @@ import base64
 import datetime
 import http.server
 import json
+import socketserver
 import sys
 import threading
 from typing import ClassVar
@@ -48,13 +49,21 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+class _Server(http.server.ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer looks up the host's fully qualified name here (a reverse DNS lookup); on
+        # macOS that takes seconds, and nothing in the tests needs the name
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
 @pytest.fixture
 def server(monkeypatch):
     for var in ("http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("NO_PROXY", "*")
     monkeypatch.setattr(_Handler, "seen", [])
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    httpd = _Server(("127.0.0.1", 0), _Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{httpd.server_port}"
