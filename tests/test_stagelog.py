@@ -624,6 +624,7 @@ def test_sync_size_copies_the_terminal_size_onto_the_pty(tmp_path, capfd, monkey
     monkeypatch.setattr(stagelog.os, "isatty", lambda fd: True)
     tee = StageTee(tmp_path / "a")
     tee.__enter__()
+    real_saved = tee._saved[1]
     try:
         # pretend the terminal behind stdout is the pty above, and that it was resized
         tee._saved[1] = real_slave
@@ -631,7 +632,7 @@ def test_sync_size_copies_the_terminal_size_onto_the_pty(tmp_path, capfd, monkey
         stagelog.sync_window_size()
         size = struct.unpack("HHHH", fcntl.ioctl(tee._masters[1], termios.TIOCGWINSZ, b"\0" * 8))[:2]
     finally:
-        tee._saved[1] = os.dup(1)  # something harmless for __exit__ to restore from
+        tee._saved[1] = real_saved  # so __exit__ puts the real stdout back, not the log pty
         tee.__exit__()
         os.close(real_master)
         os.close(real_slave)
