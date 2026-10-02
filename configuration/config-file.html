@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=b0104527"></script>
+      <script src="../_static/documentation_options.js?v=fa97b7df"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/b899ff09d190ce6191805a627f6864119dddbe8d">1.6.9-11-gb899ff0</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/f6fe13261731d8f0d92917545efaf20f89ea2987">1.6.9-12-gf6fe132</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -177,6 +177,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#requiring-a-denver-version">Requiring a denver version</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#generic-stage-keys">Generic stage keys</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#variable-interpolation">Variable interpolation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#log-files">Log files</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#the-prompt-marker">The prompt marker</a></li>
 </ul>
 </li>
@@ -674,6 +675,42 @@ the final command can read them as ordinary variables. <code class="docutils lit
 the one variable here denver <em>reads</em> rather than computes — is documented
 alongside them in the top-level
 <a class="reference external" href="https://github.com/thorsten-klein/denver-tool/blob/develop/README.md"><code class="docutils literal notranslate"><span class="pre">README.md</span></code></a>.</p>
+</section>
+<section id="log-files">
+<h3>Log files<a class="headerlink" href="#log-files" title="Link to this heading"></a></h3>
+<p>With <code class="docutils literal notranslate"><span class="pre">--log</span></code>, denver also writes its output to log files. Each run gets its
+own folder:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$DENVER_ENV_WORKDIR/.logs/runs/20261002-071712-123123/
+├── run.stdout.log
+├── run.stderr.log
+├── 01-netrc.stdout.log
+├── 01-netrc.stderr.log
+├── 02-docker.stdout.log
+├── 02-docker.stderr.log
+└── ...
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>The folder name is the start time of the run. denver prints the folder on
+stdout at the start (not with <code class="docutils literal notranslate"><span class="pre">-q</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run.*.log</span></code> has everything the run prints, until your command starts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NN-&lt;stage&gt;.*.log</span></code> has the output of one stage, including its hooks and its
+commands.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NN-cmd.*.log</span></code> has the output of your final command (the shell), <code class="docutils literal notranslate"><span class="pre">NN</span></code> being
+the number of the last stage plus one. It is also in <code class="docutils literal notranslate"><span class="pre">run.*.log</span></code>. With <code class="docutils literal notranslate"><span class="pre">--log</span></code>
+denver does not replace itself with the command, it starts it and waits.
+denver then ends with the exit code of the command.</p></li>
+<li><p>The files have no colours.</p></li>
+<li><p>stdout and stderr are in separate files (<code class="docutils literal notranslate"><span class="pre">.stdout.log</span></code> and <code class="docutils literal notranslate"><span class="pre">.stderr.log</span></code>).
+denver’s own messages are on stderr.</p></li>
+<li><p>The files always have everything, even if <code class="docutils literal notranslate"><span class="pre">-q</span></code> or no <code class="docutils literal notranslate"><span class="pre">-v</span></code> hides it on the
+terminal. Output of commands that denver reads itself is included too.
+Only commands marked as secret (<code class="docutils literal notranslate"><span class="pre">echo=False</span></code>) are left out.</p></li>
+<li><p>Stages that are skipped have no file. <code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> writes no files.</p></li>
+<li><p>Only the newest 20 run folders are kept.</p></li>
+<li><p>With docker, the second denver (inside the container) uses the same folder
+and continues the <code class="docutils literal notranslate"><span class="pre">run.*.log</span></code> files.</p></li>
+</ul>
 </section>
 <section id="the-prompt-marker">
 <h3>The prompt marker<a class="headerlink" href="#the-prompt-marker" title="Link to this heading"></a></h3>

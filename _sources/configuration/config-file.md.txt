@@ -261,6 +261,42 @@ the one variable here denver *reads* rather than computes — is documented
 alongside them in the top-level
 [`README.md`](https://github.com/thorsten-klein/denver-tool/blob/develop/README.md).
 
+### Log files
+
+With `--log`, denver also writes its output to log files. Each run gets its
+own folder:
+
+```
+$DENVER_ENV_WORKDIR/.logs/runs/20261002-071712-123123/
+├── run.stdout.log
+├── run.stderr.log
+├── 01-netrc.stdout.log
+├── 01-netrc.stderr.log
+├── 02-docker.stdout.log
+├── 02-docker.stderr.log
+└── ...
+```
+
+- The folder name is the start time of the run. denver prints the folder on
+  stdout at the start (not with `-q`).
+- `run.*.log` has everything the run prints, until your command starts.
+- `NN-<stage>.*.log` has the output of one stage, including its hooks and its
+  commands.
+- `NN-cmd.*.log` has the output of your final command (the shell), `NN` being
+  the number of the last stage plus one. It is also in `run.*.log`. With `--log`
+  denver does not replace itself with the command, it starts it and waits.
+  denver then ends with the exit code of the command.
+- The files have no colours.
+- stdout and stderr are in separate files (`.stdout.log` and `.stderr.log`).
+  denver's own messages are on stderr.
+- The files always have everything, even if `-q` or no `-v` hides it on the
+  terminal. Output of commands that denver reads itself is included too.
+  Only commands marked as secret (`echo=False`) are left out.
+- Stages that are skipped have no file. `--dry-run` writes no files.
+- Only the newest 20 run folders are kept.
+- With docker, the second denver (inside the container) uses the same folder
+  and continues the `run.*.log` files.
+
 ### The prompt marker
 
 denver marks the shell it starts by writing the prompt variables **the
