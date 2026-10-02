@@ -33,7 +33,7 @@ stages:
 # The token check is off by default here; set 'verify: true' to turn it on.
 netrc:
   import:
-  - ../zephyr-docker
+  - ../zephyr-docker:netrc
   verify: false
 
 # The docker provider's config is stacked from the standalone zephyr-docker env
@@ -41,7 +41,7 @@ netrc:
 # (the shell to drop into when no command is given).
 docker:
   import:
-  - ../zephyr-docker
+  - ../zephyr-docker:docker
 
 # Hooks are listed explicitly -- denver does not pick up a hooks/env.sh just
 # because it sits next to this file. 'hooks: <name>:' is a list, and every

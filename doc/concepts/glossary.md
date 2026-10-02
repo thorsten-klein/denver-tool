@@ -79,8 +79,8 @@ its `stages:`/`docker:`/`conan:`/`uv:` config.
 
 **Section-level `import:`** (also called *stacking*) — one stage section
 pulling its content from another environment's section, without inheriting
-that environment's entire stack. An entry may name a specific section
-(`path:section`) instead of the same-named one.
+that environment's entire stack. Every entry names its source section
+as `path:section`, e.g. `../zephyr-docker:docker`.
 
 **Merge rules** — how two layers combine: mappings merge key by key
 recursively; lists append (lower layer's entries first); two layers setting
