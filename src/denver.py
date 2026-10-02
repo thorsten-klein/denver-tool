@@ -168,7 +168,7 @@ def _list_with_hints(names, candidates):
     return ", ".join(_with_hint(name, candidates) for name in names)
 
 
-def print_logo():
+def print_logo(shown=True):
     """Print the DENVER wordmark banner (assets/logo.txt) to stderr.
 
     Shown right before denver's own --help/no-args screen, and right before
@@ -183,8 +183,10 @@ def print_logo():
     missing (e.g. a packaging edge case) -- a startup banner is cosmetic,
     never worth dying over.
     """
+    from denver_providers.context import emit
+
     if LOGO_PATH.is_file():
-        print(LOGO_PATH.read_text(), file=sys.stderr)
+        emit(LOGO_PATH.read_text(), shown=shown)
 
 
 # --------------------------------------------------------------------------- #
@@ -1680,6 +1682,7 @@ def _reinvoke_flags(options):
         ("--force", options.force),
         ("--ci", options.ci),
         ("--no-wait", options.no_wait),
+        ("--log", options.log),
     )
     for flag, enabled in toggles:
         if enabled:
@@ -1688,6 +1691,8 @@ def _reinvoke_flags(options):
         flags += ["--env", f"{name}={value}"]
     if options.export_env:
         flags += ["--export-env", options.export_env]
+    if options.run_id:
+        flags += ["--log-run", options.run_id]
     flags += options.cli_args.config_argv
     return [*flags, "--start-time", repr(options.start_time)]
 
@@ -2086,10 +2091,26 @@ def _run_stage_setup(ctx, config, config_path, provider, *, quiet, stage_index=1
     -- announced the same way as any other whole-stage skip, never entering
     it at all (no stage_banner(), no hooks, no setup()).
     """
-    from denver_providers.context import stage_banner
-
     if skip_state is not None and _skip_for_blocked_dependency(ctx, config, provider, skip_state):
         return
+
+    # everything the stage prints goes to its log file too (only with --log)
+    with ctx.stage_log(provider.stage, stage_index):
+        _run_stage_body(
+            ctx,
+            config,
+            config_path,
+            provider,
+            quiet=quiet,
+            stage_index=stage_index,
+            stage_count=stage_count,
+            skip_state=skip_state,
+        )
+
+
+def _run_stage_body(ctx, config, config_path, provider, *, quiet, stage_index, stage_count, skip_state):
+    """The banner, hooks and setup() of one stage (this part is logged)."""
+    from denver_providers.context import stage_banner
 
     ctx.stage_index = stage_index
     ctx.stage_count = stage_count
@@ -2196,11 +2217,12 @@ def _log_stage_performance(ctx, provider, quiet, duration):
     denver's own output); the trace file (record_stage_performance) is
     written regardless, this is just the printed line.
     """
-    if quiet == 0 and ctx.verbose:
-        print(
-            f"\033[94mINFO: stage '{provider.stage}' ({provider.name}) finished in {duration:.2f}s\033[39m",
-            file=sys.stderr,
-        )
+    from denver_providers.context import emit
+
+    emit(
+        f"\033[94mINFO: stage '{provider.stage}' ({provider.name}) finished in {duration:.2f}s\033[39m",
+        shown=quiet == 0 and ctx.verbose,
+    )
 
 
 def _apply_stage_env(ctx, stage_id):
@@ -2241,11 +2263,13 @@ def _print_stage_summary(ctx):
     duration, so the summary matches the '[i/n]' trail above rather than
     silently shrinking.
     """
-    if not ctx.verbose or not ctx.stage_timings:
+    from denver_providers.context import emit
+
+    if not ctx.stage_timings:
         return
     width = max(len(stage) for stage, _ in ctx.stage_timings)
     for stage, outcome in ctx.stage_timings:
-        print(f"\033[94m  {stage:<{width}}  {outcome}\033[39m", file=sys.stderr)
+        emit(f"\033[94m  {stage:<{width}}  {outcome}\033[39m", shown=ctx.verbose and not ctx.quiet)
 
 
 def _print_env_started(ctx, start_time):
@@ -2257,6 +2281,8 @@ def _print_env_started(ctx, start_time):
     marker. Under --dry-run the env was never started at all, elapsed time
     or not, so it says that instead regardless of --verbose.
     """
+    from denver_providers.context import emit
+
     _print_stage_summary(ctx)
     if ctx.dry_run:
         text = f"INFO: env {ctx.env_name} NOT started (--dry-run)"
@@ -2265,7 +2291,7 @@ def _print_env_started(ctx, start_time):
     else:
         text = f"INFO: env {ctx.env_name} started"
     line = "-" * (len(text) + 4)
-    print(f"\033[94m{line}\n| {text} |\n{line}\033[39m", file=sys.stderr)
+    emit(f"\033[94m{line}\n| {text} |\n{line}\033[39m", shown=not ctx.quiet)
 
 
 def run_stages(env_dir, config, config_path, forwarded, *, options=None):
@@ -2316,6 +2342,8 @@ def run_stages(env_dir, config, config_path, forwarded, *, options=None):
         dry_run=options.dry_run,
         cli_args=options.cli_args,
         env_vars=options.env_vars,
+        log_files=options.logs_stages,
+        run_id=options.run_id,
     )
 
     # each entry in 'stages:' is a pipeline stage (a provider type + config
@@ -2373,7 +2401,9 @@ def run_stages(env_dir, config, config_path, forwarded, *, options=None):
         )
 
 
-def _prepare_context(env_dir, config, config_path, *, no_wait, env_vars=None, **resolve_kwargs):
+def _prepare_context(
+    env_dir, config, config_path, *, no_wait, env_vars=None, log_files=False, run_id=None, **resolve_kwargs
+):
     """Resolve the config, take the env's lock, and apply the whole-devshell environment.
 
     Shared by run_stages and run_named_scripts, which must set an env up the
@@ -2394,6 +2424,8 @@ def _prepare_context(env_dir, config, config_path, *, no_wait, env_vars=None, **
     config, ctx = resolve_full_config(env_dir, config, config_path, env_vars=env_vars, **resolve_kwargs)
     ctx.acquire_lock(wait=not no_wait)
     ctx.ensure_state_dir()
+    if log_files:
+        ctx.start_run_log(run_id)
     run_hook(ctx, config_path, "env")
     ctx.apply_env_map(config.get("env"))
     ctx.env.update(env_vars or {})
@@ -2569,12 +2601,32 @@ class RunOptions:
         self.start_time = time.time() if start_time is None else start_time
         self.cli_args = _cli_args(cli_args)
         self.export_env = export_env
+        self.log = False
         # -e/--env NAME=VALUE (see build_arg_parser); dict rather than a list
         # of tuples so a later entry naturally overrides an earlier one of
         # the same name, same as -c. Order preserved (dicts remember
         # insertion order), so a wrapper reinvocation re-passes them in the
         # order the user gave them.
         self.env_vars = dict(env_vars or {})
+
+    def with_log(self, log=True):
+        """Set --log and return ``self``.
+
+        ``log`` is True, or the log folder name of the outer denver (hidden
+        --log-run): the inner denver in the container then uses that folder.
+        """
+        self.log = log
+        return self
+
+    @property
+    def logs_stages(self):
+        """True if log files are written: --log, but never with --dry-run."""
+        return bool(self.log) and not self.dry_run
+
+    @property
+    def run_id(self):
+        """The log folder name given by the outer denver, or None."""
+        return self.log if isinstance(self.log, str) else None
 
 
 def _announce_skip(ctx, stage_id, reason, skip_state):
@@ -2654,15 +2706,18 @@ def _run_stages_via_wrapper(
     else:
         # setup providers run *inside* the wrapper: re-invoke denver there
         _note_not_previewed(ctx, "stages", setups, active_wrappers)
+        if ctx.stage_logs:
+            options.log = ctx.run_log_dir.name  # the inner denver uses the same folder
         cmd = reinvoke_command(
             config_path, forwarded, sorted(host_ids, key=skip_state.stage_index.get), options=options
         )
 
     cmd = _wrap_cmd(ctx, cmd, active_wrappers, skip_state.stage_index, skip_state.total)
     # with no setup stages nothing re-invokes, so this is where the env is ready
-    if not setups and options.quiet == 0:
+    if not setups:
         _print_env_started(ctx, options.start_time)
-    ctx.exec(cmd)
+    # with setup stages the command is the inner denver, which logs for itself
+    ctx.exec(cmd, log=not setups)
 
 
 def _prepare_or_report(ctx, config, config_path, stage, *, run_ids, report_ids, skip_state, quiet):
@@ -2752,9 +2807,8 @@ def _run_stages_directly(
             skip_state=skip_state,
             quiet=quiet,
         )
-    if not quiet:
-        _print_env_started(ctx, start_time)
-        print_logo()
+    _print_env_started(ctx, start_time)
+    print_logo(shown=not quiet)
     # ctx.in_container covers both ways this path is reached already inside
     # one: the reinvoked-denver-in-docker case, and a container someone else
     # started denver in directly -- either way,
@@ -3914,6 +3968,12 @@ def _add_run_parser(subparsers, config_args):
         help="fail instead of waiting when another denver run already holds this env",
     )
     run_p.add_argument(
+        "--log",
+        action="store_true",
+        help="also write all output to log files in <workdir>/.logs/runs/<time>/ (run.*.log, and files per "
+        "stage; stdout and stderr are separate), even what -q hides; the newest 20 runs are kept",
+    )
+    run_p.add_argument(
         "--dry-run",
         action="store_true",
         help="show what each stage would run instead of running it: no command is executed for its effect, "
@@ -3934,6 +3994,8 @@ def _add_run_parser(subparsers, config_args):
     # Ns" line -- never meant to be typed by a user, hence SUPPRESS instead
     # of a real --help entry.
     run_p.add_argument("--start-time", type=float, default=None, help=argparse.SUPPRESS)
+    # internal: the log folder of the outer denver
+    run_p.add_argument("--log-run", default=None, help=argparse.SUPPRESS)
     add_config_args(run_p, config_args)
     return run_p
 
@@ -4173,6 +4235,7 @@ _RUN_FLAGS = [
     "--force",
     "--ci",
     "--no-wait",
+    "--log",
     "--dry-run",
     "-q",
     "--quiet",
@@ -5095,7 +5158,7 @@ def _run_resolved_cli(argv):
         cli_args=cli_args,
         env_vars=env_vars,
         export_env=args.export_env,
-    )
+    ).with_log(args.log_run or args.log)
     run_stages(env_dir, config, config_path, forwarded, options=options)
 
 
