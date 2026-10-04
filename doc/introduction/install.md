@@ -11,10 +11,10 @@ The fastest way to try denver, and the one with nothing to install: clone
 the repository and run the script directly.
 
 > [!NOTE]
-> python3 (version `>=3.9`) is required to be installed. `denver.toml`
+> python3 (version `>=3.10`) is required to be installed. `denver.toml`
 > configs additionally need `>=3.11` (`tomllib` is stdlib only from there) --
 > `denver.yml`/`denver.yaml`, denver's default format, works on the full
-> `>=3.9` range.
+> `>=3.10` range.
 
 ```bash
 git clone https://github.com/thorsten-klein/denver-tool.git

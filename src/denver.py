@@ -69,7 +69,7 @@ from denver_errors import DenverError, die
 # denver.toml support is optional: tomllib is stdlib only from Python 3.11,
 # so on an older interpreter it just isn't there. denver.yml/denver.yaml is
 # the default format -- PyYAML is a required dependency (denver's floor,
-# ">=3.9", is set by what PyYAML itself supports, not by tomllib). The
+# ">=3.10", is set by what PyYAML itself supports, not by tomllib). The
 # sys.version_info guard (rather than try/except ImportError) is what lets
 # mypy -- itself running on 3.11+ -- statically know the else branch is the
 # live one whenever it type-checks against an older target.
@@ -701,7 +701,7 @@ def _run_init_projects(projects, raw, config_path, ctx_flags):
 
     stage_ids = [f"{INIT_KEY}[{index}]" for index in range(len(projects))]
     config = {key: raw[key] for key in INIT_SHARED_KEYS if key in raw}
-    config.update(zip(stage_ids, copy.deepcopy(projects)))
+    config.update(zip(stage_ids, copy.deepcopy(projects), strict=True))
     ctx = Context(config_path.parent, config, config_path=config_path, **ctx_flags)
     ctx.stage_count = len(stage_ids)
     for index, stage_id in enumerate(stage_ids, start=1):
@@ -4358,9 +4358,8 @@ def _run_completion_state(rest):
 
 def _first_positional(rest, consumed_as_value):
     """The first token in 'rest' that's neither a flag nor already consumed as one's value, or None."""
-    # zip(strict=True) is Python 3.10+ only (denver's floor is 3.9); plain zip() is fine
-    # here since consumed_as_value is built as [False] * len(rest) right above, in the caller.
-    for tok, consumed in zip(rest, consumed_as_value):
+    # strict: consumed_as_value is built as [False] * len(rest) right above, in the caller.
+    for tok, consumed in zip(rest, consumed_as_value, strict=True):
         if not consumed and not tok.startswith("-"):
             return tok
     return None
@@ -4872,9 +4871,8 @@ def _completion_script_fish(names, quoted):
         f"    contains -- $prev {path_value_flags};",
         "end;",
     ]
-    # zip(strict=True) is Python 3.10+ only (denver's floor is 3.9); plain zip() is fine
-    # here since 'quoted' is built 1:1 from 'names' in the caller, _completion_script.
-    for name, quoted_name in zip(names, quoted):
+    # strict: 'quoted' is built 1:1 from 'names' in the caller, _completion_script.
+    for name, quoted_name in zip(names, quoted, strict=True):
         flag = "-p" if "/" in name else "-c"
         lines.append(f"complete {flag} {quoted_name} -f -a '(__denver_complete)';")
         lines.append(f"complete {flag} {quoted_name} -n __denver_expects_path -F -a '(__denver_complete)';")

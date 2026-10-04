@@ -8,6 +8,7 @@ entries and their order stay. An entry runs up to the next 'machine' or
 from __future__ import annotations
 
 import re
+from itertools import pairwise
 from typing import NamedTuple
 
 _WORD = re.compile(r"\S+")
@@ -75,8 +76,8 @@ def _entries(text):
     """The 'machine'/'default' entries of ``text`` in file order, each with its text span."""
     found = _headers(_words(text))
     starts = [_entry_start(text, word) for _, word in found]
-    ends = [_keep_comments_above(text, start, nxt) for start, nxt in zip(starts, starts[1:])] + [len(text)]
-    return [_Entry(host, start, end) for (host, _), start, end in zip(found, starts, ends)]
+    ends = [_keep_comments_above(text, start, nxt) for start, nxt in pairwise(starts)] + [len(text)]
+    return [_Entry(host, start, end) for (host, _), start, end in zip(found, starts, ends)]  # noqa: B905 -- ends has one extra entry when there are no entries
 
 
 def has_machine(text, host):

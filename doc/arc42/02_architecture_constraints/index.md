@@ -8,7 +8,7 @@ of them.
 | Constraint | Detail |
 |---|---|
 | **Python, near-stdlib** | `src/denver.py` and `src/denver_providers/` depend on nothing beyond the standard library plus PyYAML (`dependencies = ["pyyaml>=6"]` — the single runtime dependency). No plugin framework, no templating engine, no async runtime. |
-| **`requires-python = ">=3.9"`** | Sets the language floor. Newer syntax is only usable behind `from __future__ import annotations`. |
+| **`requires-python = ">=3.10"`** | Sets the language floor. Newer syntax is only usable behind `from __future__ import annotations`. |
 | **Single-process CLI, no daemon** | denver is invoked, resolves config, runs stages, and then `exec()`s the final command — replacing its own process image. There is no server, no IPC, and no persistent state beyond the filesystem. |
 | **Runnable without installation** | `src/denver.py <env>` must work straight from a checkout, alongside the installed `denver` console script and the frozen single-file binary. All three enter the same `main()`. |
 | **Version derived from git tags** | `setuptools-scm` computes the version from `git describe`; nothing is hand-maintained. `scm_version()` in `src/denver.py` reports the same string the docs sidebar shows. |

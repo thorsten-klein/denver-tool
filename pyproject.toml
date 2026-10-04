@@ -7,12 +7,12 @@ name = "denver-tool"
 dynamic = ["version"]
 description = "Development Environments as code -- reproducible, flexible, simple and fast"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 # denver's own default config format is YAML (denver.yml/denver.yaml),
 # parsed with PyYAML -- a required dependency, and the reason the floor can
-# be as low as 3.9. denver.toml is supported too, but only where tomllib is
+# be as low as 3.10. denver.toml is supported too, but only where tomllib is
 # importable (stdlib only from Python 3.11): on an older interpreter it's
 # simply not there, and denver says so instead of guessing.
 dependencies = ["pyyaml>=6"]
@@ -23,7 +23,6 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -158,7 +157,7 @@ color = "auto"
 sort = "asc"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 files = ["src"]
 # conan_scripts run standalone (see catalog.py's docstring): their
 # sibling-module imports (get_rrev, DenverConanFile) only resolve via each
@@ -175,7 +174,7 @@ module = ["conan.*"]
 ignore_missing_imports = true
 
 [tool.pyright]
-pythonVersion = "3.9"
+pythonVersion = "3.10"
 include = ["src"]
 
 [tool.bandit]

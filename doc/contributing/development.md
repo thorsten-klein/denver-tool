@@ -85,7 +85,7 @@ Python has no compiler to catch a branch nobody ever exercises — 100%
 coverage is the substitute for that safety net, not a vanity metric.
 
 A branch that's real but that coverage.py can't reliably trace (rare — one
-known case: `continue` as a `for` loop's last statement, under Python 3.9)
+known case, `continue` as a `for` loop's last statement, only arose under Python 3.9)
 is marked `# pragma: no cover` with a comment explaining *why* it's excluded
 rather than restructured to dodge the tool. Don't reach for `# pragma: no
 cover` to paper over a genuinely untested branch — it's an escape hatch for
@@ -145,7 +145,7 @@ this or a fork: see "Extension providers" in
 request, in three jobs:
 
 - **lint** — `pre-commit`, `ruff format --check`, `ruff check`, `mypy`.
-- **test** — `uv run poe test` on Python 3.9, 3.10, 3.11 and 3.13: the floor
+- **test** — `uv run poe test` on Python 3.10, 3.11 and 3.13: the floor
   denver declares support for (`pyproject.toml`'s `requires-python`) through
   the newest available, so a change that only works at one end doesn't slip
   through. 3.9/3.10 also exercise the one behavioural split in denver's own
@@ -217,7 +217,7 @@ not a claim to be the release). So:
 
 `denver.yml`/`denver.yaml` is denver's default config format, parsed with
 PyYAML — a required dependency (`pyproject.toml`'s `[project] dependencies`),
-and the reason the floor can be as low as `requires-python = ">=3.9"`.
+and the reason the floor can be as low as `requires-python = ">=3.10"`.
 `denver.toml` is supported too, but only where `tomllib` is importable
 (stdlib only from Python 3.11): on an older interpreter it just isn't there,
 and `load_config_file()` says so with a clear error instead of guessing (see

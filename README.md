@@ -54,9 +54,9 @@ alias denver="$PWD/src/denver.py"
 denver --version
 ```
 
-> **Note:** denver needs Python `>=3.9` and always supports `denver.yml` configs;
+> **Note:** denver needs Python `>=3.10` and always supports `denver.yml` configs;
 > `denver.toml` needs python `>=3.11` (uses stdlib `tomllib`).
-> Stuck below `3.11` or even below `3.9`? Grab a prebuilt executable from a
+> Stuck below `3.11` or even below `3.10`? Grab a prebuilt executable from a
 > [release](https://github.com/thorsten-klein/denver-tool/releases), which bundles python 3.12.
 > Or create a venv with a newer python, for example `uv venv --python 3.14`, and run
 > `uv run src/denver.py` (alternatively with `alias denver="uv run $PWD/src/denver.py"`).
@@ -139,7 +139,7 @@ You want to see some even more advanced example? Have a look at **[denver in 30 
 
 **denver has exactly one runtime dependency: PyYAML.** `denver`'s default config
 format is YAML (`denver.yml`/`denver.yaml`), parsed with PyYAML — that's
-what lets the floor be as low as python `>=3.9`. `denver.toml` is supported
+what lets the floor be as low as python `>=3.10`. `denver.toml` is supported
 too, but only where `tomllib` is importable (stdlib only from python
 `>=3.11`) — on an older interpreter it's rejected with a clear error instead
 of a silent misread. See
