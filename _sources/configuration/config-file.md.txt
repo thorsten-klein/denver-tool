@@ -23,7 +23,7 @@ documented on its own page under [Providers](../providers/uv.md).
 ### denver.yml vs. denver.toml
 
 `denver.yml`/`denver.yaml` is denver's default format: PyYAML is a required
-dependency, so it always works, down to denver's `>=3.9` floor. `denver.toml`
+dependency, so it always works, down to denver's `>=3.10` floor. `denver.toml`
 is supported too, but only where `tomllib` is importable (stdlib only from
 Python 3.11) — on an older interpreter it isn't there, and denver says so
 with a clear error instead of silently misreading it. When a directory
