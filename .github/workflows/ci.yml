@@ -24,7 +24,7 @@ jobs:
   lint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: false
@@ -54,7 +54,7 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.13"]
         os: [ubuntu-24.04, ubuntu-26.04, macos-latest]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # denver derives its own version from the checkout's git tags (see
           # denver.py's scm_version), and the default shallow, tagless
@@ -90,12 +90,12 @@ jobs:
       # rather than once per OS.
       - name: Upload coverage reports to Codecov
         if: matrix.os == 'ubuntu-24.04' && matrix.python-version == '3.13'
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
@@ -113,7 +113,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, ubuntu-26.04, macos-latest]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # setuptools-scm derives the wheel's version from the git tags, so
           # a tagless shallow checkout would build a 0.1.dev1 wheel rather
