@@ -13,7 +13,7 @@ name: Prune artifacts
 on:
   workflow_run:
     workflows:
-    - CI
+    - Examples
     - Release binary
     types:
     - completed
