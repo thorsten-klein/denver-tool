@@ -19,10 +19,6 @@ on:
         description: 'How many of the newest artifacts to keep per artifact name'
         type: number
         default: 3
-      dry-run:
-        description: 'Only list what would be deleted'
-        type: boolean
-        default: false
 
 permissions:
   actions: write
@@ -41,7 +37,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           KEEP: ${{ inputs.keep || 3 }}
-          DRY_RUN: ${{ inputs.dry-run && 'true' || 'false' }}
         run: |
           # Per artifact name ("denver-binary-x64-linux", "denver-binary-arm64-macos"),
           # newest first; everything after the first $KEEP is deleted. Other
@@ -52,7 +47,5 @@ jobs:
             | awk -F'\t' -v keep="$KEEP" '{ if (++n[$1] > keep) print $3, $1 }' \
             | while read -r id name; do
                 echo "delete $name (artifact $id)"
-                if [ "$DRY_RUN" != "true" ]; then
-                  gh api -X DELETE "repos/$REPO/actions/artifacts/$id"
-                fi
+                gh api -X DELETE "repos/$REPO/actions/artifacts/$id"
               done
