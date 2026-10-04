@@ -148,9 +148,9 @@ request, in three jobs:
 - **test** — `uv run poe test` on Python 3.10, 3.11 and 3.13: the floor
   denver declares support for (`pyproject.toml`'s `requires-python`) through
   the newest available, so a change that only works at one end doesn't slip
-  through. 3.9/3.10 also exercise the one behavioural split in denver's own
+  through. 3.10 also exercises the one behavioural split in denver's own
   code -- `tomllib` (`denver.toml` support) is stdlib only from 3.11, so
-  those two legs are what actually runs with it absent, not just a
+  that leg is what actually runs with it absent, not just a
   monkeypatched test. Coverage and test results are uploaded to Codecov from
   the 3.13 run.
 - **build** — builds the wheel/sdist, then installs it into a clean venv and
