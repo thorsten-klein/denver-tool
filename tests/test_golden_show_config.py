@@ -111,7 +111,12 @@ def test_regenerate_golden_files(env_name, capsys, monkeypatch, which):
     """
     actual = _resolve_show_config_full(env_name, monkeypatch, capsys, which)
     golden_path = GOLDEN_DIR / f"{env_name}.yml"
-    golden_path.write_text(actual)
+    # replaced atomically: write_text() truncates first, and other tests read
+    # these files from parallel xdist workers (test_dev_version.py), where
+    # they'd occasionally catch it empty.
+    tmp_path = golden_path.with_suffix(".yml.tmp")
+    tmp_path.write_text(actual)
+    tmp_path.replace(golden_path)
 
     status = subprocess.run(
         ["git", "status", "--porcelain", "--", str(golden_path)],
