@@ -1,0 +1,13 @@
+ccache/4.13: ccache/4.13@denver/snapshot#25bab3063cc03e3f14fd59ed28b26028
+clang/21.1.4: clang/21.1.4@denver/snapshot#824b3a01c962155b7e06630454cad2a5
+cmake/3.31.9: cmake/3.31.9@denver/snapshot#e546a5c08931ee21994485358ad9bdc8
+doxygen/1.15.0: doxygen/1.15.0@denver/snapshot#3411fdef3f923668eeb15255f55af993
+fish/4.8.1: fish/4.8.1@denver/snapshot#8186c5212855287060297059900c92fe
+jlink/8.82: jlink/8.82@denver/snapshot#c987d33c9f39270cb071769105f2ada1
+ninja/1.13.2: ninja/1.13.2@denver/snapshot#725a6c6d2984f50ecc55a94704a9cc6b
+protoc/33.2: protoc/33.2@denver/snapshot#4ec0bcc3b073263d8e95f06f1d23a5a2
+python-cache/denver: python-cache/denver@denver/snapshot#b990521f72cd06cd2e0c2d34279c4559
+systemview/3.62b: systemview/3.62b@denver/snapshot#75bfc691bba2eef2cc448f7f0286cb9e
+west-blobs-cache/denver: west-blobs-cache/denver@denver/snapshot#73145620adeb0e0c90bcefd74b94574c
+zephyr-sdk/0.17.4: zephyr-sdk/0.17.4@denver/snapshot#8a93cdc2320b5985eab9ca2685d40154
+zephyr-sdk/1.0.1: zephyr-sdk/1.0.1@denver/snapshot#146740251cc3734aeb3bd26965c29655
