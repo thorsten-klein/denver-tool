@@ -24,3 +24,8 @@ updates:
       - "/examples/zephyr-docker/container"
     schedule:
       interval: weekly
+    # The base image is pinned to an LTS on purpose: the examples assert the
+    # container's exact python3 (uv.python), and the zephyr ones carry a
+    # python wheel cache frozen for it. Bump it by hand, together with those.
+    ignore:
+      - dependency-name: ubuntu
