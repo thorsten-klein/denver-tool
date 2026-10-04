@@ -6,13 +6,16 @@ name: Prune artifacts
 # they expire after two days on their own. The upload step's retention-days is
 # only an upper bound; this caps the count as well.
 #
-# Runs on every develop commit, the branch whose builds are kept longest. It
-# starts alongside that commit's own build, so the new artifact isn't there
-# yet: up to $keep + 1 builds exist until the next develop commit.
+# Called by examples.yml right after the develop binary build succeeded, so
+# the new artifact already exists and exactly $keep builds remain.
 on:
-  push:
-    branches:
-    - develop
+  workflow_call:
+    inputs:
+      keep:
+        description: 'How many of the newest develop artifacts to keep per artifact name'
+        type: number
+        required: false
+        default: 3
   # on-demand -- 'Run workflow' in the Actions tab, or `gh workflow run prune-artifacts.yml`
   workflow_dispatch:
     inputs:
@@ -25,8 +28,9 @@ permissions:
   actions: write
 
 # two prunes at once would only race each other deleting the same artifacts.
+# Spelled out because inside workflow_call github.workflow is the caller's.
 concurrency:
-  group: ${{ github.workflow }}
+  group: prune-artifacts
   cancel-in-progress: false
 
 jobs:

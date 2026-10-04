@@ -36,6 +36,16 @@ jobs:
   binary:
     uses: ./.github/workflows/build-binary.yml
 
+  # develop's builds are kept for a month, so cap how many pile up. After the
+  # build (not the examples) so the new artifact is counted, and only on
+  # develop -- other branches' artifacts expire after two days on their own.
+  prune:
+    needs: binary
+    if: github.ref == 'refs/heads/develop'
+    permissions:
+      actions: write
+    uses: ./.github/workflows/prune-artifacts.yml
+
   examples:
     needs: binary
     runs-on: ubuntu-24.04
