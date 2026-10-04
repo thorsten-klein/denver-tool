@@ -51,7 +51,7 @@ jobs:
         # denver's own code: tomllib (denver.toml support) is stdlib only
         # from 3.11, so that leg is what actually exercises "no
         # tomllib" instead of just asserting it in a monkeypatched test.
-        python-version: ["3.10", "3.11", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-24.04, ubuntu-26.04, macos-latest]
     steps:
       - uses: actions/checkout@v7
