@@ -1,0 +1,58 @@
+name: Prune artifacts
+
+# Keeps only the newest builds of each binary artifact and deletes the older
+# ones, so the build artifacts stop piling up against the repository's
+# Actions storage quota. The upload step's retention-days is only an upper
+# bound; this caps the count as well.
+#
+# Runs on every develop commit, the branch whose builds are kept longest. It
+# starts alongside that commit's own build, so the new artifact isn't there
+# yet: up to $keep + 1 builds exist until the next develop commit.
+on:
+  push:
+    branches:
+    - develop
+  # on-demand -- 'Run workflow' in the Actions tab, or `gh workflow run prune-artifacts.yml`
+  workflow_dispatch:
+    inputs:
+      keep:
+        description: 'How many of the newest artifacts to keep per artifact name'
+        type: number
+        default: 3
+      dry-run:
+        description: 'Only list what would be deleted'
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+
+# two prunes at once would only race each other deleting the same artifacts.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete all but the newest builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          KEEP: ${{ inputs.keep || 3 }}
+          DRY_RUN: ${{ inputs.dry-run && 'true' || 'false' }}
+        run: |
+          # Per artifact name ("denver-binary-x64-linux", "denver-binary-arm64-macos"),
+          # newest first; everything after the first $KEEP is deleted. Other
+          # artifacts (github-pages, dist) are not touched.
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+              --jq '.artifacts[] | select(.expired == false) | select(.name | startswith("denver-binary-")) | [.name, .created_at, .id] | @tsv' \
+            | sort -k1,1 -k2,2r \
+            | awk -F'\t' -v keep="$KEEP" '{ if (++n[$1] > keep) print $3, $1 }' \
+            | while read -r id name; do
+                echo "delete $name (artifact $id)"
+                if [ "$DRY_RUN" != "true" ]; then
+                  gh api -X DELETE "repos/$REPO/actions/artifacts/$id"
+                fi
+              done
