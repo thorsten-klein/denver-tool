@@ -1,9 +1,10 @@
 name: Prune artifacts
 
-# Keeps only the newest builds of each binary artifact and deletes the older
-# ones, so the build artifacts stop piling up against the repository's
-# Actions storage quota. The upload step's retention-days is only an upper
-# bound; this caps the count as well.
+# Keeps only the newest develop builds of each binary artifact and deletes the
+# older ones, so they stop piling up against the repository's Actions storage
+# quota. Builds of other branches and PRs are neither counted nor touched;
+# they expire after two days on their own. The upload step's retention-days is
+# only an upper bound; this caps the count as well.
 #
 # Runs on every develop commit, the branch whose builds are kept longest. It
 # starts alongside that commit's own build, so the new artifact isn't there
@@ -16,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       keep:
-        description: 'How many of the newest artifacts to keep per artifact name'
+        description: 'How many of the newest develop artifacts to keep per artifact name'
         type: number
         default: 3
 
@@ -39,10 +40,11 @@ jobs:
           KEEP: ${{ inputs.keep || 3 }}
         run: |
           # Per artifact name ("denver-binary-x64-linux", "denver-binary-arm64-macos"),
-          # newest first; everything after the first $KEEP is deleted. Other
-          # artifacts (github-pages, dist) are not touched.
+          # newest first, develop builds only; everything after the first $KEEP
+          # is deleted. Other artifacts (github-pages, dist) and other
+          # branches' builds are not touched.
           gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
-              --jq '.artifacts[] | select(.expired == false) | select(.name | startswith("denver-binary-")) | [.name, .created_at, .id] | @tsv' \
+              --jq '.artifacts[] | select(.expired == false) | select(.name | startswith("denver-binary-")) | select(.workflow_run.head_branch == "develop") | [.name, .created_at, .id] | @tsv' \
             | sort -k1,1 -k2,2r \
             | awk -F'\t' -v keep="$KEEP" '{ if (++n[$1] > keep) print $3, $1 }' \
             | while read -r id name; do
