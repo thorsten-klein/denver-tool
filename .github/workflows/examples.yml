@@ -61,7 +61,7 @@ jobs:
         # scheduled run and a manual 'Run workflow'.
         example: ${{ (github.event_name == 'pull_request' && fromJSON('["simple-env", "firmware-env", "nix-devshell"]')) || fromJSON('["simple-env", "raspberry-pico", "firmware-env", "nix-devshell", "zephyr-devshell-4.3.1", "zephyr-devshell-4.4.1"]') }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # denver derives its own version from the checkout's git tags (see
           # denver.py's scm_version), and the default shallow, tagless
@@ -84,7 +84,7 @@ jobs:
         if: matrix.example == 'nix-devshell'
         uses: cachix/install-nix-action@v31
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: denver-binary-x64-linux
           path: /tmp/denver-binary
