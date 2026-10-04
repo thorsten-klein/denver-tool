@@ -9,10 +9,10 @@ runnable.
 
 It turns this onboarding note:
 
-> Use Ubuntu 24.04, as our CI does. `apt install gcc curl`. Grab the
+> Use Ubuntu 25.10, as our CI does. `apt install gcc curl`. Grab the
 > prebuilt `neovim` 0.12.4 tarball from GitHub and put it on `PATH`. Download
 > `cmake` 3.31.9 — exactly that version. Install
-> `uv`, create a python 3.12 virtualenv, install `pytest==9.1.1`. Export
+> `uv`, create a python 3.13 virtualenv, install `pytest==9.1.1`. Export
 > `PYTEST_ADDOPTS="-v -s"`, our team convention. Then you can run `pytest` and
 > compile the `hello-world` cmake project.
 
@@ -34,8 +34,8 @@ provider:
 
 | Stage id | Provider | What it does |
 |---|---|---|
-| `docker-base` | `docker` | relocates everything below into an Ubuntu 24.04 container |
-| `uv-packages` | `uv` | the python 3.12 venv: `pytest` (and `conan`, for the next stage) |
+| `docker-base` | `docker` | relocates everything below into an Ubuntu 25.10 container |
+| `uv-packages` | `uv` | the python 3.13 venv: `pytest` (and `conan`, for the next stage) |
 | `nvim-setup` | `custom` | downloads, checksums and unpacks one prebuilt release, by hand |
 | `conan-packages` | `conan` | downloads `cmake` 3.31.9, exactly |
 | `best-practices` | `custom` | exports `PYTEST_ADDOPTS`, sourced so it survives |
@@ -68,7 +68,7 @@ Getting this wrong is the most common way a first docker-wrapped env fails.
 
 **`python:` must match the image exactly.** In a container denver cannot
 install an interpreter, only assert the one that is there — hence
-`python: "3.12.3"` (Ubuntu 24.04's) rather than `3.12`.
+`python: "3.13.7"` (Ubuntu 25.10's) rather than `3.13`.
 
 **A hand-installed tool is two scripts, not one.** `nvim-setup` splits
 installing (`cmd:`, an isolated subprocess that prints its progress and is

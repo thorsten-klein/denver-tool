@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 def test_docker_stage_gave_us_ubuntu_24_04():
-    assert "Ubuntu 24.04" in platform.freedesktop_os_release()["PRETTY_NAME"]
+    assert "Ubuntu 25.10" in platform.freedesktop_os_release()["PRETTY_NAME"]
 
 
 def test_docker_stage_installed_the_apt_packages():

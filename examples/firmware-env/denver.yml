@@ -6,8 +6,8 @@ denver-version: ">=1.6.6"
 # provider -- an id is only a label, the section below always declares
 # 'provider:' itself.
 stages:
-- docker-base     # 1. Ubuntu 24.04 + the apt packages + uv
-- uv-packages     # 2. the python 3.12 venv
+- docker-base     # 1. Ubuntu 25.10 + the apt packages + uv
+- uv-packages     # 2. the python 3.13 venv
 - nvim-setup      # 3. one prebuilt release, fetched by hand
 - ninja-setup     # 4. one prebuilt release, fetched by the 'download' provider
 - conan-packages  # 5. cmake 3.31.9, exactly
@@ -30,7 +30,7 @@ hooks:
 docker-base:
   provider: docker
   description:
-  - Relocates every stage below into an Ubuntu 24.04 container, so the OS and the apt packages are the same for everyone.
+  - Relocates every stage below into an Ubuntu 25.10 container, so the OS and the apt packages are the same for everyone.
   compose:
     file: docker-compose.yml
     service: dev
@@ -42,11 +42,11 @@ docker-base:
 uv-packages:
   provider: uv
   description:
-  - The python 3.12 virtualenv. 'conan' is in requirements.txt because the next stage needs it on PATH -- the conan provider never installs it.
+  - The python 3.13 virtualenv. 'conan' is in requirements.txt because the next stage needs it on PATH -- the conan provider never installs it.
   # inside a docker-wrapped env the interpreter is whatever the image has --
   # denver can't install another one in there, so this must match the
-  # container's `python3 --version` exactly (Ubuntu 24.04: 3.12.3).
-  python: "3.12.3"
+  # container's `python3 --version` exactly (Ubuntu 25.10: 3.13.7).
+  python: "3.13.7"
   requirements:
   - requirements.txt
 
