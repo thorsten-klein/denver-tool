@@ -141,7 +141,7 @@ this or a fork: see “Extension providers” in
 request, in three jobs:
 
 - **lint** — `pre-commit`, `ruff format --check`, `ruff check`, `mypy`.
-- **test** — `uv run poe test` on Python 3.10, 3.11 and 3.13: the floor
+- **test** — `uv run poe test` on Python 3.10, 3.11, 3.12, 3.13 and 3.14: the floor
   denver declares support for (`pyproject.toml`’s `requires-python`) through
   the newest available, so a change that only works at one end doesn’t slip
   through. 3.10 also exercises the one behavioural split in denver’s own
