@@ -18,6 +18,7 @@ from .download import DownloadProvider
 from .git import GitProvider
 from .netrc import NetrcProvider
 from .nix import NixProvider
+from .python import PythonProvider
 from .uv import UvProvider
 from .zephyr import ZephyrProvider
 
@@ -31,6 +32,7 @@ PROVIDERS = {
     "zephyr": ZephyrProvider,
     "docker": DockerProvider,
     "custom": CustomProvider,
+    "python": PythonProvider,
     "download": DownloadProvider,
     "git": GitProvider,
     "nix": NixProvider,

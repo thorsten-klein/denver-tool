@@ -12,6 +12,7 @@ PROVIDERS = {
     "zephyr": ZephyrProvider,
     "docker": DockerProvider,
     "custom": CustomProvider,
+    "python": PythonProvider,
     "download": DownloadProvider,
     "git": GitProvider,
     "netrc": NetrcProvider,
@@ -115,6 +116,7 @@ clear message. A provider with no such state (`custom`) skips itself.
 | `nix` | setup | Evaluate a flake's devShell once, cache it, source it into the environment | `nix`, `git` |
 | `docker` | wrapper | Build/enter a compose service, re-invoke denver inside it | `docker compose` |
 | `custom` | setup, or wrapper with `launcher:` | Run one command, source a script, or relocate the final command | whatever the command is |
+| `python` | setup | Import a `.py` file and call one function with `ctx`, in denver's own process | whatever the function does |
 
 Each provider's own page under [Providers](../../providers/uv.md) is the key
 reference. These chapters only cover the design.
@@ -129,6 +131,10 @@ sources `nix print-dev-env`'s output rather than relocating into `nix
 develop --command`, so it stays a *setup* provider — stages after it still
 extend the environment it built, and its cached evaluation is what makes it
 cheap enough to sit in front of every command.
+
+`python` sits between `custom` and an extension provider: one function, no
+class, no registration. It runs in denver's own process, so it can be
+debugged together with denver.
 
 ## Extension providers
 
