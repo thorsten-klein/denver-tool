@@ -68,6 +68,7 @@ notes on the patterns it supports and how it behaves under
 | [`netrc`](providers/netrc.md)       | Keep a `.netrc` in order and check that its tokens still work  |
 | [`nix`](providers/nix.md)           | Source a nix flake’s devShell into the environment             |
 | [`custom`](providers/custom.md)     | Escape hatch: an arbitrary command, sourced script or launcher |
+| [`python`](providers/python.md)     | Call a Python function in denver’s own process, easy to debug  |
 
 A project can also register its own provider, without a denver fork — see
 “Extension providers” in [Configuration](configuration/config-file.md).
@@ -81,6 +82,7 @@ A project can also register its own provider, without a denver fork — see
 - [netrc](providers/netrc.md)
 - [nix](providers/nix.md)
 - [custom](providers/custom.md)
+- [python](providers/python.md)
 
 ## Architecture (arc42)
 
