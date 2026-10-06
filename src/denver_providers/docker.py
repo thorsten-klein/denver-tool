@@ -6,6 +6,7 @@ environment itself. Configured from the denver config -> ``docker:``.
 Full key reference, worked examples and design notes: ``doc/providers/docker.md``.
 """
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -89,6 +90,19 @@ def _verbose_note(ctx, message, result=None):
         print(f"    {line}", file=sys.stderr)
 
 
+def _missing_bind_sources(config, service):
+    """``(source, target)`` of each bind mount of ``service`` whose source is missing."""
+    volumes = (config.get("services") or {}).get(service, {}).get("volumes") or []
+    return [
+        (volume["source"], volume.get("target", "?"))
+        for volume in volumes
+        if isinstance(volume, dict)
+        and volume.get("type") == "bind"
+        and volume.get("source")
+        and not Path(volume["source"]).exists()
+    ]
+
+
 class DockerProvider(Provider):
     """Relocates the final command into a docker compose service -- see doc/providers/docker.md for its config keys."""
 
@@ -98,7 +112,7 @@ class DockerProvider(Provider):
     # 'compose.default-cmd' isn't resolved here -- it's read by denver.py's
     # default_command() ('command:' still wins if set) -- but it's a real
     # 'compose:' key, so it's still listed for --show-config's sake.
-    COMPOSE_KEYS = ("file", "service", "build", "default-cmd", "image", "run-args")
+    COMPOSE_KEYS = ("file", "service", "build", "default-cmd", "image", "run-args", "check-bind-mounts")
 
     def __init__(self, config):
         """Init the bits setup() stashes for wrap() as None, so wrap() can tell "not run yet" from a real value."""
@@ -126,6 +140,7 @@ class DockerProvider(Provider):
         resolved["service"] = compose.get("service") or "dev"
         resolved["build"] = compose.get("build", True)
         resolved["run-args"] = compose.get("run-args") or ["--rm"]
+        resolved["check-bind-mounts"] = compose.get("check-bind-mounts", True)
         return fill_unset(resolved, cls.COMPOSE_KEYS)
 
     def _require_exe(self, ctx, exe):
@@ -240,6 +255,10 @@ class DockerProvider(Provider):
 
         self._stash_for_wrap(exe, compose_files, compose)
 
+        # after $DENVER_DOCKER_IMAGE is set, as the compose file may use it
+        if compose["check-bind-mounts"]:
+            self._check_bind_mount_sources(ctx, exe, compose["service"])
+
         self._build_or_skip(ctx, exe, image, compose, registries, remote_ref, found_locally)
 
     def wrap(self, ctx, cmd):
@@ -347,6 +366,40 @@ class DockerProvider(Provider):
         result = ctx.run([exe, "login", url, "-u", username, "--password-stdin"], input=password, check=False)
         if result.returncode != 0:
             die(f"docker: login to '{url}' failed")
+
+    def _check_bind_mount_sources(self, ctx, exe, service):
+        """Die if a bind mount source of ``service`` is missing on the host.
+
+        Otherwise docker creates it as a root-owned directory. The mounts come
+        from 'docker compose config', so denver never parses compose YAML.
+        """
+        config = self._compose_config(ctx, exe)
+        if config is None:
+            return
+        missing = _missing_bind_sources(config, service)
+        if missing:
+            lines = "\n".join(f"  {source} (mounted at {target})" for source, target in missing)
+            die(
+                f"docker[{self.stage}]: missing bind mount source(s) on the host:\n{lines}\n"
+                "Create them first, or set 'compose.check-bind-mounts: false'."
+            )
+
+    def _compose_config(self, ctx, exe):
+        """The compose config as JSON, or None under --dry-run if compose gives no answer."""
+        result = ctx.run(
+            [exe, "compose", *self._compose_file_args(), "config", "--format", "json"],
+            check=False,
+            capture=True,
+            echo=False,
+        )
+        if ctx.dry_run and (result.returncode != 0 or not result.stdout):
+            return None
+        if result.returncode != 0:
+            die(f"docker[{self.stage}]: 'docker compose config' failed:\n{(result.stderr or '').rstrip()}")
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            die(f"docker[{self.stage}]: 'docker compose config' returned invalid JSON: {exc}")
 
     def _compose_file_args(self):
         """Turn ``self._compose_files`` into repeated `-f <file>` flags, in order."""

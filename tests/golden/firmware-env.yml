@@ -43,6 +43,7 @@ docker-base:
     - setup/install_host_tools.sh
   compose:
     build: true
+    check-bind-mounts: true
     default-cmd: null
     file: docker-compose.yml
     image: null

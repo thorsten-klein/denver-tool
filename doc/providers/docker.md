@@ -115,6 +115,12 @@ before their first run.
   check never runs, and `registries:` is silently ignored (nothing to
   search a registry *for* without a tag) rather than an error.
 - **`compose.run-args`** (default `["--rm"]`) — extra `docker compose run` args.
+- **`compose.check-bind-mounts`** (default `true`) — check that every bind
+  mount source of the service exists on the host before build/run, and stop
+  if one is missing. Without this, docker creates the missing path as a
+  root-owned directory (e.g. `~/.gitconfig` becomes a directory). The mounts
+  are read from `docker compose config`. Create needed paths in a `hooks:
+  pre-<stage>:` script, or set `false` to turn the check off.
 
 Need something computed at runtime before build/run — a compose `.env` file,
 a login, anything a static compose file can't express? Use a `hooks:

@@ -1,12 +1,26 @@
 """Tests for providers.docker.DockerProvider."""
 
+import json
 import sys
+import types
 from pathlib import Path
 
 import pytest
 
 from denver_errors import DenverError
 from denver_providers.docker import DockerProvider
+
+
+def compose_config(volumes=None, service="dev", returncode=0, stderr=""):
+    """A fake 'docker compose config' result with ``volumes`` on ``service``."""
+    stdout = json.dumps({"services": {service: {"volumes": volumes or []}}})
+    return types.SimpleNamespace(stdout=stdout, returncode=returncode, stderr=stderr)
+
+
+@pytest.fixture(autouse=True)
+def _compose_config_without_volumes(run_recorder):
+    """Answer 'compose config' with a service without mounts; bind-mount tests override it."""
+    run_recorder.responses["config --format json"] = compose_config()
 
 
 def run_docker(config, ctx, stage="docker"):
@@ -21,7 +35,7 @@ def run_docker(config, ctx, stage="docker"):
     return ctx, n
 
 
-_COMPOSE_KEYS = {"file", "service", "build", "default-cmd", "image", "run-args"}
+_COMPOSE_KEYS = {"file", "service", "build", "default-cmd", "image", "run-args", "check-bind-mounts"}
 
 
 def docker_cfg(compose=None, **rest):
@@ -493,7 +507,8 @@ def test_registry_login_skipped_when_not_configured(make_context, run_recorder, 
 
     run_docker(config, ctx)
 
-    assert not any("login" in c for c in run_recorder.commands())
+    # whole args: the tmp path contains this test's name
+    assert not any("login" in argv for argv in run_recorder.argvs())
 
 
 # ---- --force ----------------------------------------------------------------------------#
@@ -734,3 +749,158 @@ def test_uid_gid_defaults_not_overridden(make_context, run_recorder, which):
     # UID was already set in the environment, so setdefault must not clobber it
     # before the "docker:" section is interpolated
     assert "uid=9999" in cmd
+
+
+# ---- bind mount check ------------------------------------------------------------#
+def test_bind_mount_check_runs_compose_config_with_every_file(make_context, run_recorder, which):
+    """The check runs 'compose config' with every compose file."""
+    config = {"docker": docker_cfg(file=["docker-compose.yml", "override.yml"])}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    write_compose(ctx, "override.yml")
+    run_docker(config, ctx)
+    argvs = [argv for argv in run_recorder.argvs() if "config" in argv]
+    assert argvs == [
+        [
+            "docker",
+            "compose",
+            "-f",
+            str(ctx.env_dir / "docker-compose.yml"),
+            "-f",
+            str(ctx.env_dir / "override.yml"),
+            "config",
+            "--format",
+            "json",
+        ]
+    ]
+
+
+def test_bind_mount_check_passes_for_existing_sources(make_context, run_recorder, which, tmp_path):
+    """Existing sources and non-bind entries pass."""
+    existing_dir = tmp_path / "dir"
+    existing_dir.mkdir()
+    existing_file = tmp_path / "file"
+    existing_file.write_text("")
+    run_recorder.responses["config --format json"] = compose_config([
+        {"type": "bind", "source": str(existing_dir), "target": "/d"},
+        {"type": "bind", "source": str(existing_file), "target": "/f"},
+        {"type": "volume", "source": "named", "target": "/n"},
+        {"type": "tmpfs", "target": "/t"},
+        "/legacy:/string",
+    ])
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_docker(config, ctx)
+
+
+def test_bind_mount_check_dies_naming_every_missing_source(make_context, run_recorder, which, tmp_path, caplog):
+    """Every missing source is named, and nothing is built."""
+    missing_a = tmp_path / "missing-a"
+    missing_b = tmp_path / ".gitconfig"
+    run_recorder.responses["config --format json"] = compose_config([
+        {"type": "bind", "source": str(missing_a), "target": "/a"},
+        {"type": "bind", "source": str(missing_b), "target": "/home/user/.gitconfig"},
+    ])
+    config = {"docker": docker_cfg(image="img:dev")}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_recorder.responses["image inspect"] = lambda cmd: type("R", (), {"returncode": 1})()
+    with pytest.raises(DenverError) as exc:
+        run_docker(config, ctx)
+    message = str(exc.value)
+    assert f"{missing_a} (mounted at /a)" in message
+    assert f"{missing_b} (mounted at /home/user/.gitconfig)" in message
+    assert "check-bind-mounts: false" in message
+    assert not any("build" in argv for argv in run_recorder.argvs())
+
+
+def test_bind_mount_check_only_looks_at_the_run_service(make_context, run_recorder, which, tmp_path):
+    """Other services are not checked."""
+    stdout = json.dumps({
+        "services": {
+            "dev": {"volumes": []},
+            "other": {"volumes": [{"type": "bind", "source": str(tmp_path / "missing"), "target": "/m"}]},
+        }
+    })
+    run_recorder.responses["config --format json"] = types.SimpleNamespace(stdout=stdout, returncode=0, stderr="")
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_docker(config, ctx)
+
+
+def test_bind_mount_check_tolerates_a_service_without_volumes(make_context, run_recorder, which):
+    """No services or no volumes is fine."""
+    run_recorder.responses["config --format json"] = types.SimpleNamespace(stdout="{}", returncode=0, stderr="")
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_docker(config, ctx)
+
+
+def test_bind_mount_check_disabled_skips_compose_config(make_context, run_recorder, which, tmp_path):
+    """'check-bind-mounts: false' skips the check."""
+    run_recorder.responses["config --format json"] = compose_config([
+        {"type": "bind", "source": str(tmp_path / "missing"), "target": "/m"}
+    ])
+    config = {"docker": docker_cfg(**{"check-bind-mounts": False})}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_docker(config, ctx)
+    assert not any("config" in argv for argv in run_recorder.argvs())
+
+
+def test_bind_mount_check_compose_config_failure_dies(make_context, run_recorder, which):
+    """A failing 'compose config' dies with its stderr."""
+    run_recorder.responses["config --format json"] = compose_config(returncode=1, stderr="yaml: line 3: oops\n")
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    with pytest.raises(DenverError, match="yaml: line 3: oops"):
+        run_docker(config, ctx)
+
+
+def test_bind_mount_check_invalid_json_dies(make_context, run_recorder, which):
+    """Output that is not JSON dies with a clear error."""
+    run_recorder.responses["config --format json"] = types.SimpleNamespace(stdout="services:", returncode=0, stderr="")
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    with pytest.raises(DenverError, match="invalid JSON"):
+        run_docker(config, ctx)
+
+
+@pytest.mark.parametrize(
+    "result",
+    [
+        types.SimpleNamespace(stdout="", returncode=1, stderr="docker: not found"),
+        types.SimpleNamespace(stdout="", returncode=0, stderr=""),
+    ],
+)
+def test_bind_mount_check_skipped_under_dry_run_without_a_usable_answer(make_context, run_recorder, which, result):
+    """Under --dry-run, no answer from compose skips the check."""
+    run_recorder.responses["config --format json"] = result
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config, dry_run=True)
+    write_compose(ctx)
+    run_docker(config, ctx)
+
+
+def test_bind_mount_check_still_dies_under_dry_run_on_missing_source(make_context, run_recorder, which, tmp_path):
+    """Under --dry-run, a real answer is still checked."""
+    run_recorder.responses["config --format json"] = compose_config([
+        {"type": "bind", "source": str(tmp_path / "missing"), "target": "/m"}
+    ])
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config, dry_run=True)
+    write_compose(ctx)
+    with pytest.raises(DenverError, match="missing bind mount source"):
+        run_docker(config, ctx)
+
+
+def test_bind_mount_check_default_is_on(make_context):
+    """The check is on by default."""
+    ctx = make_context(config={})
+    resolved = DockerProvider.resolve_defaults(ctx, docker_cfg(), {})
+    assert resolved["compose"]["check-bind-mounts"] is True

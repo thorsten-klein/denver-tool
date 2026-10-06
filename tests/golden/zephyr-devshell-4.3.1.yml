@@ -59,6 +59,7 @@ docker:
     - setup/install_host_tools.sh
   compose:
     build: true
+    check-bind-mounts: true
     default-cmd: fish
     file: docker-compose.yml
     image: null
