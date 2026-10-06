@@ -79,7 +79,7 @@ def _reset_provider_registry():
     providers._loaded_extension_files.clear()
     providers._loaded_extension_files.update(before_files)
     for name in set(sys.modules) - before_modules:
-        if name.startswith("denver_extension_provider_"):
+        if name.startswith(("denver_extension_provider_", "denver_python_stage_")):
             del sys.modules[name]
     sys.path[:] = before_path
 
