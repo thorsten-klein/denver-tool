@@ -20,6 +20,7 @@ services:
     volumes:
       # host passthrough: display, TLS trust store, device hotplug
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - $XAUTHORITY_HOST:$DOCKER_HOME/.Xauthority:ro
       - /etc/ssl/certs:/etc/ssl/certs:ro
       - /dev:/dev
 

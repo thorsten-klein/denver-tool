@@ -58,6 +58,8 @@ pre-docker = ["create-env.sh"]     # denver sources it (no arguments) right befo
 directory tree to find the outermost `.git` as the workspace root, and asking
 `docker compose config` for the image tag so `docker-compose.yml` stays the
 single source of truth for it.
+It also passes the X11 cookie (`$XAUTHORITY`, or `~/.Xauthority`) to the
+container, so GUI apps can reach the display.
 
 **2. `scripts: setup:` — the things a container genuinely cannot do.** You
 cannot install Docker from inside Docker, and udev rules belong to the host

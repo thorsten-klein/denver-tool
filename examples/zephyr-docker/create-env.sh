@@ -15,6 +15,7 @@ DENVER_GLOBAL_ENV_DIR=${DENVER_GLOBAL_ENV_DIR:-$DENVER_GLOBAL_CONFIG_DIR/zephyr-
 HOST_HOME=${HOST_HOME:-$HOME}
 CCACHE_DIR=${CCACHE_DIR:-$DENVER_GLOBAL_ENV_DIR/.ccache}
 CCACHE_READONLY_DIRS=$CCACHE_DIR.fallback
+XAUTHORITY_HOST=${XAUTHORITY:-$HOME/.Xauthority}
 
 find_workspace_root() {
     # Walk up from DENVER_DIR and report the outermost ancestor that has a
@@ -69,6 +70,7 @@ PERSISTENT_FILES=(
     "$DENVER_GLOBAL_ENV_DIR/.bash_history"
     "$DENVER_GLOBAL_ENV_DIR/.git-data/.git-credentials"
     "$HOST_HOME/.gitconfig"
+    "$XAUTHORITY_HOST"
 )
 for f in "${PERSISTENT_FILES[@]}"; do
     [ -f "$f" ] || touch "$f"
@@ -106,6 +108,8 @@ render_env_file() {
     echo "HOST_GID=$(id -g)"
     echo "WORKSPACE_DIR=$WEST_TOPDIR"
     echo "DISPLAY=$DISPLAY"
+    echo "XAUTHORITY_HOST=$XAUTHORITY_HOST"
+    echo "XAUTHORITY=/home/ubuntu/.Xauthority"
     echo "CCACHE_DIR=$CCACHE_DIR"
     echo "CCACHE_READONLY_DIRS=$CCACHE_READONLY_DIRS"
     echo "HOST_HOME=$HOST_HOME"
