@@ -1093,3 +1093,24 @@ def test_write_export_env_banner_printed_by_interactive_shells(make_context, tmp
     run = lambda flag: subprocess.run(["bash", flag, "-c", f". {out}"], capture_output=True, text=True).stderr  # noqa: E731
     assert "LOGO 'x'" in run("-i")
     assert "LOGO" not in run("+i")
+
+
+# ---- DENVER_CI ------------------------------------------------------------ #
+def test_denver_ci_exported_only_under_ci(make_context):
+    assert make_context(ci=True).env["DENVER_CI"] == "1"
+    assert "DENVER_CI" not in make_context().env
+
+
+def test_denver_ci_stale_value_is_removed_without_ci(make_context):
+    # left over from an outer `denver run --ci` (or exported by hand): without
+    # --ci this run must not look like a CI run to its stages
+    ctx = make_context(env={"DENVER_CI": "1"})
+    assert "DENVER_CI" not in ctx.env
+    assert not ctx.ci
+
+
+def test_denver_ci_is_never_read_back(make_context):
+    # DENVER_CI is only written for children; ctx.ci comes from --ci alone
+    ctx = make_context()
+    ctx.env["DENVER_CI"] = "1"
+    assert not ctx.ci

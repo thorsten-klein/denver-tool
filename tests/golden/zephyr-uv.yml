@@ -12,6 +12,7 @@ uv:
   provider: uv
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

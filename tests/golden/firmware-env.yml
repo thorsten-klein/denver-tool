@@ -32,6 +32,7 @@ docker-base:
   - Relocates every stage below into an Ubuntu 24.04 container, so the OS and the
     apt packages are the same for everyone.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -59,6 +60,7 @@ uv-packages:
   - The python 3.12 virtualenv. 'conan' is in requirements.txt because the next stage
     needs it on PATH -- the conan provider never installs it.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -85,6 +87,7 @@ nvim-setup:
     way -- download, checksum, unpack, PATH -- so the stage below can be read as what
     conan does with that same job.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -102,6 +105,7 @@ ninja-setup:
     provider owns the download, the checksum, the unpacking and the PATH entry. One
     entry per prebuilt release.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -131,6 +135,7 @@ conan-packages:
     plus the recipe it installs. The same job as 'nvim-setup' above, minus the shell
     script -- conan owns the download, the checksum, the cache and the PATH.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -166,6 +171,7 @@ best-practices:
     the ninja from 'ninja-setup' rather than make. Declared as 'source:' rather than
     'cmd:', so the exports survive into the final command.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

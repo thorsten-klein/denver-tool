@@ -29,6 +29,7 @@ netrc:
   provider: netrc
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -49,6 +50,7 @@ docker:
   provider: docker
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -74,6 +76,7 @@ conan:
   provider: conan
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -103,6 +106,7 @@ uv:
   provider: uv
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -125,6 +129,7 @@ zephyr:
   provider: zephyr
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -156,6 +161,7 @@ uv-zephyr:
   provider: uv
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

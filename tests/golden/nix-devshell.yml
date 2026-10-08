@@ -17,6 +17,7 @@ devshell:
   - Enter this directory's flake.nix devShell (hello + jq + two variables).
   - Re-evaluated only when a git-tracked file of the flake changes.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -40,6 +41,7 @@ check:
   description:
   - Proof that the devShell reached the stages after it, not just the flake.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

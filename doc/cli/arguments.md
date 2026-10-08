@@ -156,7 +156,11 @@ A few more properties worth knowing:
   variable.
 - **`--ci`** swaps in narrower/faster args a provider judges appropriate
   for a CI runner (currently just zephyr's `west update`, adding a shallow-clone
-  strategy on top of whatever `update-args:` already configures).
+  strategy on top of whatever `update-args:` already configures). It also
+  exports `DENVER_CI=1` to every stage, hook and the final command (see
+  [Environment variables](environment-variables.md)), and decides whether a
+  stage with `ci: only` or `ci: skip` runs (see "Generic stage keys" in
+  [Configuration](../configuration/config-file.md)).
 
 ## Inspect an environment
 

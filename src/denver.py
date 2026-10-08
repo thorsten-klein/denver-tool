@@ -1063,7 +1063,8 @@ def validate_hooks_keys(config):
 # keys every stage section may carry regardless of provider: 'provider:'
 # picks the class (see providers.make_stage), 'scripts:' is the generic
 # --scripts <name> mechanism (see _run_stage_scripts_in_context), 'disabled:'
-# opts a stage out of the normal pipeline by default (see run_stages),
+# opts a stage out of the normal pipeline by default (see run_stages), 'ci:'
+# does the same only with --ci ('skip') or only without it ('only'),
 # 'depends-on:' skips a stage whenever a stage it names is itself skipped,
 # for any reason (see _compute_static_skip_reasons/_skip_for_blocked_dependency),
 # 'skip-on-success:'/'skip-on-failure:' skip a stage's setup() at run time
@@ -1073,13 +1074,14 @@ def validate_hooks_keys(config):
 # KEYS, so every provider gets them for free, uv/conan/zephyr/docker/custom
 # included. Order matters: this is also the fixed display order used by
 # _ordered_stage_section for --show-config (provider first -- it picks the
-# class -- then description, disabled, depends-on, skip-on-success,
+# class -- then description, disabled, ci, depends-on, skip-on-success,
 # skip-on-failure, env, env-prepend, env-append, scripts), before every
 # provider-specific key (alphabetically).
 GENERIC_STAGE_KEYS = (
     "provider",
     "description",
     "disabled",
+    "ci",
     "depends-on",
     "skip-on-success",
     "skip-on-failure",
@@ -1116,6 +1118,7 @@ def resolve_stage_section(stage, raw_section, config, ctx):
     if not isinstance(disabled, bool):
         die(f"stage '{stage.stage}': 'disabled:' must be true or false, got {disabled!r}")
     section["disabled"] = disabled
+    section["ci"] = _validated_ci(raw_section.get("ci"), stage.stage)
     section["depends-on"] = _validated_depends_on(raw_section.get("depends-on"), stage.stage)
     section["skip-on-success"] = _resolved_skip_scripts(ctx, stage.stage, raw_section, "skip-on-success")
     section["skip-on-failure"] = _resolved_skip_scripts(ctx, stage.stage, raw_section, "skip-on-failure")
@@ -1144,6 +1147,26 @@ def validate_stage_section_keys(stage, section):
             f"stage '{stage.stage}': unknown key(s) {_list_with_hints(unknown, allowed)} for provider "
             f"'{stage.name}' -- known: {', '.join(sorted(type(stage).KEYS)) or '(none)'}."
         )
+
+
+# the values a stage's 'ci:' key accepts: 'only' runs the stage only with
+# --ci, 'skip' only without it. Unset (null) runs it either way.
+STAGE_CI_VALUES = ("only", "skip")
+
+
+def _validated_ci(value, stage_id):
+    """One generic 'ci:' stage key: ``None`` when unset, else one of STAGE_CI_VALUES."""
+    if value is not None and value not in STAGE_CI_VALUES:
+        die(f"stage '{stage_id}': 'ci:' must be one of {', '.join(STAGE_CI_VALUES)}, got {value!r}")
+    return value
+
+
+def _ci_skip_reason(section, ci):
+    """This stage's 'ci:' skip reason for a run with (``ci``) or without --ci, if any."""
+    mode = section.get("ci")
+    if (mode == "only" and not ci) or (mode == "skip" and ci):
+        return f"skipped (ci: {mode})"
+    return None
 
 
 def _validated_depends_on(value, stage_id):
@@ -2355,14 +2378,14 @@ def run_stages(env_dir, config, config_path, forwarded, *, options=None):
     all_stages = _make_stages(config, all_stage_ids)
     until_stage = options.until_stage
     cutoff = all_stage_ids.index(until_stage) if until_stage in all_stage_ids else None
-    static_reasons = _compute_static_skip_reasons(config, all_stage_ids, stage_ids, cutoff)
+    static_reasons = _compute_static_skip_reasons(config, all_stage_ids, stage_ids, cutoff, ci=options.ci)
     runnable_stage_ids = {s for s in stage_ids if static_reasons[s] is None}
     wrappers, setups, skipped_wrappers, skipped_setups = _partition_stages(all_stages, runnable_stage_ids)
 
     active_wrappers = [] if _wrappers_inactive(ctx) else wrappers
 
     # ``reasons`` starts as the static verdict (--until/--skip, 'disabled:',
-    # and 'depends-on:' cascaded from either) but is then mutated live as
+    # 'ci:', and 'depends-on:' cascaded from any of them) but is then mutated live as
     # each run_ids stage is actually reached (see _run_stage_setup): a
     # 'skip-on-success:'/'skip-on-failure:' skip can only be decided at that
     # point, and a later stage's own 'depends-on:' needs to see it.
@@ -2445,11 +2468,12 @@ def _stage_ids_of(stages):
     return [s.stage for s in stages]
 
 
-def _compute_static_skip_reasons(config, all_stage_ids, stage_ids, cutoff):
+def _compute_static_skip_reasons(config, all_stage_ids, stage_ids, cutoff, *, ci=False):
     """Every declared stage's *static* skip reason, in 'stages:' order (``None`` if it would run).
 
     Static = knowable before any stage's setup() runs: --until/--skip
-    filtering, 'disabled: true', and 'depends-on:' cascaded from either of
+    filtering, 'disabled: true', 'ci: only'/'ci: skip' (against ``ci``, i.e.
+    whether --ci was given), and 'depends-on:' cascaded from any of
     those (or from another stage's own cascade). Deliberately excludes
     'skip-on-success:'/'skip-on-failure:', which can only be decided once a
     stage is actually reached, right before its own setup() -- see
@@ -2465,11 +2489,11 @@ def _compute_static_skip_reasons(config, all_stage_ids, stage_ids, cutoff):
     reasons = {}
     still_declared = set(stage_ids)
     for index, stage_id in enumerate(all_stage_ids):
-        reasons[stage_id] = _static_skip_reason(config, stage_id, index, still_declared, cutoff, reasons)
+        reasons[stage_id] = _static_skip_reason(config, stage_id, index, still_declared, cutoff, reasons, ci)
     return reasons
 
 
-def _static_skip_reason(config, stage_id, index, still_declared, cutoff, reasons):
+def _static_skip_reason(config, stage_id, index, still_declared, cutoff, reasons, ci=False):
     """One stage's static skip reason -- see _compute_static_skip_reasons, which this is split out of.
 
     ``reasons`` holds every earlier stage's already-decided reason, which is
@@ -2477,9 +2501,10 @@ def _static_skip_reason(config, stage_id, index, still_declared, cutoff, reasons
     """
     if stage_id not in still_declared:
         return _cutoff_skip_reason(index, cutoff)
-    if (config.get(stage_id) or {}).get("disabled"):
+    section = config.get(stage_id) or {}
+    if section.get("disabled"):
         return "skipped (disabled: true)"
-    return _dependency_skip_reason(config, stage_id, reasons)
+    return _ci_skip_reason(section, ci) or _dependency_skip_reason(config, stage_id, reasons)
 
 
 def _cutoff_skip_reason(index, cutoff):
@@ -3961,7 +3986,10 @@ def _add_run_parser(subparsers, config_args):
         "checksum/skip-on-success/skip-on-failure-based skip",
     )
     run_p.add_argument(
-        "--ci", action="store_true", help="CI mode: swap in narrower/faster args (e.g. a shallow `west update`)"
+        "--ci",
+        action="store_true",
+        help="CI mode: swap in narrower/faster args (e.g. a shallow `west update`), export DENVER_CI=1, "
+        "and run 'ci: only' stages instead of 'ci: skip' ones",
     )
     run_p.add_argument(
         "--no-wait",

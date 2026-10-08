@@ -1892,3 +1892,70 @@ def test_run_main_or_die_quietly_on_broken_pipe_swallows_it_and_exits_1(monkeypa
         denver._run_main_or_die_quietly_on_broken_pipe()
     assert exc.value.code == 1
     assert redirected == [(99, 1)]  # stdout's own fileno() redirected to devnull, not left broken
+
+
+def test_main_show_config_lists_ci_for_every_stage(tmp_path, capsys, which):
+    """--show-config-full: 'ci:' is generic -- null when unset, shown for every stage."""
+    env_dir = tmp_path / "e"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text(
+        textwrap.dedent("""\
+        stages:
+        - uv
+        - my-stage
+        uv:
+          provider: uv
+          ci: only
+        my-stage:
+          provider: custom
+          cmd: echo hi
+        """)
+    )
+
+    assert denver.main(["run", str(env_dir), "--show-config-full"]) == 0
+    printed = yaml.safe_load(capsys.readouterr().out)
+    assert printed["uv"]["ci"] == "only"
+    assert printed["my-stage"]["ci"] is None
+
+
+@pytest.mark.parametrize("value", ["always", "true", "[only]"])
+def test_main_show_config_ci_invalid_value_dies(tmp_path, caplog, which, value):
+    env_dir = tmp_path / "e"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text(f"stages:\n- uv\nuv:\n  provider: uv\n  ci: {value}\n")
+    with pytest.raises(SystemExit):
+        denver.main(["run", str(env_dir), "--show-config"])
+    assert "stage 'uv': 'ci:' must be one of only, skip, got" in caplog.text
+
+
+def test_main_ci_flag_exports_denver_ci(tmp_path, exec_recorder):
+    env_dir = tmp_path / "e"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text("stages:\n- s\ns:\n  provider: custom\n  source: env.sh\n")
+    (env_dir / "env.sh").write_text('export STAGE_SAW_CI="${DENVER_CI-unset}"\n')
+    denver.main(["run", str(env_dir), "--ci", "--", "echo", "hi"])
+    # the custom stage's own 'source:' script saw it, and so does the final command
+    assert exec_recorder["env"]["STAGE_SAW_CI"] == "1"
+    assert exec_recorder["env"]["DENVER_CI"] == "1"
+
+
+def test_main_real_denver_ci_env_var_does_not_turn_on_ci(tmp_path, monkeypatch, exec_recorder):
+    # DENVER_CI is only ever written for children; --ci is never read from it
+    import denver_providers as providers
+    from denver_providers.base import Provider
+
+    class Fake(Provider):
+        name = "fakesetup"
+        kind = "setup"
+
+        def setup(self, ctx):
+            ctx.set("SAW_CI", "1" if ctx.ci else "0")
+
+    monkeypatch.setitem(providers.PROVIDERS, "fakesetup", Fake)
+    monkeypatch.setenv("DENVER_CI", "1")
+    env_dir = tmp_path / "e"
+    env_dir.mkdir()
+    (env_dir / "denver.yml").write_text("stages:\n- fakesetup\nfakesetup:\n  provider: fakesetup\n")
+    denver.main(["run", str(env_dir), "--", "echo", "hi"])
+    assert exec_recorder["env"]["SAW_CI"] == "0"
+    assert "DENVER_CI" not in exec_recorder["env"]

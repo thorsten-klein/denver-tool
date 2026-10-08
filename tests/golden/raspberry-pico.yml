@@ -28,6 +28,7 @@ host-tools:
     setup'. This stage's own cmd only checks they are actually there and fails loud,
     with that command, if not.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -44,6 +45,7 @@ arm-none-eabi:
   provider: download
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -70,6 +72,7 @@ pico-sdk:
   provider: git
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -89,6 +92,7 @@ picotool:
   provider: git
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -111,6 +115,7 @@ build-picotool:
     checkout, via cmake, and puts it on PATH. Same ''cmd: builds, source: activates''
     split as ''host-tools'' above, just with a build instead of an apt-get check.'
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
