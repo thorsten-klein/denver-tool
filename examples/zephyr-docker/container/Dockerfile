@@ -92,6 +92,12 @@ RUN USER=ubuntu && \
     cat /home/ubuntu/fixuid/fixuid-config.yml > /etc/fixuid/config.yml && \
     rm -rf /home/ubuntu/fixuid
 
+# ------------------------------------------------
+LABEL info="Forward the host docker socket on every container start"
+# ------------------------------------------------
+
+ADD forward-docker-socket.sh /usr/local/bin/
+
 # --------------------------------------------------------------
 # default command
 # --------------------------------------------------------------
@@ -109,4 +115,5 @@ RUN mkdir -p \
         $HOME/.cache \
         $HOME/.java
 
-ENTRYPOINT ["fixuid", "-q"]
+# fixuid first, so the socket is forwarded for the remapped user
+ENTRYPOINT ["fixuid", "-q", "forward-docker-socket.sh"]

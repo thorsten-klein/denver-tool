@@ -1,6 +1,6 @@
 services:
   dev:
-    image: "zephyr-docker:20260311"
+    image: "zephyr-docker:20261008"
     build:
       context: container
       dockerfile: Dockerfile
@@ -8,6 +8,8 @@ services:
       watch:
         - action: rebuild
           path: ./container/init_system_for_zephyr.sh
+        - action: rebuild
+          path: ./container/forward-docker-socket.sh
     #network_mode: host # for DISPLAY
     env_file:
       - .env
@@ -23,6 +25,11 @@ services:
       - $XAUTHORITY_HOST:$DOCKER_HOME/.Xauthority:ro
       - /etc/ssl/certs:/etc/ssl/certs:ro
       - /dev:/dev
+      # the host docker daemon, under another name: the entrypoint
+      # (container/forward-docker-socket.sh) forwards it to
+      # /var/run/docker.sock for the container user. Full access to the
+      # host daemon, same as being in the host's 'docker' group.
+      - /var/run/docker.sock:/var/run/docker-host.sock
 
       # build caches, kept outside the container lifecycle so a rebuild
       # doesn't cost a full re-fetch.

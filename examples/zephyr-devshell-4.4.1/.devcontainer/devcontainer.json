@@ -8,6 +8,7 @@
   "workspaceFolder": "${localWorkspaceFolder}",
   "initializeCommand": "${localWorkspaceFolder}/.devcontainer/denver.sh run ${localWorkspaceFolder} --until docker -- echo Done",
   "overrideCommand": true,
+  "postStartCommand": "fixuid -q forward-docker-socket.sh",
   "postAttachCommand": "${localWorkspaceFolder}/.devcontainer/refresh-env.sh",
   "shutdownAction": "stopCompose"
 }
