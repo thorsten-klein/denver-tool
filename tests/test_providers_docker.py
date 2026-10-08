@@ -533,8 +533,10 @@ def test_authentication_default_is_true(make_context):
 
 @pytest.mark.parametrize("value", ["yes", "may_fail", 1], ids=["yes", "typo", "int"])
 def test_authentication_invalid_value_dies(make_context, value):
+    ctx = make_context()
+    cfg = docker_cfg(authentication=value)
     with pytest.raises(DenverError, match="docker: 'authentication:' must be true, false or \"may-fail\""):
-        DockerProvider.resolve_defaults(make_context(), docker_cfg(authentication=value), {})
+        DockerProvider.resolve_defaults(ctx, cfg, {})
 
 
 def test_registry_authentication_invalid_value_dies(make_context, run_recorder, which):
