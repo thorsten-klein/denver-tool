@@ -53,9 +53,14 @@ services:
       - $DENVER_GLOBAL_ENV_DIR/.local/share:$DOCKER_HOME/.local/share  # Jetbrains plugins, fish data
       - $DENVER_GLOBAL_ENV_DIR/.vscode-server:$DOCKER_HOME/.vscode-server
 
-      # AI coding assistants: keep their auth/config across rebuilds
+      # AI coding assistants: keep their auth/config across rebuilds.
+      # Claude Code also keeps state in ~/.claude.json, outside ~/.claude/.
+      # It saves that file by writing a temp file and renaming it over the
+      # old one, which fails (EBUSY) on a single-file bind mount; Claude Code
+      # then writes the file in place, so the mount still works.
       - $DENVER_GLOBAL_ENV_DIR/.copilot:$DOCKER_HOME/.copilot
       - $DENVER_GLOBAL_ENV_DIR/.claude:$DOCKER_HOME/.claude
+      - $DENVER_GLOBAL_ENV_DIR/.claude.json:$DOCKER_HOME/.claude.json
       - $DENVER_GLOBAL_ENV_DIR/.gemini:$DOCKER_HOME/.gemini
 
       # git identity/credentials: host system config as the base, denver's

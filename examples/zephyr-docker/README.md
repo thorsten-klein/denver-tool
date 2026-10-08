@@ -60,6 +60,11 @@ directory tree to find the outermost `.git` as the workspace root, and asking
 single source of truth for it.
 It also passes the X11 cookie (`$XAUTHORITY`, or `~/.Xauthority`) to the
 container, so GUI apps can reach the display.
+It also creates `.claude.json` (as `{}`) in `$DENVER_GLOBAL_ENV_DIR` if it is
+missing. Claude Code keeps its onboarding, login and per-project state in
+`~/.claude.json`, next to `~/.claude/` and not inside it, so the file is
+mounted on its own. Without it, `claude` would start its first-run setup in
+every new container.
 
 **2. `scripts: setup:` — the things a container genuinely cannot do.** You
 cannot install Docker from inside Docker, and udev rules belong to the host
