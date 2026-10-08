@@ -77,6 +77,12 @@ for f in "${PERSISTENT_FILES[@]}"; do
     [ -f "$f" ] || touch "$f"
 done
 
+# Claude Code keeps its onboarding, login and per-project state in
+# ~/.claude.json, next to ~/.claude/ rather than inside it. It must exist
+# before the container starts (docker creates a directory for a missing bind
+# mount source), and an empty file is not valid JSON for Claude Code.
+[ -f "$DENVER_GLOBAL_ENV_DIR/.claude.json" ] || echo '{}' > "$DENVER_GLOBAL_ENV_DIR/.claude.json"
+
 # A non-interactive stdin is how we tell an ad-hoc CI runner apart from an
 # interactive devshell (CI runners of this kind don't allocate a tty).
 [ -t 0 ] || CI_BUILD=true
