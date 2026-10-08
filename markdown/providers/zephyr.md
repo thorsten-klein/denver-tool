@@ -72,6 +72,17 @@ west reads it itself, no provider-specific handling needed.
   `overrides:`/`freeze-to:` for pinning them. It has to run *after* this
   stage, since until the workspace is updated there’s no way to know what
   those packages even are.
+- **Broken `update.auto-cache` entries are removed before `west update`.**
+  With west’s `update.auto-cache` set, an interrupted `git clone --mirror`
+  (Ctrl+C, a cancelled CI job, a dropped network) leaves an empty bare repo
+  with no refs in the cache. west never repairs an existing entry, so every
+  later `west update` fails with `upload-pack: not our ref`. Right before
+  each `west update`, this stage therefore removes every
+  `<auto-cache>/<project>/<hash>/` entry that has no refs at all (one info
+  line each), and west recreates it. A mirror that is merely out of date
+  is kept. Nothing happens if `update.auto-cache` is unset or the dir does
+  not exist, or when `west update` itself doesn’t run (`skip-update:`,
+  `--fast`, or nothing changed since the last run).
 - **`--ci`** always adds a fixed shallow-clone strategy (`--narrow -o=--depth=1`) to `west update`, on top of whatever `update-args:`
   already configures.
 - **`--fast`** only checks the workspace is already configured — dies with
@@ -80,7 +91,11 @@ west reads it itself, no provider-specific handling needed.
   drift check found nothing new) and recreates the workspace setup steps’
   own on-disk state unconditionally.
 - **`--dry-run`** prints the `west` commands instead of running them, and
-  writes neither `.west/config`, the drift fingerprint, nor `blobs-cache:`.
-  The read-only queries this stage branches on (`west config -l`, `west manifest --resolve`, `west list`, `git rev-parse`) do still run: they are
-  what decide which `west config` keys differ, whether `west update` would
-  be skipped as unchanged, and which projects carry a `patches.yml`.
+  writes neither `.west/config`, the drift fingerprint, nor `blobs-cache:`,
+  nor removes any broken auto-cache entry (it is reported as `rm -r`
+  instead). The read-only queries this stage branches on (`west config -l`,
+  `west config update.auto-cache`, `west manifest --resolve`, `west list`,
+  `git rev-parse`, `git for-each-ref`) do still run: they are what decide
+  which `west config` keys differ, whether `west update` would be skipped
+  as unchanged, which projects carry a `patches.yml`, and which auto-cache
+  entries are broken.

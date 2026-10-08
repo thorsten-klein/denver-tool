@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=94a480d3"></script>
+      <script src="../_static/documentation_options.js?v=b3071151"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/0db04d57bb540a93605ded78af363bf18a9f5cfa">1.7.0-7-g0db04d5</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/f66c4496a5e9f978559510b62792c3c16724a4b9">1.7.0-8-gf66c449</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -498,6 +498,17 @@ this provider’s job — give a <em>separate</em> <code class="docutils literal
 <code class="docutils literal notranslate"><span class="pre">overrides:</span></code>/<code class="docutils literal notranslate"><span class="pre">freeze-to:</span></code> for pinning them. It has to run <em>after</em> this
 stage, since until the workspace is updated there’s no way to know what
 those packages even are.</p></li>
+<li><p><strong>Broken <code class="docutils literal notranslate"><span class="pre">update.auto-cache</span></code> entries are removed before <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code>.</strong>
+With west’s <code class="docutils literal notranslate"><span class="pre">update.auto-cache</span></code> set, an interrupted <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">--mirror</span></code>
+(Ctrl+C, a cancelled CI job, a dropped network) leaves an empty bare repo
+with no refs in the cache. west never repairs an existing entry, so every
+later <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code> fails with <code class="docutils literal notranslate"><span class="pre">upload-pack:</span> <span class="pre">not</span> <span class="pre">our</span> <span class="pre">ref</span></code>. Right before
+each <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code>, this stage therefore removes every
+<code class="docutils literal notranslate"><span class="pre">&lt;auto-cache&gt;/&lt;project&gt;/&lt;hash&gt;/</span></code> entry that has no refs at all (one info
+line each), and west recreates it. A mirror that is merely out of date
+is kept. Nothing happens if <code class="docutils literal notranslate"><span class="pre">update.auto-cache</span></code> is unset or the dir does
+not exist, or when <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code> itself doesn’t run (<code class="docutils literal notranslate"><span class="pre">skip-update:</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--fast</span></code>, or nothing changed since the last run).</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--ci</span></code></strong> always adds a fixed shallow-clone strategy (<code class="docutils literal notranslate"><span class="pre">--narrow</span> <span class="pre">-o=--depth=1</span></code>) to <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code>, on top of whatever <code class="docutils literal notranslate"><span class="pre">update-args:</span></code>
 already configures.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--fast</span></code></strong> only checks the workspace is already configured — dies with
@@ -506,10 +517,14 @@ a clear message if it isn’t, rather than running <code class="docutils literal
 drift check found nothing new) and recreates the workspace setup steps’
 own on-disk state unconditionally.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code></strong> prints the <code class="docutils literal notranslate"><span class="pre">west</span></code> commands instead of running them, and
-writes neither <code class="docutils literal notranslate"><span class="pre">.west/config</span></code>, the drift fingerprint, nor <code class="docutils literal notranslate"><span class="pre">blobs-cache:</span></code>.
-The read-only queries this stage branches on (<code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">config</span> <span class="pre">-l</span></code>, <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">manifest</span> <span class="pre">--resolve</span></code>, <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">list</span></code>, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">rev-parse</span></code>) do still run: they are
-what decide which <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">config</span></code> keys differ, whether <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code> would
-be skipped as unchanged, and which projects carry a <code class="docutils literal notranslate"><span class="pre">patches.yml</span></code>.</p></li>
+writes neither <code class="docutils literal notranslate"><span class="pre">.west/config</span></code>, the drift fingerprint, nor <code class="docutils literal notranslate"><span class="pre">blobs-cache:</span></code>,
+nor removes any broken auto-cache entry (it is reported as <code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">-r</span></code>
+instead). The read-only queries this stage branches on (<code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">config</span> <span class="pre">-l</span></code>,
+<code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">config</span> <span class="pre">update.auto-cache</span></code>, <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">manifest</span> <span class="pre">--resolve</span></code>, <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">list</span></code>,
+<code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">rev-parse</span></code>, <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">for-each-ref</span></code>) do still run: they are what decide
+which <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">config</span></code> keys differ, whether <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code> would be skipped
+as unchanged, which projects carry a <code class="docutils literal notranslate"><span class="pre">patches.yml</span></code>, and which auto-cache
+entries are broken.</p></li>
 </ul>
 </section>
 </section>
