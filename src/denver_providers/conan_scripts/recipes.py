@@ -86,6 +86,10 @@ class CatalogError(Exception):
     """Raised for catalog/recipe resolution failures in this script."""
 
 
+class LoginError(Exception):
+    """Raised when authenticating a conan remote fails and the remote can't just be left out of the run."""
+
+
 # Note: PYTHONPATH will be set later in main(), if --base-classes-dir is given
 
 
@@ -166,6 +170,22 @@ _auth_may_fail = False
 # (Ctrl-D) means "skip this remote" too. Ctrl-C still aborts the run.
 _REMOTE_AUTH_ERRORS = (ConanException, EOFError)
 
+# HTTP 503 ("come back later"): conan retries, then raises a plain
+# ConanException -- the status only shows up in its message, either urllib3's
+# retry error or conan's own for a response it didn't retry. Not a
+# credentials problem, so a remote answering it is left out of the run in
+# every authentication mode, as if 'authentication: false' was set for it.
+_UNAVAILABLE_RE = re.compile(r"too many 503 error responses|Server exception 503\b")
+
+# Names of the remotes found unavailable (503), by this process or -- read
+# back from USABLE_REMOTES_FILENAME -- an earlier step of the same denver run.
+_unavailable_remotes: set[str] = set()
+
+# What a login failure that aborts the run suggests, besides its own reason.
+LOCAL_CACHE_HINT = (
+    "set `conan.authentication: false` (or `-c conan.authentication=false`) to work from the local cache only"
+)
+
 # _usable_remotes()'s answer, computed once per process: each remote is only
 # authenticated (and, under --authentication-may-fail, warned about) once,
 # not once per recipe that needs resolving.
@@ -174,13 +194,17 @@ _usable_remotes_cache = None
 # Under --authentication-may-fail, --prepare writes the names of the remotes
 # that authenticated here, inside the conan home -- a fixed name rather than a
 # path from the command line, so nothing outside the conan home is ever
-# written. Later runs (export) only consider those, instead of trying a remote
-# prepare already gave up on a second time; the conan provider reads it too,
-# for `conan install -r=`. Keep in sync with conan.py's USABLE_REMOTES_FILENAME.
+# written. A step that found a remote unavailable (503) writes it too, in
+# every authentication mode. A JSON object: "usable" (the remotes the rest of
+# the run may use) and "unavailable" (those left out for answering 503).
+# Later runs (export) only consider the usable ones, instead of trying a
+# remote an earlier step already gave up on a second time; the conan provider
+# reads it too, for `conan install -r=`. Keep in sync with conan.py's
+# USABLE_REMOTES_FILENAME.
 USABLE_REMOTES_FILENAME = "denver-usable-remotes.json"
 
-# The names read back from USABLE_REMOTES_FILENAME (see _load_usable_remote_names);
-# None = no such list, consider every enabled remote.
+# The "usable" names read back from USABLE_REMOTES_FILENAME (see
+# _load_usable_remotes); None = no such list, consider every enabled remote.
 _usable_remote_names = None
 
 
@@ -199,14 +223,52 @@ def _warn_remote_skipped(remote, error):
     print(_RESET)
 
 
+def _is_unavailable(error) -> bool:
+    """Whether ``error`` says the remote is temporarily unavailable (HTTP 503) rather than refusing the login."""
+    return isinstance(error, ConanException) and bool(_UNAVAILABLE_RE.search(str(error)))
+
+
+def _warn_remote_unavailable(remote, error):
+    """Say that ``remote`` is left out of this run because it answered HTTP 503."""
+    print(_YELLOW, end='')
+    print(f"\nWARNING: skipping conan remote '{remote.name}' ({remote.url}): temporarily unavailable (HTTP 503)")
+    print("Continuing as if `conan.authentication: false` was set for it: no login, recipes from the local cache.")
+    print(f"Reason: {error}")
+    print(_RESET)
+
+
+def _skip_failed_remote(remote, error) -> bool:
+    """Leave ``remote`` out of this run (warned) after ``error`` if allowed; False when the caller must abort.
+
+    Allowed for a 503 in every authentication mode, and for any
+    authentication failure under --authentication-may-fail.
+    """
+    if _is_unavailable(error):
+        _unavailable_remotes.add(remote.name)
+        _warn_remote_unavailable(remote, error)
+        return True
+    if _auth_may_fail:
+        _warn_remote_skipped(remote, error)
+        return True
+    return False
+
+
+def _raise_login_failed(remote, error):
+    """Abort the run after ``remote`` failed to authenticate -- a 403 as itself (see _cli), anything else as LoginError."""
+    if isinstance(error, ForbiddenException):
+        raise error
+    raise LoginError(f"authenticating conan remote '{remote.name}' ({remote.url}) failed: {error}") from error
+
+
 def _authenticates(remote) -> bool:
-    """Authenticate ``remote``; False if that failed under --authentication-may-fail (warned), else it raises."""
+    """Authenticate ``remote``; False if it was left out of the run instead (see _skip_failed_remote), else it raises."""
+    if remote.name in _unavailable_remotes:
+        return False  # already found unavailable (and warned about) earlier in this run
     try:
         authenticate_remote(remote)
     except _REMOTE_AUTH_ERRORS as e:
-        if not _auth_may_fail:
-            raise
-        _warn_remote_skipped(remote, e)
+        if not _skip_failed_remote(remote, e):
+            _raise_login_failed(remote, e)
         return False
     return True
 
@@ -220,9 +282,9 @@ def _candidate_remotes():
 
 
 def _usable_remotes():
-    """Every enabled remote, authenticated -- minus those that failed to, under --authentication-may-fail.
+    """Every enabled remote, authenticated -- minus unavailable ones (503), and those that failed to under may-fail.
 
-    Without --authentication-may-fail a failing remote raises, as before.
+    Without --authentication-may-fail a remote that fails to authenticate raises, as before.
     """
     global _usable_remotes_cache  # computed once per process, see its definition
     if _usable_remotes_cache is None:
@@ -236,8 +298,19 @@ def _usable_remotes_file():
 
 
 def write_usable_remotes():
-    """Record the names of _usable_remotes() as a JSON list -- for export, and the provider's `conan install -r=`."""
-    _usable_remotes_file().write_text(json.dumps([remote.name for remote in _usable_remotes()]))
+    """Record the usable and the unavailable remotes -- for export, and the provider's `conan install -r=`.
+
+    Under --authentication-may-fail the usable ones are those that
+    authenticated (_usable_remotes). Otherwise every other remote either
+    authenticated or already aborted the run, so they are the candidates
+    minus the unavailable ones -- found without contacting any of them again.
+    """
+    if _auth_may_fail:
+        usable = [remote.name for remote in _usable_remotes()]
+    else:
+        usable = [remote.name for remote in _candidate_remotes() if remote.name not in _unavailable_remotes]
+    record = {"usable": usable, "unavailable": sorted(_unavailable_remotes)}
+    _usable_remotes_file().write_text(json.dumps(record))
 
 
 def get_deps_graph_remote(reference: RecipeReference):
@@ -738,7 +811,7 @@ def _needs_reauth(user_info, configured_username, *, force):
 
 
 def _login_remote(remote_name, remote, *, force):
-    """Authenticate ``remote`` if it needs it, warning rather than dying when the remote is unreachable."""
+    """Authenticate ``remote`` if it needs it, warning rather than dying when the remote is unreachable/unavailable."""
     user_info = conan_api.remotes.user_info(remote)
     configured_username = os.getenv(f"CONAN_LOGIN_USERNAME_{remote_name.upper()}")
     if not _needs_reauth(user_info, configured_username, force=force):
@@ -753,9 +826,8 @@ def _login_remote(remote_name, remote, *, force):
         print(f"Reason: {e}")
         print(_RESET)
     except _REMOTE_AUTH_ERRORS as e:
-        if not _auth_may_fail:
-            raise
-        _warn_remote_skipped(remote, e)
+        if not _skip_failed_remote(remote, e):
+            _raise_login_failed(remote, e)
 
 
 def conan_login(remotes, *, force=False):
@@ -962,12 +1034,13 @@ def _apply_base_classes_pythonpath(base_classes_dirs):
     os.environ['PYTHONPATH'] = ':'.join([os.getenv('PYTHONPATH', ""), *conan_pythonpath])
 
 
-def _load_usable_remote_names():
-    """The names an earlier --prepare recorded as usable, or None when it wrote none (e.g. it never ran)."""
+def _load_usable_remotes():
+    """An earlier step's record as (usable names, unavailable names) -- (None, empty) when none was written."""
     path = _usable_remotes_file()
     if not path.is_file():
-        return None
-    return set(json.loads(path.read_text()))
+        return None, set()
+    record = json.loads(path.read_text())
+    return set(record["usable"]), set(record["unavailable"])
 
 
 def _load_remotes_json(remotes_json):
@@ -1013,15 +1086,19 @@ def main():
     args = parser.parse_args()
     _no_remote = args.no_remote
     _auth_may_fail = args.authentication_may_fail
-    if _auth_may_fail and not args.prepare:
-        _usable_remote_names = _load_usable_remote_names()
+    if not args.prepare and not _no_remote:
+        # --prepare starts the run afresh; every later step sticks to what
+        # it (or an export before this one) found
+        _usable_remote_names, unavailable = _load_usable_remotes()
+        _unavailable_remotes.update(unavailable)
+    known_unavailable = set(_unavailable_remotes)
 
     _validate_remote_required(parser, args)
     _apply_base_classes_pythonpath(args.base_classes_dir)
 
     prepare(_load_remotes_json(args.remotes_json), cleanup=args.cleanup_remotes, force=args.force)
     if args.prepare:
-        if _auth_may_fail:
+        if _auth_may_fail or _unavailable_remotes:
             write_usable_remotes()
         return
 
@@ -1029,7 +1106,26 @@ def main():
     _validate_catalog_args(parser, args)
 
     _process_catalog([d.resolve() for d in args.recipes_dir], args)
+    if _unavailable_remotes != known_unavailable:
+        # a remote first found unavailable here is not tried again by the
+        # next export or by `conan install`
+        write_usable_remotes()
     print_banner("Done!")
+
+
+def _print_error(error, hint=None):
+    """Print ``error`` (and ``hint``) for _cli, plus which remotes were left out for answering 503."""
+    sys.stdout.flush()  # keep the error after whatever main() already printed, even when piped
+    print(f"ERROR: {error}", file=sys.stderr)
+    if hint:
+        print(f"Hint: {hint}", file=sys.stderr)
+    if _unavailable_remotes:
+        names = ", ".join(f"'{name}'" for name in sorted(_unavailable_remotes))
+        print(
+            f"Note: conan remote(s) {names} answered HTTP 503 (temporarily unavailable) and were left out "
+            "of this run, so only the local cache was used -- retry once the remote is back.",
+            file=sys.stderr,
+        )
 
 
 def _cli():
@@ -1037,18 +1133,17 @@ def _cli():
     try:
         main()
     except ForbiddenException as e:
-        sys.stdout.flush()  # keep the error after whatever main() already printed, even when piped
-        print(f"ERROR: {e}", file=sys.stderr)
-        print(
-            "Hint: the remote refused access. Log in with 'conan remote login <remote>', "
-            "set CONAN_LOGIN_USERNAME_<REMOTE>/CONAN_PASSWORD_<REMOTE>, or set "
-            "'conan: authentication: false' in the denver config to work from the local cache only.",
-            file=sys.stderr,
+        _print_error(
+            e,
+            "the remote refused access. Log in with 'conan remote login <remote>', "
+            f"set CONAN_LOGIN_USERNAME_<REMOTE>/CONAN_PASSWORD_<REMOTE>, or {LOCAL_CACHE_HINT}.",
         )
         sys.exit(1)
+    except LoginError as e:
+        _print_error(e, f"log in with 'conan remote login <remote>', or {LOCAL_CACHE_HINT}.")
+        sys.exit(1)
     except (ConanException, CatalogError) as e:
-        sys.stdout.flush()
-        print(f"ERROR: {e}", file=sys.stderr)
+        _print_error(e)
         sys.exit(1)
     except Exception as e:
         # GetRREVError lives in get_rrev, which can only be imported once main()
@@ -1056,8 +1151,7 @@ def _cli():
         # it can't be named in the clauses above.
         if not isinstance(e, _import_build_catalog().get_rrev.GetRREVError):
             raise
-        sys.stdout.flush()
-        print(f"ERROR: {e}", file=sys.stderr)
+        _print_error(e)
         sys.exit(1)
 
 
