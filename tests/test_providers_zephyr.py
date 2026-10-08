@@ -560,3 +560,104 @@ def test_skip_patch_apply(make_context, run_recorder, which, tmp_path):
 
     run_zephyr(config, ctx)
     assert not any("--src-module" in c for c in run_recorder.commands())
+
+
+# ---- broken update.auto-cache entries -------------------------------------------#
+def make_auto_cache(cache, run_recorder, broken=("broken",), good=("good",), value=None):
+    """An auto-cache dir with one <project>/<hash>/ entry per name, wired into the faked west/git.
+
+    `west config update.auto-cache` reports ``value`` (default: the dir
+    itself), and `git for-each-ref` prints a ref only for the 'good'
+    entries -- a 'broken' one answers nothing, like what an interrupted
+    `git clone --mirror` leaves behind.
+    """
+    for name in (*broken, *good):
+        (cache / name / "0123abcd").mkdir(parents=True)
+    run_recorder.responses["config update.auto-cache"] = resp(stdout=f"{value or cache}\n")
+
+    def for_each_ref(cmd):
+        refs = "abc commit\trefs/heads/main\n" if Path(cmd[2]).parent.name in good else ""
+        return resp(stdout=refs)(cmd)
+
+    run_recorder.responses["for-each-ref"] = for_each_ref
+    return cache
+
+
+def test_auto_cache_removes_entries_without_refs(make_context, run_recorder, which, tmp_path, caplog):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config, verbose=True)
+    cache = make_auto_cache(tmp_path / "auto-cache", run_recorder)
+    (cache / "stray-file").write_text("")  # not a <project> dir: ignored
+    (cache / "good" / "stray-file").write_text("")  # not a <hash> dir: ignored
+
+    run_zephyr(config, ctx)
+
+    assert not (cache / "broken" / "0123abcd").exists()
+    assert (cache / "broken").is_dir()  # only the <hash> entry goes
+    assert (cache / "good" / "0123abcd").is_dir()  # has refs: west just fetches into it
+    assert f"removing broken west auto-cache entry {cache / 'broken' / '0123abcd'}" in caplog.text
+    assert caplog.text.count("removing broken west auto-cache entry") == 1
+    # checked before west update, so west recreates the entry in the same run
+    commands = run_recorder.commands()
+    last_check = max(i for i, c in enumerate(commands) if "for-each-ref" in c)
+    update = next(i for i, c in enumerate(commands) if c.endswith(" update"))
+    assert last_check < update
+
+
+def test_auto_cache_keeps_entry_when_git_fails(make_context, run_recorder, which, tmp_path, caplog):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config, verbose=True)
+    cache = make_auto_cache(tmp_path / "auto-cache", run_recorder, good=())
+    # e.g. "detected dubious ownership" on a cache dir owned by another user
+    run_recorder.responses["for-each-ref"] = resp(returncode=128, stderr="fatal: detected dubious ownership\n")
+
+    run_zephyr(config, ctx)
+
+    assert (cache / "broken" / "0123abcd").is_dir()
+    assert "removing broken west auto-cache entry" not in caplog.text
+
+
+def test_auto_cache_relative_to_topdir(make_context, run_recorder, which):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config)
+    top = west_topdir(ctx.env_dir)
+    cache = make_auto_cache(top / "cache", run_recorder, good=(), value="cache")
+    run_zephyr(config, ctx)
+    assert not (cache / "broken" / "0123abcd").exists()
+
+
+@pytest.mark.parametrize("value", ["", "missing"], ids=["unset", "dir-missing"])
+def test_auto_cache_noop_when_unset_or_missing(make_context, run_recorder, which, tmp_path, value):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config)
+    run_recorder.responses["config update.auto-cache"] = resp(stdout=str(tmp_path / value) if value else "")
+    run_zephyr(config, ctx)
+    assert not any("for-each-ref" in c for c in run_recorder.commands())
+    assert any(c.endswith(" update") for c in run_recorder.commands())
+
+
+def test_auto_cache_dry_run_removes_nothing(make_context, run_recorder, which, tmp_path, capsys):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config, dry_run=True)
+    cache = make_auto_cache(tmp_path / "auto-cache", run_recorder)
+    run_zephyr(config, ctx)
+    assert (cache / "broken" / "0123abcd").is_dir()
+    assert f"rm -r {cache / 'broken' / '0123abcd'}" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("zephyr_cfg", "ctx_kwargs"),
+    [({"skip-update": True}, {}), ({}, {"fast": True})],
+    ids=["skip-update", "fast"],
+)
+def test_auto_cache_untouched_without_west_update(make_context, run_recorder, which, tmp_path, zephyr_cfg, ctx_kwargs):
+    config = {"zephyr": {"west-yml": "west.yml", **zephyr_cfg}}
+    ctx = make_ctx(make_context, config, **ctx_kwargs)
+    if ctx.fast:
+        west_config = west_topdir(ctx.env_dir) / ".west" / "config"
+        west_config.parent.mkdir(parents=True)
+        west_config.touch()
+    cache = make_auto_cache(tmp_path / "auto-cache", run_recorder)
+    run_zephyr(config, ctx)
+    assert (cache / "broken" / "0123abcd").is_dir()
+    assert not any("update.auto-cache" in c for c in run_recorder.commands())

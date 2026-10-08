@@ -316,10 +316,52 @@ class ZephyrProvider(Provider):
         if cfg["skip-update"]:
             info("zephyr: west update skipped (skip-update=true)")
             return
+        self._prune_broken_auto_cache(ctx, west, top)
         update_args = list(cfg.get("update-args") or [])
         if ctx.ci:
             update_args += CI_UPDATE_ARGS
         ctx.run([west, "update", *update_args], cwd=top)
+
+    @staticmethod
+    def _auto_cache_entries(ctx, west, top):
+        """Every ``<auto-cache>/<project>/<hash>/`` dir, or none if `update.auto-cache` is unset or missing."""
+        cache = ctx.run(
+            [west, "config", "update.auto-cache"],
+            cwd=top,
+            capture=True,
+            echo=False,
+            check=False,
+        ).stdout.strip()
+        # a relative value is relative to where `west update` runs (top)
+        cache_dir = Path(top) / Path(cache).expanduser()
+        if not cache or not cache_dir.is_dir():
+            return []
+        projects = [p for p in cache_dir.iterdir() if p.is_dir()]
+        return sorted(e for project in projects for e in project.iterdir() if e.is_dir())
+
+    @staticmethod
+    def _prune_broken_auto_cache(ctx, west, top):
+        """Remove `update.auto-cache` entries without any refs, so `west update` recreates them.
+
+        An interrupted `git clone --mirror` into the auto-cache leaves an
+        empty bare repo behind. west only creates a mirror whose directory
+        doesn't exist yet and never repairs one, so every later `west
+        update` fails on it ("upload-pack: not our ref"). Only an entry with
+        no refs at all is removed: a mirror that is merely out of date stays,
+        west fetches into it.
+        """
+        for entry in ZephyrProvider._auto_cache_entries(ctx, west, top):
+            result = ctx.run(
+                ["git", "-C", str(entry), "for-each-ref", "--count=1"],
+                capture=True,
+                echo=False,
+                check=False,
+            )
+            # a failing git (not a repo, "dubious ownership", ...) says nothing
+            # about the mirror's refs: keep it rather than delete a good one
+            if result.returncode == 0 and not result.stdout.strip():
+                info(f"zephyr: removing broken west auto-cache entry {entry}")
+                ctx.rmtree(entry)
 
     def _run_patch_apply(self, ctx, cfg, west, top):
         """Apply project patches, unless 'skip-patch-apply:' is set."""
