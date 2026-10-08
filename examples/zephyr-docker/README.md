@@ -81,15 +81,42 @@ accepted EULAs, shell history, AI-assistant credentials) surviving a rebuild,
 has to be *copied* in because git rewrites it in place rather than editing it
 — which a bind mount cannot satisfy.
 
+**4. The host's docker daemon, from inside the container.** The image has the
+docker CLI and compose plugin, so you can build or run containers, run a
+nested denver env with a `docker` stage, or use the VS Code Docker extension
+from inside it. Mounting the host's `/var/run/docker.sock` alone isn't enough:
+it belongs to `root:docker` with the *host's* `docker` GID, and the container
+user (your host UID/GID) has no group with that GID, so it gets
+`permission denied`.
+
+So `docker-compose.yml` mounts it as `/var/run/docker-host.sock` instead, and
+the image's entrypoint (`fixuid`, then `container/forward-docker-socket.sh`)
+starts `socat` to forward it to `/var/run/docker.sock`, owned by the
+container user's group. This runs on every container start — `docker start`
+too, not only `docker run` — and always replaces an existing
+`/var/run/docker.sock` first: `/var/run` is not a tmpfs here, so after a
+stop/start (e.g. a WSL or Docker Desktop restart) the old socket file is still
+there, but the `socat` behind it is gone. `socat` logs to
+`/tmp/docker-socket-forward.log`. The zephyr-devshell devcontainers run the
+same script from their `postStartCommand`, since their
+`overrideCommand: true` replaces the image's entrypoint.
+
+> **This gives the container full access to the host's docker daemon** — the
+> same as being a member of the host's `docker` group, which is effectively
+> root on the host. Anything running in the container can start a privileged
+> container or mount any host path. Remove the `docker-host.sock` mount from
+> `docker-compose.yml` if you don't want that.
+
 ## Files
 
 | Path | What it is |
 |---|---|
 | `denver.yml` | A `netrc` stage (the container's `.netrc`, tokens checked) and a `docker` stage |
-| `docker-compose.yml` | The `dev` service: image, mounts, user, devices |
+| `docker-compose.yml` | The `dev` service: image, mounts, user, devices, host docker socket |
 | `create-env.sh` | Renders the `.env` Compose reads (`hooks: pre-docker:`) |
 | `container/Dockerfile` | The image itself |
 | `container/fixuid/` | Maps the container user onto your host UID/GID |
+| `container/forward-docker-socket.sh` | Entrypoint: forwards the host docker socket for the container user |
 | `configs/` | Shell/git config mounted into the container |
 | `setup/install_host_tools.sh` | Host bootstrap, run via `--scripts setup` |
 
