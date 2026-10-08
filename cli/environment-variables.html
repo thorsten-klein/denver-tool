@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=87dc3905"></script>
+      <script src="../_static/documentation_options.js?v=934dda2a"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/6efdb8b7d45bdd5cf2d8add971739a10f6379bf2">1.7.0-11-g6efdb8b</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/99743787572434f2674824a1b17e504c940bbd63">1.7.0-12-g9974378</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -484,11 +484,15 @@ variable of the same name was already exported in the calling shell:</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">~/.cache/denver</span></code></p></td>
 <td><p>Directory where tools can persistently store files, e.g. caches. Can be overwritten by <code class="docutils literal notranslate"><span class="pre">DENVER_CACHE_DIR</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DENVER_SRC_DIR</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DENVER_CI</span></code></p></td>
+<td><p>unset</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code> when this run was started with <code class="docutils literal notranslate"><span class="pre">--ci</span></code>, unset otherwise (never <code class="docutils literal notranslate"><span class="pre">0</span></code>, so <code class="docutils literal notranslate"><span class="pre">[</span> <span class="pre">-n</span> <span class="pre">&quot;$DENVER_CI&quot;</span> <span class="pre">]</span></code> is enough). Lets a <code class="docutils literal notranslate"><span class="pre">custom</span></code> or <code class="docutils literal notranslate"><span class="pre">python</span></code> stage, a hook or the final command behave differently on a CI runner. denver only writes it: <code class="docutils literal notranslate"><span class="pre">--ci</span></code> is never read from it, and a value already exported in the calling shell is removed when <code class="docutils literal notranslate"><span class="pre">--ci</span></code> is not given.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DENVER_SRC_DIR</span></code></p></td>
 <td><p>wherever denver’s own code is installed</p></td>
 <td><p>Rarely needed directly — mostly for a <code class="docutils literal notranslate"><span class="pre">custom</span></code> stage that has to reach into denver’s own package.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(&lt;env</span> <span class="pre">name&gt;)</span> </code></p></td>
 <td><p>The marker text a shell’s prompt uses to show when it is running inside this environment, e.g. <code class="docutils literal notranslate"><span class="pre">(firmware-env)</span> </code> — see “The prompt marker” in <a class="reference internal" href="../configuration/config-file.html#the-prompt-marker"><span class="std std-ref">Configuration</span></a>.</p></td>
 </tr>

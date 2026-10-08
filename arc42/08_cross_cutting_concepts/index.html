@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../../_static/favicon.svg"/>
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=87dc3905"></script>
+      <script src="../../_static/documentation_options.js?v=934dda2a"></script>
       <script src="../../_static/doctools.js?v=9a2dae69"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -415,7 +415,7 @@ window.addEventListener("load", load);
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/6efdb8b7d45bdd5cf2d8add971739a10f6379bf2">1.7.0-11-g6efdb8b</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/99743787572434f2674824a1b17e504c940bbd63">1.7.0-12-g9974378</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -920,6 +920,7 @@ is an action, not a value.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">--until</span> <span class="pre">&lt;stage&gt;</span></code> truncates the pipeline. There is no “only this stage” flag — a stage almost always needs its predecessors.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">--skip</span> <span class="pre">&lt;stage&gt;</span></code> drops single stages. Repeatable.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">disabled:</span> <span class="pre">true</span></code> opts a stage out by default.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">only</span></code> / <code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">skip</span></code> runs a stage only with, or only without, <code class="docutils literal notranslate"><span class="pre">--ci</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">depends-on:</span></code> cascades a skip: if a dependency did not run, the dependent is skipped too.</p></li>
 <li><p>Filtered-out stages disappear from <code class="docutils literal notranslate"><span class="pre">--show-config</span></code> as well, section and <code class="docutils literal notranslate"><span class="pre">stages:</span></code> entry alike.</p></li>
 </ul>
@@ -941,7 +942,7 @@ is an action, not a value.</p>
 <td><p>Skip every build step, activate only. Mutually exclusive with <code class="docutils literal notranslate"><span class="pre">--force</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--ci</span></code></p></td>
-<td><p>Narrower/faster args where a provider has them (currently west’s shallow clone)</p></td>
+<td><p>Narrower/faster args where a provider has them (currently west’s shallow clone); exports <code class="docutils literal notranslate"><span class="pre">DENVER_CI=1</span></code>; selects <code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">only</span></code>/<code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">skip</span></code> stages</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-q</span></code> / <code class="docutils literal notranslate"><span class="pre">-qq</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">-q</span></code> silences denver’s own output, <code class="docutils literal notranslate"><span class="pre">-qq</span></code> also the stages’ tools. Errors always print</p></td>

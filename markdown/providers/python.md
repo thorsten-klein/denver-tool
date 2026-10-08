@@ -19,7 +19,7 @@ def install(ctx, version):
     ctx.set("TOOL_VERSION", version)
 ```
 
-(`provider:`/`description:`/`disabled:`/`depends-on:`/`scripts:`/`env:`/`env-prepend:`/`env-append:` are generic keys every stage has —
+(`provider:`/`description:`/`disabled:`/`ci:`/`depends-on:`/`scripts:`/`env:`/`env-prepend:`/`env-append:` are generic keys every stage has —
 see “Generic stage keys” in [Configuration](../configuration/config-file.md).)
 
 ## Key reference

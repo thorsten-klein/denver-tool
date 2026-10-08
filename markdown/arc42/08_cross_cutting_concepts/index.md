@@ -92,6 +92,7 @@ Which stages run is decided before any of them do:
 - `--until <stage>` truncates the pipeline. There is no “only this stage” flag — a stage almost always needs its predecessors.
 - `--skip <stage>` drops single stages. Repeatable.
 - `disabled: true` opts a stage out by default.
+- `ci: only` / `ci: skip` runs a stage only with, or only without, `--ci`.
 - `depends-on:` cascades a skip: if a dependency did not run, the dependent is skipped too.
 - Filtered-out stages disappear from `--show-config` as well, section and `stages:` entry alike.
 
@@ -99,14 +100,14 @@ Which stages run is decided before any of them do:
 
 Set once from flags, never from environment variables:
 
-| Toggle       | Effect                                                                               |
-|--------------|--------------------------------------------------------------------------------------|
-| `--force`    | Redo expensive work. Bypass fingerprints and `skip-if:`                              |
-| `--fast`     | Skip every build step, activate only. Mutually exclusive with `--force`              |
-| `--ci`       | Narrower/faster args where a provider has them (currently west’s shallow clone)      |
-| `-q` / `-qq` | `-q` silences denver’s own output, `-qq` also the stages’ tools. Errors always print |
-| `-v`         | Sub-step banners, timings, echoed commands                                           |
-| `--dry-run`  | Describe instead of doing                                                            |
+| Toggle       | Effect                                                                                                                                       |
+|--------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| `--force`    | Redo expensive work. Bypass fingerprints and `skip-if:`                                                                                      |
+| `--fast`     | Skip every build step, activate only. Mutually exclusive with `--force`                                                                      |
+| `--ci`       | Narrower/faster args where a provider has them (currently west’s shallow clone); exports `DENVER_CI=1`; selects `ci: only`/`ci: skip` stages |
+| `-q` / `-qq` | `-q` silences denver’s own output, `-qq` also the stages’ tools. Errors always print                                                         |
+| `-v`         | Sub-step banners, timings, echoed commands                                                                                                   |
+| `--dry-run`  | Describe instead of doing                                                                                                                    |
 
 They are deliberately outside the config-defaults mechanism. Baking a
 per-invocation toggle into a resolved value would defeat it.

@@ -32,6 +32,6 @@ of them.
 | Convention | Detail |
 |---|---|
 | **Kebab-case in config, snake_case in Python** | `denver.yml` keys are kebab-case (`no-index`, `recipe-dirs`, `skip-if`, `depends-on`); Python identifiers are snake_case. No key transformation happens anywhere — providers read the kebab-case key as written. |
-| **Runtime toggles come only from flags** | `--force`, `--ci`, `--fast`, `-q`, `-v` set fields on `Context` once, at construction. None of them is ever read back out of a same-named environment variable, so behavior cannot change because of what happens to be exported in the calling shell. |
+| **Runtime toggles come only from flags** | `--force`, `--ci`, `--fast`, `-q`, `-v` set fields on `Context` once, at construction. None of them is ever read back out of a same-named environment variable, so behavior cannot change because of what happens to be exported in the calling shell. `--ci` is exported as `DENVER_CI` for stages, hooks and the final command, but only written, never read. |
 | **Fail loud on the unexpected** | An unknown top-level key, an unknown key in a stage's section, a stage id that isn't declared, a provider that isn't registered — each is a fatal error naming the mistake (and, where possible, the closest match), never a silent no-op. |
 | **`poe` is the task interface** | `pyproject.toml`'s `[tool.poe.tasks]` is the canonical way to lint, test, build and document. CI runs those same tasks rather than duplicating their logic. |

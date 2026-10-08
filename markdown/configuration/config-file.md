@@ -169,8 +169,14 @@ These keys may appear in *any* stage’s section, whatever its provider:
 - **`disabled`** — `true` opts this stage out of the normal pipeline, as if
   it had been `--skip`ped, without deleting its configuration. Must be a
   real boolean.
+- **`ci`** — `only` runs this stage only with `--ci`, `skip` runs it only
+  without `--ci`. Unset (the default) runs it either way. Any other value is
+  a config error. A stage this skips shows up in the progress trail as
+  `skipped (ci: only)` or `skipped (ci: skip)`, the same way as a
+  `disabled: true` stage, and `depends-on:` cascades from it the same way.
+  `disabled: true` still wins: a disabled stage never runs, `--ci` or not.
 - **`depends-on`** — a list of other stage ids. If any of them is itself
-  skipped this run — for *any* reason: `disabled: true`, `--until`/`--skip`,
+  skipped this run — for *any* reason: `disabled: true`, `ci:`, `--until`/`--skip`,
   a `skip-on-success:`/`skip-on-failure:` check, or its own `depends-on:`
   cascade — this stage is skipped too, reported as
   `skipped (depends-on '<id>')`. This cascades transitively (A depends on B
@@ -211,7 +217,7 @@ These keys may appear in *any* stage’s section, whatever its provider:
 
 All three apply after this stage’s own `setup()` (so a value can reference what
 that just exported), –fast/–dry-run included – this is activation, not a
-build step – and are skipped outright for a stage `disabled:`/
+build step – and are skipped outright for a stage `disabled:`/`ci:`/
 `skip-on-success:`/`skip-on-failure:`/`depends-on:` skips this run, the same
 as everything else about that stage. Every provider gets them for free; `download`’s own
 per-*package* `env-prepend:`/`env-append:` (see [`download`](../providers/download.md))
@@ -250,6 +256,9 @@ name is already exported:
   `env: {CONAN_HOME: "${DENVER_CACHE_DIR}/conan2"}`. Safe to share across
   envs and checkouts because the tools owning such caches lock them
   themselves; denver writes nothing there itself.
+- **`DENVER_CI`** — `1` when the run was started with `--ci`, unset
+  otherwise. Only written for the stages, hooks and the final command;
+  `--ci` itself is never read from it.
 - **`SHELL_PROMPT_PREFIX`** — `(<env>) `: the text marking a shell as
   running inside this environment, so a prompt reads
   `(raspberry-pico) dev@host:~/ws$`. fish reads this natively from **fish
@@ -597,7 +606,9 @@ nothing expensive re-runs.
 - **`--force`** is the opposite extreme: bypass every fingerprint and
   redo the expensive work unconditionally, even if nothing looks changed.
 - **`--ci`** swaps in narrower/faster args a stage judges appropriate for a
-  CI runner instead of an interactive host (e.g. a shallow clone).
+  CI runner instead of an interactive host (e.g. a shallow clone). It also
+  exports `DENVER_CI=1` to every stage, hook and the final command, and
+  turns stages with `ci: only` on and stages with `ci: skip` off.
 
 Being opposites, `--fast` and `--force` are mutually exclusive and giving
 both is an error. There is no sensible resolution to guess at: a provider
@@ -606,7 +617,9 @@ otherwise mean “`--fast`, and the `--force` you typed did nothing”.
 
 Neither `--force` nor `--ci` is ever read from a real environment variable
 — both only ever come from the flag itself, so behavior can’t silently
-change based on what happens to be exported in the calling shell.
+change based on what happens to be exported in the calling shell. denver
+does *write* `DENVER_CI` for its children, but it never reads it back: a
+wrapper relocation passes `--ci` on to the inner denver as a flag.
 
 Each provider’s page under [`providers/`](https://github.com/thorsten-klein/denver-tool/tree/develop/doc/providers) documents exactly what
 `--fast` and `--force` mean for that provider.
@@ -666,6 +679,8 @@ Two limits follow from the design rather than from the implementation:
   left; repeatable.
 - **`disabled: true`** in a stage’s own section opts it out by default,
   without `--skip` having to name it on every invocation.
+- **`ci: only`** / **`ci: skip`** in a stage’s own section runs it only
+  with, or only without, `--ci`.
 - Naming a stage id that isn’t in `stages:` is an error. A filtered-out
   stage’s own section is left out of `--show-config`’s output too, along
   with its id in `stages:`.

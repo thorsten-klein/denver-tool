@@ -122,7 +122,8 @@ be previewed past its own boundary; see
 
 **Stage filtering** — restricting which stages run: `--until <stage>`
 truncates the pipeline after the named stage, `--skip <stage>` removes
-individual stages, and a stage’s own `disabled: true` opts it out by default.
+individual stages, a stage’s own `disabled: true` opts it out by default,
+and `ci: only`/`ci: skip` runs it only with, or only without, `--ci`.
 
 **Quiet level** — `-q` silences denver’s own output (progress trail, info
 lines, everything `-v`/`--verbose` would add) while keeping each stage’s own

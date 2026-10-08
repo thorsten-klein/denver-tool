@@ -29,6 +29,7 @@ variable of the same name was already exported in the calling shell:
 | `DENVER_ENV_NAME` | that directory's name | e.g. `raspberry-pico` for an env at `.../envs/raspberry-pico/`. |
 | `DENVER_ENV_WORKDIR` | `<env dir>/.denver/<config file stem>/` | denver's own working area for this environment (e.g. venv, install trees, fingerprints, logs, ...). Can be overridden by `DENVER_ENV_WORKDIR`. |
 | `DENVER_CACHE_DIR` | `~/.cache/denver` | Directory where tools can persistently store files, e.g. caches. Can be overwritten by `DENVER_CACHE_DIR`. |
+| `DENVER_CI` | unset | `1` when this run was started with `--ci`, unset otherwise (never `0`, so `[ -n "$DENVER_CI" ]` is enough). Lets a `custom` or `python` stage, a hook or the final command behave differently on a CI runner. denver only writes it: `--ci` is never read from it, and a value already exported in the calling shell is removed when `--ci` is not given. |
 | `DENVER_SRC_DIR` | wherever denver's own code is installed | Rarely needed directly — mostly for a `custom` stage that has to reach into denver's own package. |
 | `SHELL_PROMPT_PREFIX` | `(<env name>) ` | The marker text a shell's prompt uses to show when it is running inside this environment, e.g. `(firmware-env) ` — see "The prompt marker" in [Configuration](../configuration/config-file.md#the-prompt-marker). |
 

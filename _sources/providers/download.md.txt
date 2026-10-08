@@ -18,7 +18,7 @@ sha256sum = "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6"
 env-prepend = { PATH = "${DENVER_UNPACK_DIR}:" }
 ```
 
-(`provider:`/`description:`/`disabled:`/`depends-on:`/`scripts:`/`env:`/`env-prepend:`/`env-append:` are generic keys every stage has —
+(`provider:`/`description:`/`disabled:`/`ci:`/`depends-on:`/`scripts:`/`env:`/`env-prepend:`/`env-append:` are generic keys every stage has —
 see "Generic stage keys" in [Configuration](../configuration/config-file.md). Everything below is specific to `download`.)
 
 ## Key reference

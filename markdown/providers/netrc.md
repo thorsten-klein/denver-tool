@@ -25,7 +25,7 @@ netrc:
     token: ${ARTIFACTS_TOKEN}
 ```
 
-(`provider:`, `description:`, `disabled:`, `env:` and the other generic keys work as for every
+(`provider:`, `description:`, `disabled:`, `ci:`, `env:` and the other generic keys work as for every
 stage, see [Configuration](../configuration/config-file.md).)
 
 ## Keys

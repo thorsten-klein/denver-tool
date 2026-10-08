@@ -42,7 +42,7 @@ knowledge apart from one table of default resolvers. What it does for
 |      3 | `load_config()`                    | Follow the `import:` chain, merge base-first with `deep_merge()`              |
 |      4 | `validate_*()`                     | Config version, `denver-version:`, top-level keys, stage filters, hook keys   |
 |      5 | `resolve_full_config()`            | Section stacking, build the `Context`, fill in every provider default         |
-|      6 | `filtered_stage_ids()`             | Apply `--until`, `--skip`, `disabled:`, `depends-on:`                         |
+|      6 | `filtered_stage_ids()`             | Apply `--until`, `--skip`, `disabled:`, `ci:`, `depends-on:`                  |
 |      7 | `run_stages()`                     | Hooks, stage env, wrapper relocation or direct run, performance records       |
 |      8 | `resolve_command()` → `ctx.exec()` | Replace denver’s own process with the final command                           |
 

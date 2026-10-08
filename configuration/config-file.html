@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=87dc3905"></script>
+      <script src="../_static/documentation_options.js?v=934dda2a"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/6efdb8b7d45bdd5cf2d8add971739a10f6379bf2">1.7.0-11-g6efdb8b</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/99743787572434f2674824a1b17e504c940bbd63">1.7.0-12-g9974378</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -593,8 +593,14 @@ configured this way. denver never reads it; it is only surfaced in
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">disabled</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">true</span></code> opts this stage out of the normal pipeline, as if
 it had been <code class="docutils literal notranslate"><span class="pre">--skip</span></code>ped, without deleting its configuration. Must be a
 real boolean.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ci</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">only</span></code> runs this stage only with <code class="docutils literal notranslate"><span class="pre">--ci</span></code>, <code class="docutils literal notranslate"><span class="pre">skip</span></code> runs it only
+without <code class="docutils literal notranslate"><span class="pre">--ci</span></code>. Unset (the default) runs it either way. Any other value is
+a config error. A stage this skips shows up in the progress trail as
+<code class="docutils literal notranslate"><span class="pre">skipped</span> <span class="pre">(ci:</span> <span class="pre">only)</span></code> or <code class="docutils literal notranslate"><span class="pre">skipped</span> <span class="pre">(ci:</span> <span class="pre">skip)</span></code>, the same way as a
+<code class="docutils literal notranslate"><span class="pre">disabled:</span> <span class="pre">true</span></code> stage, and <code class="docutils literal notranslate"><span class="pre">depends-on:</span></code> cascades from it the same way.
+<code class="docutils literal notranslate"><span class="pre">disabled:</span> <span class="pre">true</span></code> still wins: a disabled stage never runs, <code class="docutils literal notranslate"><span class="pre">--ci</span></code> or not.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">depends-on</span></code></strong> — a list of other stage ids. If any of them is itself
-skipped this run — for <em>any</em> reason: <code class="docutils literal notranslate"><span class="pre">disabled:</span> <span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">--until</span></code>/<code class="docutils literal notranslate"><span class="pre">--skip</span></code>,
+skipped this run — for <em>any</em> reason: <code class="docutils literal notranslate"><span class="pre">disabled:</span> <span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">ci:</span></code>, <code class="docutils literal notranslate"><span class="pre">--until</span></code>/<code class="docutils literal notranslate"><span class="pre">--skip</span></code>,
 a <code class="docutils literal notranslate"><span class="pre">skip-on-success:</span></code>/<code class="docutils literal notranslate"><span class="pre">skip-on-failure:</span></code> check, or its own <code class="docutils literal notranslate"><span class="pre">depends-on:</span></code>
 cascade — this stage is skipped too, reported as
 <code class="docutils literal notranslate"><span class="pre">skipped</span> <span class="pre">(depends-on</span> <span class="pre">'&lt;id&gt;')</span></code>. This cascades transitively (A depends on B
@@ -635,7 +641,7 @@ one.</p></li>
 </ul>
 <p>All three apply after this stage’s own <code class="docutils literal notranslate"><span class="pre">setup()</span></code> (so a value can reference what
 that just exported), –fast/–dry-run included – this is activation, not a
-build step – and are skipped outright for a stage <code class="docutils literal notranslate"><span class="pre">disabled:</span></code>/
+build step – and are skipped outright for a stage <code class="docutils literal notranslate"><span class="pre">disabled:</span></code>/<code class="docutils literal notranslate"><span class="pre">ci:</span></code>/
 <code class="docutils literal notranslate"><span class="pre">skip-on-success:</span></code>/<code class="docutils literal notranslate"><span class="pre">skip-on-failure:</span></code>/<code class="docutils literal notranslate"><span class="pre">depends-on:</span></code> skips this run, the same
 as everything else about that stage. Every provider gets them for free; <code class="docutils literal notranslate"><span class="pre">download</span></code>’s own
 per-<em>package</em> <code class="docutils literal notranslate"><span class="pre">env-prepend:</span></code>/<code class="docutils literal notranslate"><span class="pre">env-append:</span></code> (see <a class="reference internal" href="../providers/download.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">download</span></code></span></a>)
@@ -672,6 +678,9 @@ default), offered for an env to point a tool’s own download cache at, e.g.
 <code class="docutils literal notranslate"><span class="pre">env:</span> <span class="pre">{CONAN_HOME:</span> <span class="pre">&quot;${DENVER_CACHE_DIR}/conan2&quot;}</span></code>. Safe to share across
 envs and checkouts because the tools owning such caches lock them
 themselves; denver writes nothing there itself.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">DENVER_CI</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">1</span></code> when the run was started with <code class="docutils literal notranslate"><span class="pre">--ci</span></code>, unset
+otherwise. Only written for the stages, hooks and the final command;
+<code class="docutils literal notranslate"><span class="pre">--ci</span></code> itself is never read from it.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> </code>: the text marking a shell as
 running inside this environment, so a prompt reads
 <code class="docutils literal notranslate"><span class="pre">(raspberry-pico)</span> <span class="pre">dev&#64;host:~/ws$</span></code>. fish reads this natively from <strong>fish
@@ -1020,7 +1029,9 @@ activate yet.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--force</span></code></strong> is the opposite extreme: bypass every fingerprint and
 redo the expensive work unconditionally, even if nothing looks changed.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--ci</span></code></strong> swaps in narrower/faster args a stage judges appropriate for a
-CI runner instead of an interactive host (e.g. a shallow clone).</p></li>
+CI runner instead of an interactive host (e.g. a shallow clone). It also
+exports <code class="docutils literal notranslate"><span class="pre">DENVER_CI=1</span></code> to every stage, hook and the final command, and
+turns stages with <code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">only</span></code> on and stages with <code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">skip</span></code> off.</p></li>
 </ul>
 <p>Being opposites, <code class="docutils literal notranslate"><span class="pre">--fast</span></code> and <code class="docutils literal notranslate"><span class="pre">--force</span></code> are mutually exclusive and giving
 both is an error. There is no sensible resolution to guess at: a provider
@@ -1028,7 +1039,9 @@ takes its <code class="docutils literal notranslate"><span class="pre">--fast</s
 otherwise mean “<code class="docutils literal notranslate"><span class="pre">--fast</span></code>, and the <code class="docutils literal notranslate"><span class="pre">--force</span></code> you typed did nothing”.</p>
 <p>Neither <code class="docutils literal notranslate"><span class="pre">--force</span></code> nor <code class="docutils literal notranslate"><span class="pre">--ci</span></code> is ever read from a real environment variable
 — both only ever come from the flag itself, so behavior can’t silently
-change based on what happens to be exported in the calling shell.</p>
+change based on what happens to be exported in the calling shell. denver
+does <em>write</em> <code class="docutils literal notranslate"><span class="pre">DENVER_CI</span></code> for its children, but it never reads it back: a
+wrapper relocation passes <code class="docutils literal notranslate"><span class="pre">--ci</span></code> on to the inner denver as a flag.</p>
 <p>Each provider’s page under <a class="reference external" href="https://github.com/thorsten-klein/denver-tool/tree/develop/doc/providers"><code class="docutils literal notranslate"><span class="pre">providers/</span></code></a> documents exactly what
 <code class="docutils literal notranslate"><span class="pre">--fast</span></code> and <code class="docutils literal notranslate"><span class="pre">--force</span></code> mean for that provider.</p>
 </section>
@@ -1087,6 +1100,8 @@ ones before it.</p></li>
 left; repeatable.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">disabled:</span> <span class="pre">true</span></code></strong> in a stage’s own section opts it out by default,
 without <code class="docutils literal notranslate"><span class="pre">--skip</span></code> having to name it on every invocation.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">only</span></code></strong> / <strong><code class="docutils literal notranslate"><span class="pre">ci:</span> <span class="pre">skip</span></code></strong> in a stage’s own section runs it only
+with, or only without, <code class="docutils literal notranslate"><span class="pre">--ci</span></code>.</p></li>
 <li><p>Naming a stage id that isn’t in <code class="docutils literal notranslate"><span class="pre">stages:</span></code> is an error. A filtered-out
 stage’s own section is left out of <code class="docutils literal notranslate"><span class="pre">--show-config</span></code>’s output too, along
 with its id in <code class="docutils literal notranslate"><span class="pre">stages:</span></code>.</p></li>

@@ -19,7 +19,7 @@ submodules = true
 env-prepend = { PICO_SDK_PATH = "${DENVER_ENV_WORKDIR}/pico-sdk/2.3.0" }
 ```
 
-(`provider:`/`description:`/`disabled:`/`scripts:`/`env:`/`env-prepend:`/`env-append:`/`env-sep:` are generic
+(`provider:`/`description:`/`disabled:`/`ci:`/`scripts:`/`env:`/`env-prepend:`/`env-append:`/`env-sep:` are generic
 keys every stage has — see “Generic stage keys” in [Configuration](../configuration/config-file.md). Everything
 below is specific to `git`; `env-prepend:` above is that generic mechanism, not something this provider
 implements itself — see “Where things go” below for why its value is the checkout’s own `path:`, spelled out,
