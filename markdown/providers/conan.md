@@ -95,6 +95,15 @@ specific one. A stage with no conan available fails with `conan provider needs '
     `-r=<remote>` for each of them, or `--no-remote` if none did. The
     list of remotes that authenticated is kept in the conan home, as
     `denver-usable-remotes.json`.
+
+  A remote that answers **HTTP 503** (temporarily unavailable) is not a
+  credentials problem, so in every mode it is handled as if `authentication: false` was set for that remote alone: denver warns, does not log in,
+  leaves it out of export and of `conan install`’s `-r=` list (`--no-remote`
+  if no other remote is left), and the run continues from the local cache.
+  If the local cache does not have what is needed, the run still fails, and
+  the error names the remote that was unavailable. A 401/403 keeps the
+  behavior above. Any other login failure that stops the run suggests
+  `-c conan.authentication=false` to work from the local cache only.
 - **`profiles`** — `host`/`build`, each a list; every entry becomes its own
   `-pr:h=<value>` / `-pr:b=<value>` flag, in list order. Empty by default
   (no explicit profile flags).

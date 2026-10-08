@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=934dda2a"></script>
+      <script src="../_static/documentation_options.js?v=1b267bf1"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/99743787572434f2674824a1b17e504c940bbd63">1.7.0-12-g9974378</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/014dde54e34cf369bb3abb1cd7a4327536b50884">1.7.0-13-g014dde5</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -524,6 +524,14 @@ against the remotes that authenticated, and <code class="docutils literal notran
 list of remotes that authenticated is kept in the conan home, as
 <code class="docutils literal notranslate"><span class="pre">denver-usable-remotes.json</span></code>.</p></li>
 </ul>
+<p>A remote that answers <strong>HTTP 503</strong> (temporarily unavailable) is not a
+credentials problem, so in every mode it is handled as if <code class="docutils literal notranslate"><span class="pre">authentication:</span> <span class="pre">false</span></code> was set for that remote alone: denver warns, does not log in,
+leaves it out of export and of <code class="docutils literal notranslate"><span class="pre">conan</span> <span class="pre">install</span></code>’s <code class="docutils literal notranslate"><span class="pre">-r=</span></code> list (<code class="docutils literal notranslate"><span class="pre">--no-remote</span></code>
+if no other remote is left), and the run continues from the local cache.
+If the local cache does not have what is needed, the run still fails, and
+the error names the remote that was unavailable. A 401/403 keeps the
+behavior above. Any other login failure that stops the run suggests
+<code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">conan.authentication=false</span></code> to work from the local cache only.</p>
 </li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">profiles</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">host</span></code>/<code class="docutils literal notranslate"><span class="pre">build</span></code>, each a list; every entry becomes its own
 <code class="docutils literal notranslate"><span class="pre">-pr:h=&lt;value&gt;</span></code> / <code class="docutils literal notranslate"><span class="pre">-pr:b=&lt;value&gt;</span></code> flag, in list order. Empty by default
