@@ -511,6 +511,125 @@ def test_registry_login_skipped_when_not_configured(make_context, run_recorder, 
     assert not any("login" in argv for argv in run_recorder.argvs())
 
 
+# ---- authentication: true | false | may-fail ----------------------------------------------#
+_PRIVATE_REGISTRY = {"url": "registry1.example.com", "username": "myuser", "password": "mysecret"}
+
+
+def _auth_setup(make_context, run_recorder, registries, login_rc=1, manifest_rc=0, image_rc=1, **section):
+    """A docker stage with ``registries``, a failing login (by default) and a local image miss -- returns ctx/config."""
+    config = {"docker": docker_cfg(image="myapp:dev", registries=registries, **section)}
+    ctx = make_context(config=config)
+    write_compose(ctx)
+    run_recorder.responses["image inspect"] = lambda cmd: type("R", (), {"returncode": image_rc})()
+    run_recorder.responses["login registry1.example.com"] = lambda cmd: type("R", (), {"returncode": login_rc})()
+    run_recorder.responses["manifest inspect"] = lambda cmd: type("R", (), {"returncode": manifest_rc})()
+    return ctx, config
+
+
+def test_authentication_default_is_true(make_context):
+    resolved = DockerProvider.resolve_defaults(make_context(), docker_cfg(), {})
+    assert resolved["authentication"] is True
+
+
+@pytest.mark.parametrize("value", ["yes", "may_fail", 1], ids=["yes", "typo", "int"])
+def test_authentication_invalid_value_dies(make_context, value):
+    ctx = make_context()
+    cfg = docker_cfg(authentication=value)
+    with pytest.raises(DenverError, match="docker: 'authentication:' must be true, false or \"may-fail\""):
+        DockerProvider.resolve_defaults(ctx, cfg, {})
+
+
+def test_registry_authentication_invalid_value_dies(make_context, run_recorder, which):
+    ctx, config = _auth_setup(make_context, run_recorder, [{**_PRIVATE_REGISTRY, "authentication": "maybe"}])
+    with pytest.raises(DenverError, match=r"registries\[0\] \('registry1\.example\.com'\) 'authentication:' must be"):
+        run_docker(config, ctx)
+
+
+def test_authentication_false_never_logs_in_but_still_checks(make_context, run_recorder, which):
+    ctx, config = _auth_setup(make_context, run_recorder, [_PRIVATE_REGISTRY], authentication=False)
+
+    run_docker(config, ctx)
+
+    commands = run_recorder.commands()
+    assert not any(" login " in c for c in commands)
+    assert any("manifest inspect registry1.example.com/myapp:dev" in c for c in commands)
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/myapp:dev"
+
+
+def test_authentication_false_check_miss_falls_back_to_build(make_context, run_recorder, which):
+    ctx, config = _auth_setup(make_context, run_recorder, [_PRIVATE_REGISTRY], manifest_rc=1, authentication=False)
+
+    run_docker(config, ctx)
+
+    assert any("compose" in c and " build dev" in c for c in run_recorder.commands())
+
+
+def test_authentication_may_fail_login_failure_is_a_miss(make_context, run_recorder, which, caplog):
+    ctx, config = _auth_setup(make_context, run_recorder, [_PRIVATE_REGISTRY], authentication="may-fail")
+
+    run_docker(config, ctx)
+
+    commands = run_recorder.commands()
+    # the failed registry is never checked, and nothing else has it -> build
+    assert not any("manifest inspect" in c for c in commands)
+    assert any("compose" in c and " build dev" in c for c in commands)
+    assert "login to 'registry1.example.com' failed -- treating it as a miss" in caplog.text
+
+
+def test_authentication_may_fail_moves_on_to_the_next_registry(make_context, run_recorder, which):
+    registries = [_PRIVATE_REGISTRY, {"url": "registry2.example.com"}]
+    ctx, config = _auth_setup(make_context, run_recorder, registries, authentication="may-fail")
+
+    run_docker(config, ctx)
+
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry2.example.com/myapp:dev"
+
+
+def test_authentication_may_fail_force_rebuilds_when_login_fails(make_context, run_recorder, which):
+    # local hit + --force: the registry is checked, its login fails -> the forced rebuild still happens
+    ctx, config = _auth_setup(make_context, run_recorder, [_PRIVATE_REGISTRY], image_rc=0, authentication="may-fail")
+    ctx.force = True
+
+    run_docker(config, ctx)
+
+    assert any("compose" in c and " build dev" in c for c in run_recorder.commands())
+
+
+def test_authentication_may_fail_dies_when_found_nowhere_and_build_false(make_context, run_recorder, which):
+    ctx, config = _auth_setup(
+        make_context, run_recorder, [_PRIVATE_REGISTRY], compose={"build": False}, authentication="may-fail"
+    )
+
+    with pytest.raises(DenverError, match="not found locally or on any of the configured registries"):
+        run_docker(config, ctx)
+
+
+def test_authentication_may_fail_successful_login_checks_registry(make_context, run_recorder, which):
+    ctx, config = _auth_setup(make_context, run_recorder, [_PRIVATE_REGISTRY], login_rc=0, authentication="may-fail")
+
+    run_docker(config, ctx)
+
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/myapp:dev"
+
+
+def test_registry_authentication_overrides_section(make_context, run_recorder, which):
+    # section says may-fail, the entry says true -> its failing login is fatal again
+    registries = [{**_PRIVATE_REGISTRY, "authentication": True}]
+    ctx, config = _auth_setup(make_context, run_recorder, registries, authentication="may-fail")
+
+    with pytest.raises(DenverError, match=r"login to 'registry1\.example\.com' failed"):
+        run_docker(config, ctx)
+
+
+def test_registry_authentication_false_overrides_section_default(make_context, run_recorder, which):
+    ctx, config = _auth_setup(make_context, run_recorder, [{**_PRIVATE_REGISTRY, "authentication": False}])
+
+    run_docker(config, ctx)
+
+    assert not any(" login " in c for c in run_recorder.commands())
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/myapp:dev"
+
+
 # ---- --force ----------------------------------------------------------------------------#
 def test_force_rebuilds_local_hit_when_no_registries(make_context, run_recorder, which):
     config = {"docker": docker_cfg(image="myapp:dev")}

@@ -13,7 +13,12 @@ from pathlib import Path
 from typing import cast
 
 from .base import Provider, fill_unset
-from .context import banner, die, die_on_unknown_keys, die_unless_paired
+from .context import banner, die, die_on_unknown_keys, die_unless_paired, warn
+
+# 'authentication:''s third value besides true/false -- same spelling as the
+# conan provider's: log in, but a failed login makes that registry a miss
+# (with a warning) instead of stopping the run.
+AUTH_MAY_FAIL = "may-fail"
 
 
 def _relocation_env(ctx):
@@ -90,6 +95,14 @@ def _verbose_note(ctx, message, result=None):
         print(f"    {line}", file=sys.stderr)
 
 
+def _checked_authentication(value, where):
+    """``value`` if it is a valid 'authentication:' (true, false or "may-fail") -- anything else dies."""
+    if isinstance(value, bool) or value == AUTH_MAY_FAIL:
+        return value
+    die(f"{where} 'authentication:' must be true, false or \"{AUTH_MAY_FAIL}\", got {value!r}")
+    return None  # pragma: no cover -- die() never returns; only here to satisfy RET503
+
+
 def _missing_bind_sources(config, service):
     """``(source, target)`` of each bind mount of ``service`` whose source is missing."""
     volumes = (config.get("services") or {}).get(service, {}).get("volumes") or []
@@ -108,7 +121,7 @@ class DockerProvider(Provider):
 
     name = "docker"
     kind = "wrapper"
-    KEYS = ("exe", "registries", "compose")
+    KEYS = ("exe", "authentication", "registries", "compose")
     # 'compose.default-cmd' isn't resolved here -- it's read by denver.py's
     # default_command() ('command:' still wins if set) -- but it's a real
     # 'compose:' key, so it's still listed for --show-config's sake.
@@ -124,9 +137,10 @@ class DockerProvider(Provider):
 
     @classmethod
     def resolve_defaults(cls, ctx, cfg, config):  # noqa: ARG003  # shared (ctx, cfg, config) signature
-        """Resolve exe/compose.* defaults -- see doc/providers/docker.md."""
+        """Resolve exe/authentication/compose.* defaults -- see doc/providers/docker.md."""
         resolved = dict(cfg)
         resolved["exe"] = cfg.get("exe") or "docker"
+        resolved["authentication"] = _checked_authentication(cfg.get("authentication", True), "docker:")
         resolved["compose"] = cls._resolve_compose(cfg.get("compose") or {})
         return fill_unset(resolved, cls.KEYS)
 
@@ -195,7 +209,7 @@ class DockerProvider(Provider):
         self._validate_registries(registries)
         return registries
 
-    def _resolve_image_ref(self, ctx, exe, image, registries):
+    def _resolve_image_ref(self, ctx, exe, image, registries, cfg):
         """Decide which ref $DENVER_DOCKER_IMAGE should be. Returns ``(remote_ref, found_locally)``.
 
         Local is checked whenever 'image:' is set, regardless of whether
@@ -207,7 +221,7 @@ class DockerProvider(Provider):
         found_locally = bool(image) and self._image_present_locally(ctx, exe, image)
         remote_ref = None
         if registries and (not found_locally or ctx.force):
-            remote_ref = self._use_remote_image(ctx, exe, image, registries)
+            remote_ref = self._use_remote_image(ctx, exe, image, registries, cfg["authentication"])
         return remote_ref, found_locally
 
     def _stash_for_wrap(self, exe, compose_files, compose):
@@ -243,7 +257,7 @@ class DockerProvider(Provider):
         # never prints ahead of any banner.
         banner(ctx, self.stage, "prepare")
 
-        remote_ref, found_locally = self._resolve_image_ref(ctx, exe, image, registries)
+        remote_ref, found_locally = self._resolve_image_ref(ctx, exe, image, registries, cfg)
 
         # export $DENVER_DOCKER_IMAGE -- the registry ref if one was found,
         # else the bare local tag (empty string if 'image:' is unset) -- so
@@ -285,11 +299,14 @@ class DockerProvider(Provider):
         ]
 
     def _validate_registries(self, registries):
-        """Die if any 'registries:' entry is missing 'url:', or has just one of username/password."""
+        """Die if a 'registries:' entry lacks 'url:', has just one of username/password, or a bad 'authentication:'."""
         for i, registry in enumerate(registries):
             if not registry.get("url"):
                 die(f"docker: registries[{i}] needs a 'url:'")
-            die_unless_paired(registry, "username", "password", f"docker: registries[{i}] ('{registry['url']}')")
+            where = f"docker: registries[{i}] ('{registry['url']}')"
+            die_unless_paired(registry, "username", "password", where)
+            if "authentication" in registry:
+                _checked_authentication(registry["authentication"], where)
 
     def _build_or_skip(self, ctx, exe, image, compose, registries, remote_ref, found_locally):
         """Banner a registry/local hit, run 'compose build', die if nowhere found, or banner a skipped build.
@@ -340,19 +357,22 @@ class DockerProvider(Provider):
         result = ctx.run([exe, "image", "inspect", image], check=False, capture=True, echo=False)
         return result.returncode == 0
 
-    def _use_remote_image(self, ctx, exe, image, registries):
+    def _use_remote_image(self, ctx, exe, image, registries, authentication):
         """Check each ``registries`` entry in order (never pulling) for ``image``; return the first hit's ref.
 
         Logs in first if that entry has 'username:'/'password:' set -- a manifest check on a
-        private registry needs auth too. Returns the full ``<url>/<image>`` ref on the first hit
+        private registry needs auth too -- unless its 'authentication:' (the entry's own, else
+        ``authentication``, the section's) is false: then the check runs without a login, which
+        still works for a public image and is just a miss otherwise. Under "may-fail" a failed
+        login makes that entry a miss (with a warning) instead of stopping the run. Returns the full ``<url>/<image>`` ref on the first hit
         (and stops there), or None if none of them have it -- setup() falls back to a local build
         (or dies) in that case. Setting $DENVER_DOCKER_IMAGE and the progress banner both happen
         centrally in setup(), not here.
         """
         for registry in registries:
             url = registry["url"]
-            if registry.get("username"):
-                self._login_registry(ctx, exe, url, registry["username"], registry["password"])
+            if not self._authenticate_registry(ctx, exe, registry, authentication):
+                continue
             remote_ref = f"{url}/{image}"
             result = ctx.run([exe, "manifest", "inspect", remote_ref], check=False, capture=True)
             if result.returncode == 0:
@@ -361,11 +381,31 @@ class DockerProvider(Provider):
             _verbose_note(ctx, f"registry miss: '{remote_ref}' (exit {result.returncode})", result)
         return None
 
-    def _login_registry(self, ctx, exe, url, username, password):
-        """`docker login` into `url`, piping the password via stdin (never argv), before a manifest check."""
+    def _authenticate_registry(self, ctx, exe, registry, authentication):
+        """Log in to ``registry`` if it has credentials and its 'authentication:' allows; False to skip its check.
+
+        The entry's own 'authentication:' wins over ``authentication`` (the section's). False only
+        after a failed login under "may-fail" -- a failed login under true has already died.
+        """
+        entry_authentication = registry.get("authentication", authentication)
+        if not registry.get("username") or not entry_authentication:
+            return True
+        may_fail = entry_authentication == AUTH_MAY_FAIL
+        return self._login_registry(ctx, exe, registry["url"], registry["username"], registry["password"], may_fail)
+
+    def _login_registry(self, ctx, exe, url, username, password, may_fail):
+        """`docker login` into `url`, piping the password via stdin (never argv), before a manifest check.
+
+        True on success. A failure dies -- or, with ``may_fail``, warns and returns False, so the
+        caller treats that registry as a miss.
+        """
         result = ctx.run([exe, "login", url, "-u", username, "--password-stdin"], input=password, check=False)
-        if result.returncode != 0:
+        if result.returncode == 0:
+            return True
+        if not may_fail:
             die(f"docker: login to '{url}' failed")
+        warn(f"docker: login to '{url}' failed -- treating it as a miss (authentication: {AUTH_MAY_FAIL})")
+        return False
 
     def _check_bind_mount_sources(self, ctx, exe, service):
         """Die if a bind mount source of ``service`` is missing on the host.
