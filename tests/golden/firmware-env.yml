@@ -41,6 +41,7 @@ docker-base:
   scripts:
     setup:
     - setup/install_host_tools.sh
+  authentication: true
   compose:
     build: true
     check-bind-mounts: true
