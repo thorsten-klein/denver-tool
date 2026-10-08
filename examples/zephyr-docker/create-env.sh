@@ -59,8 +59,9 @@ PERSISTENT_DIRS=(
     "$DENVER_GLOBAL_ENV_DIR/.copilot"
     "$DENVER_GLOBAL_ENV_DIR/.claude"
     "$DENVER_GLOBAL_ENV_DIR/.gemini"
-    /var/tmp/west
-    /var/tmp/zephyr
+    # west cache, mounted at /var/tmp/west in the container; per user, so no
+    # shared system-wide dir with permission problems
+    "$DENVER_GLOBAL_ENV_DIR/var/tmp/west"
 )
 for d in "${PERSISTENT_DIRS[@]}"; do
     mkdir -p "$d"
@@ -125,7 +126,6 @@ render_env_file() {
     echo "PIP_CONFIG_FILE=$HOST_HOME/.config/pip/pip.conf"
     echo "PIP_CACHE_DIR=$DENVER_GLOBAL_ENV_DIR/.pip.cache"
     echo "UV_CACHE_DIR=$DENVER_GLOBAL_ENV_DIR/.uv.cache"
-    echo "USER_CACHE_DIR=/var/tmp/zephyr"
 
     if [ -n "${DENVER_HOOK_DOCKER_ENV:-}" ]; then
         # shellcheck disable=SC1090
