@@ -19,17 +19,38 @@ from pathlib import Path
 import pytest
 import yaml
 from conan.api.model import PkgReference, RecipeReference, Remote
+from conan.errors import ConanException
 from conan.internal.errors import AuthenticationException, ConanConnectionError, ForbiddenException, NotFoundException
 
 from denver_providers.conan_scripts import recipes
 
+# the real one, before _fresh_per_process_state points it into tmp_path
+_real_usable_remotes_file = recipes._usable_remotes_file
+
+# what conan raises once a remote kept answering HTTP 503 (urllib3's retry
+# error, wrapped by conan's _call_remote), and for a 503 it didn't retry
+UNAVAILABLE_ERRORS = [
+    ConanException(
+        "HTTPSConnectionPool(host='mirror', port=443): Max retries exceeded with url: /v2/users/check_credentials "
+        "(Caused by ResponseError('too many 503 error responses'))"
+    ),
+    ConanException("Server exception 503: Service Unavailable"),
+]
+
 
 @pytest.fixture(autouse=True)
-def _fresh_per_process_state(monkeypatch):
-    """recipes.py keeps a few one-per-process switches/caches at module level (see main()) -- reset for every test."""
+def _fresh_per_process_state(monkeypatch, tmp_path):
+    """recipes.py keeps a few one-per-process switches/caches at module level (see main()) -- reset for every test.
+
+    Its usable/unavailable remotes record goes to tmp_path: main() reads it
+    on every run but --prepare, which must never reach a real conan home.
+    """
     monkeypatch.setattr(recipes, "_usable_remotes_cache", None)
     monkeypatch.setattr(recipes, "_auth_may_fail", False)
+    monkeypatch.setattr(recipes, "_no_remote", False)
     monkeypatch.setattr(recipes, "_usable_remote_names", None)
+    monkeypatch.setattr(recipes, "_unavailable_remotes", set())
+    monkeypatch.setattr(recipes, "_usable_remotes_file", lambda: tmp_path / recipes.USABLE_REMOTES_FILENAME)
 
 
 # --------------------------------------------------------------------------- #
@@ -275,8 +296,49 @@ def test_usable_remotes_raises_on_auth_failure_by_default(monkeypatch):
     api = _AuthFailsFor([Remote("a", "http://a")], {"a"}, AuthenticationException("wrong password"))
     monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
-    with pytest.raises(AuthenticationException):
+    with pytest.raises(recipes.LoginError, match=r"remote 'a' .*wrong password") as exc:
         recipes._usable_remotes()
+    assert isinstance(exc.value.__cause__, AuthenticationException)
+
+
+def test_usable_remotes_keeps_a_403_as_itself_by_default(monkeypatch):
+    # _cli has its own, more specific hint for a 403
+    api = _AuthFailsFor([Remote("a", "http://a")], {"a"}, ForbiddenException("403"))
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    with pytest.raises(ForbiddenException):
+        recipes._usable_remotes()
+
+
+@pytest.mark.parametrize("may_fail", [False, True], ids=["auth-true", "may-fail"])
+@pytest.mark.parametrize("error", UNAVAILABLE_ERRORS, ids=["retried", "not-retried"])
+def test_usable_remotes_skips_an_unavailable_remote_in_every_mode(monkeypatch, capsys, error, may_fail):
+    remotes = [Remote("a", "http://a"), Remote("mirror", "http://mirror")]
+    api = _AuthFailsFor(remotes, {"mirror"}, error)
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    monkeypatch.setattr(recipes, "_auth_may_fail", may_fail)
+
+    assert [r.name for r in recipes._usable_remotes()] == ["a"]
+    assert recipes._unavailable_remotes == {"mirror"}
+    out = capsys.readouterr().out
+    assert "skipping conan remote 'mirror' (http://mirror): temporarily unavailable (HTTP 503)" in out
+    assert "conan.authentication: false" in out
+
+
+def test_usable_remotes_does_not_retry_a_remote_already_found_unavailable(monkeypatch):
+    api = FakeRemotesAPI([Remote("a", "http://a"), Remote("mirror", "http://mirror")])
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    recipes._unavailable_remotes.add("mirror")
+    assert [r.name for r in recipes._usable_remotes()] == ["a"]
+    assert api.auth_calls == [("a", False)]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [ConanException("Server exception 500: oops"), ConanException("too many 502 error responses"), EOFError()],
+    ids=["500", "502", "eof"],
+)
+def test_other_errors_are_not_unavailable(error):
+    assert not recipes._is_unavailable(error)
 
 
 @pytest.mark.parametrize(
@@ -363,22 +425,46 @@ def test_usable_remotes_only_considers_the_names_prepare_found_usable(monkeypatc
     assert api.auth_calls == [("a", False)]
 
 
-@pytest.mark.parametrize(
-    ("content", "expected"), [(None, None), ('["a", "b"]', {"a", "b"})], ids=["missing", "written"]
-)
-def test_load_usable_remote_names(monkeypatch, tmp_path, content, expected):
+def test_usable_remotes_file_lives_in_the_conan_home(monkeypatch, tmp_path):
     monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(home_folder=str(tmp_path)))
+    assert _real_usable_remotes_file() == tmp_path / recipes.USABLE_REMOTES_FILENAME
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        (None, (None, set())),
+        ('{"usable": ["a", "b"], "unavailable": ["mirror"]}', ({"a", "b"}, {"mirror"})),
+    ],
+    ids=["missing", "written"],
+)
+def test_load_usable_remotes(tmp_path, content, expected):
     if content is not None:
         (tmp_path / recipes.USABLE_REMOTES_FILENAME).write_text(content)
-    assert recipes._load_usable_remote_names() == expected
+    assert recipes._load_usable_remotes() == expected
 
 
 def test_write_usable_remotes(monkeypatch, tmp_path):
-    api = _AuthFailsFor([Remote("a", "http://a"), Remote("b", "http://b")], {"b"}, ForbiddenException("403"))
-    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api, home_folder=str(tmp_path)))
+    remotes = [Remote("a", "http://a"), Remote("b", "http://b"), Remote("mirror", "http://mirror")]
+    api = _AuthFailsFor(remotes, {"b"}, ForbiddenException("403"))
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
     monkeypatch.setattr(recipes, "_auth_may_fail", True)
+    recipes._unavailable_remotes.add("mirror")
     recipes.write_usable_remotes()
-    assert json.loads((tmp_path / recipes.USABLE_REMOTES_FILENAME).read_text()) == ["a"]
+    record = json.loads((tmp_path / recipes.USABLE_REMOTES_FILENAME).read_text())
+    assert record == {"usable": ["a"], "unavailable": ["mirror"]}
+
+
+def test_write_usable_remotes_without_may_fail_contacts_no_remote(monkeypatch, tmp_path):
+    # every remote not found unavailable has authenticated already (or the
+    # run would have stopped) -- nothing to ask any of them again
+    api = FakeRemotesAPI([Remote("a", "http://a"), Remote("mirror", "http://mirror")])
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    recipes._unavailable_remotes.add("mirror")
+    recipes.write_usable_remotes()
+    record = json.loads((tmp_path / recipes.USABLE_REMOTES_FILENAME).read_text())
+    assert record == {"usable": ["a"], "unavailable": ["mirror"]}
+    assert api.auth_calls == []
 
 
 def test_get_deps_graph_local(monkeypatch):
@@ -674,8 +760,18 @@ def test_conan_login_auth_failure_raises_by_default(monkeypatch, error):
     api = _AuthFailsFor([Remote("conancenter", "http://conancenter")], {"conancenter"}, error)
     monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
-    with pytest.raises(type(error)):
+    expected = ForbiddenException if isinstance(error, ForbiddenException) else recipes.LoginError
+    with pytest.raises(expected):
         recipes.conan_login({"conancenter": {}})
+
+
+@pytest.mark.parametrize("error", UNAVAILABLE_ERRORS, ids=["retried", "not-retried"])
+def test_conan_login_skips_an_unavailable_remote_by_default(monkeypatch, capsys, error):
+    api = _AuthFailsFor([Remote("mirror", "http://mirror")], {"mirror"}, error)
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    recipes.conan_login({"mirror": {}})
+    assert recipes._unavailable_remotes == {"mirror"}
+    assert "temporarily unavailable (HTTP 503)" in capsys.readouterr().out
 
 
 def test_conan_login_auth_failure_warns_when_may_fail(monkeypatch, capsys):
@@ -1137,12 +1233,35 @@ def test_main_prepare_writes_usable_remotes_under_may_fail(monkeypatch):
     assert recipes._auth_may_fail is True
 
 
-def test_main_export_reads_usable_remotes_under_may_fail(monkeypatch, tmp_path):
+@pytest.mark.parametrize("flags", [["--authentication-may-fail"], []], ids=["may-fail", "auth-true"])
+def test_main_export_reads_the_remotes_record(monkeypatch, tmp_path, flags):
     _stub_pipeline(monkeypatch)
-    monkeypatch.setattr(recipes, "_load_usable_remote_names", lambda: {"mirror"})
-    monkeypatch.setattr(sys, "argv", ["recipes.py", "--authentication-may-fail", "--recipes-dir", str(tmp_path)])
+    written = []
+    monkeypatch.setattr(recipes, "_load_usable_remotes", lambda: ({"a"}, {"mirror"}))
+    monkeypatch.setattr(recipes, "write_usable_remotes", lambda: written.append(True))
+    monkeypatch.setattr(sys, "argv", ["recipes.py", *flags, "--recipes-dir", str(tmp_path)])
     recipes.main()
-    assert recipes._usable_remote_names == {"mirror"}
+    assert recipes._usable_remote_names == {"a"}
+    assert recipes._unavailable_remotes == {"mirror"}
+    assert written == []  # nothing new to record
+
+
+def test_main_no_remote_ignores_the_remotes_record(monkeypatch, tmp_path):
+    _stub_pipeline(monkeypatch)
+    monkeypatch.setattr(recipes, "_load_usable_remotes", lambda: pytest.fail("must not be read"))
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--no-remote", "--recipes-dir", str(tmp_path)])
+    recipes.main()
+    assert recipes._unavailable_remotes == set()
+
+
+def test_main_export_records_a_remote_first_found_unavailable(monkeypatch, tmp_path):
+    _stub_pipeline(monkeypatch)
+    written = []
+    monkeypatch.setattr(recipes, "_process_catalog", lambda *a: recipes._unavailable_remotes.add("mirror"))
+    monkeypatch.setattr(recipes, "write_usable_remotes", lambda: written.append(set(recipes._unavailable_remotes)))
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--recipes-dir", str(tmp_path)])
+    recipes.main()
+    assert written == [{"mirror"}]
 
 
 def test_main_prepare_writes_no_usable_remotes_without_the_flag(monkeypatch):
@@ -1152,6 +1271,18 @@ def test_main_prepare_writes_no_usable_remotes_without_the_flag(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["recipes.py", "--prepare"])
     recipes.main()
     assert written == []
+
+
+def test_main_prepare_records_an_unavailable_remote_without_the_flag(monkeypatch):
+    _stub_pipeline(monkeypatch)
+    written = []
+    monkeypatch.setattr(
+        recipes, "prepare", lambda remotes, cleanup=False, force=False: recipes._unavailable_remotes.add("mirror")
+    )
+    monkeypatch.setattr(recipes, "write_usable_remotes", lambda: written.append(True))
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--prepare"])
+    recipes.main()
+    assert written == [True]
 
 
 def test_main_loads_remotes_json(monkeypatch, tmp_path):
@@ -1384,7 +1515,34 @@ def test_cli_reports_forbidden_without_traceback(monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "ERROR: Permission denied for user: 'None'" in err
     assert "conan remote login" in err
+    assert "`-c conan.authentication=false`" in err
     assert "Traceback" not in err
+
+
+def test_cli_reports_a_login_error_with_the_local_cache_hint(monkeypatch, capsys):
+    def failing_login():
+        raise recipes.LoginError("authenticating conan remote 'mirror' (http://mirror) failed: wrong password")
+
+    monkeypatch.setattr(recipes, "main", failing_login)
+    with pytest.raises(SystemExit) as exc:
+        recipes._cli()
+    assert exc.value.code == 1
+    err = capsys.readouterr().err
+    assert "ERROR: authenticating conan remote 'mirror'" in err
+    assert f"Hint: log in with 'conan remote login <remote>', or {recipes.LOCAL_CACHE_HINT}." in err
+
+
+def test_cli_says_which_remotes_were_unavailable_when_the_local_cache_falls_short(monkeypatch, capsys):
+    def missing_from_cache():
+        recipes._unavailable_remotes.add("mirror")
+        raise recipes.CatalogError("Cannot resolve foo/1.0. Please export all recipes to local cache.")
+
+    monkeypatch.setattr(recipes, "main", missing_from_cache)
+    with pytest.raises(SystemExit):
+        recipes._cli()
+    err = capsys.readouterr().err
+    assert "ERROR: Cannot resolve foo/1.0" in err
+    assert "conan remote(s) 'mirror' answered HTTP 503 (temporarily unavailable)" in err
 
 
 def test_cli_reports_catalog_error(monkeypatch, capsys):

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import subprocess
 
 import pytest
 
@@ -569,11 +570,12 @@ def test_auth_default_keeps_remotes_for_prepare_and_export(make_context, run_rec
     assert "--no-remote" not in next(a for a in argvs if "--export" in a)
 
 
-def _prepare_writes_usable_remotes(run_recorder, conan_home, names):
-    """Make recipes.py --prepare record ``names`` in ``conan_home``, like the real one would."""
+def _prepare_writes_usable_remotes(run_recorder, conan_home, names, unavailable=()):
+    """Make recipes.py --prepare record ``names`` (and ``unavailable``) in ``conan_home``, like the real one would."""
 
     def respond(cmd):
-        (conan_home / USABLE_REMOTES_FILENAME).write_text(json.dumps(names))
+        record = {"usable": names, "unavailable": list(unavailable)}
+        (conan_home / USABLE_REMOTES_FILENAME).write_text(json.dumps(record))
         return type("R", (), {"returncode": 0})()
 
     run_recorder.responses["--prepare"] = respond
@@ -647,6 +649,59 @@ def test_auth_true_passes_no_may_fail_flags(make_context, run_recorder, which, t
     install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {"authentication": True})
     assert not any(a.startswith("-r=") for a in install)
     assert not any("--authentication-may-fail" in a for a in run_recorder.argvs())
+
+
+# 'authentication: true' with a remote to reconcile, so prepare runs (and may record a 503)
+_AUTH_TRUE_WITH_REMOTE = {"authentication": True, "remotes": {"mirror": {"url": "https://mirror"}}}
+
+
+def test_auth_true_drops_a_stale_remotes_record_too(make_context, run_recorder, which, tmp_path):
+    # a remote that answered 503 in an earlier run must not stay left out
+    stale = tmp_path / USABLE_REMOTES_FILENAME
+    stale.write_text('{"usable": [], "unavailable": ["mirror"]}')
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, {"authentication": True})
+    assert not stale.exists()
+    assert "--no-remote" not in install
+
+
+def test_auth_true_installs_without_a_remote_that_answered_503(make_context, run_recorder, which, tmp_path):
+    _prepare_writes_usable_remotes(run_recorder, tmp_path, ["other"], unavailable=["mirror"])
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, _AUTH_TRUE_WITH_REMOTE)
+    assert "-r=other" in install
+    assert "-r=mirror" not in install
+
+
+def test_auth_true_installs_from_the_local_cache_when_the_only_remote_answered_503(
+    make_context, run_recorder, which, tmp_path
+):
+    _prepare_writes_usable_remotes(run_recorder, tmp_path, [], unavailable=["mirror"])
+    install = _may_fail_install_cmd(make_context, run_recorder, tmp_path, _AUTH_TRUE_WITH_REMOTE)
+    assert "--no-remote" in install
+
+
+def _failing_install(cmd):
+    """`conan install` failing, e.g. because the local cache lacks a recipe; any other command succeeds."""
+    if "install" in cmd and "graph" not in cmd:
+        raise subprocess.CalledProcessError(1, cmd)
+    return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+
+def test_failed_install_names_the_remote_that_answered_503(make_context, run_recorder, which, tmp_path):
+    _prepare_writes_usable_remotes(run_recorder, tmp_path, [], unavailable=["mirror"])
+    run_recorder.responses["conan install"] = _failing_install
+    with pytest.raises(DenverError, match=r"remote\(s\) 'mirror' answered HTTP 503"):
+        _may_fail_install_cmd(make_context, run_recorder, tmp_path, _AUTH_TRUE_WITH_REMOTE)
+
+
+@pytest.mark.parametrize("unavailable", [None, []], ids=["no-record", "none-unavailable"])
+def test_failed_install_without_unavailable_remotes_fails_as_before(
+    make_context, run_recorder, which, tmp_path, unavailable
+):
+    if unavailable is not None:
+        _prepare_writes_usable_remotes(run_recorder, tmp_path, ["mirror"], unavailable=unavailable)
+    run_recorder.responses["conan install"] = _failing_install
+    with pytest.raises(subprocess.CalledProcessError):
+        _may_fail_install_cmd(make_context, run_recorder, tmp_path, _AUTH_TRUE_WITH_REMOTE)
 
 
 @pytest.mark.parametrize("value", ["yes", "may_fail", 1], ids=["yes", "typo", "int"])

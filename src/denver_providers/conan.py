@@ -14,6 +14,7 @@ Full key reference, worked examples and design notes: ``doc/providers/conan.md``
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 from .base import Provider, fill_unset
@@ -38,9 +39,10 @@ CONAN_INSTALL_DIRNAME = ".conan"
 # authenticates, skip (with a warning, never a prompt) any that doesn't.
 AUTH_MAY_FAIL = "may-fail"
 
-# where recipes.py --prepare records the remotes that authenticated under
-# 'authentication: may-fail', inside the conan home -- keep in sync with
-# recipes.py's own USABLE_REMOTES_FILENAME.
+# where recipes.py records the remotes the rest of the run may use (those
+# that authenticated under 'authentication: may-fail', minus any that answered
+# HTTP 503 in every mode) and the unavailable ones, inside the conan home --
+# keep in sync with recipes.py's own USABLE_REMOTES_FILENAME.
 USABLE_REMOTES_FILENAME = "denver-usable-remotes.json"
 CONANBUILDENV_NAME = "conanbuildenv.sh"
 
@@ -267,6 +269,7 @@ class ConanProvider(Provider):
         banner(ctx, self.stage, "config")
         self._install_config(ctx, conan, cfg)
         self._ensure_profile(ctx, conan)
+        self._drop_remotes_record(ctx)
 
         if has_recipes or reconcile_remotes or self._auth_may_fail(cfg):
             self._run_prepare(
@@ -393,10 +396,6 @@ class ConanProvider(Provider):
             prepare_cmd += ["--force"]
         prepare_cmd += self._no_remote_args(cfg)
         if self._auth_may_fail(cfg):
-            # never left over from an earlier run: export and install read it back
-            usable_remotes = self._usable_remotes_path()
-            if usable_remotes:
-                ctx.unlink(usable_remotes, missing_ok=True)
             prepare_cmd += ["--authentication-may-fail"]
         ctx.run(prepare_cmd, step="prepare")
 
@@ -438,27 +437,50 @@ class ConanProvider(Provider):
         return cfg["authentication"] == AUTH_MAY_FAIL
 
     def _usable_remotes_path(self):
-        """Where recipes.py --prepare records the remotes that authenticated, or None without a known conan home."""
+        """Where recipes.py records the usable/unavailable remotes, or None without a known conan home."""
         return Path(self._conan_home) / USABLE_REMOTES_FILENAME if self._conan_home else None
+
+    def _drop_remotes_record(self, ctx):
+        """Delete recipes.py's usable/unavailable remotes record -- prepare/export/install must never read an old one."""
+        usable_remotes = self._usable_remotes_path()
+        if usable_remotes and usable_remotes.is_file():
+            ctx.unlink(usable_remotes)
+
+    def _remotes_record(self):
+        """recipes.py's {"usable": [...], "unavailable": [...]} for this run, or None when it wrote none."""
+        usable_remotes = self._usable_remotes_path()
+        if not usable_remotes or not usable_remotes.is_file():
+            return None
+        return json.loads(usable_remotes.read_text())
 
     def _remote_install_args(self, cfg):
         """`conan install`'s remote selection: --no-remote, one -r= per usable remote, or conan's own default.
 
-        Under 'authentication: may-fail', only the remotes that authenticated
-        during prepare are passed (--no-remote if none did), so a failing
-        remote can't abort the install either. Under --dry-run prepare never
-        really runs, so the list is the last real run's, or missing (conan's
-        default applies then).
+        Whenever recipes.py recorded the usable remotes -- under
+        'authentication: may-fail', or because a remote answered HTTP 503 --
+        only those are passed (--no-remote if there are none), so a remote
+        prepare/export gave up on can't abort the install either. Under
+        --dry-run prepare never really runs, so the record is the last real
+        run's, or missing (conan's default applies then).
         """
         if not cfg["authentication"]:
             return ["--no-remote"]
-        if not self._auth_may_fail(cfg):
+        record = self._remotes_record()
+        if record is None:
             return []
-        usable_remotes = self._usable_remotes_path()
-        if not usable_remotes or not usable_remotes.is_file():
-            return []
-        names = json.loads(usable_remotes.read_text())
-        return [f"-r={name}" for name in names] or ["--no-remote"]
+        return [f"-r={name}" for name in record["usable"]] or ["--no-remote"]
+
+    def _die_if_remotes_were_unavailable(self, exc):
+        """Explain a failed `conan install` by the remotes left out for answering HTTP 503, if there were any."""
+        record = self._remotes_record()
+        unavailable = record["unavailable"] if record else []
+        if unavailable:
+            names = ", ".join(f"'{name}'" for name in unavailable)
+            die(
+                f"conan[{self.stage}]: `conan install` failed (exit {exc.returncode}) -- conan remote(s) {names} "
+                f"answered HTTP 503 (temporarily unavailable) and were left out of this run, so only the local "
+                f"cache was used, and it does not have everything needed. Retry once the remote is back."
+            )
 
     # ------------------------------------------------------------------ #
     def _write_remotes_json(self, ctx, remotes):
@@ -570,22 +592,26 @@ class ConanProvider(Provider):
         # conan writes conanbuildenv.sh straight into install_root (the
         # --output-folder), exactly where _activate_buildenv reads it from --
         # a single conanfile needs no per-conanfile subdir or aggregation.
-        ctx.run(
-            [
-                conan,
-                "install",
-                str(conanfile),
-                *build_args,
-                *profile_args,
-                f"--output-folder={install_root}",
-                *deployer_args,
-                f"--deployer-folder={symlinks_dir}",
-                *extra_args,
-            ],
-            cwd=install_root,
-            # conan packages must be standalone: don't leak host PYTHONPATH
-            extra_env={"PYTHONPATH": ""},
-        )
+        try:
+            ctx.run(
+                [
+                    conan,
+                    "install",
+                    str(conanfile),
+                    *build_args,
+                    *profile_args,
+                    f"--output-folder={install_root}",
+                    *deployer_args,
+                    f"--deployer-folder={symlinks_dir}",
+                    *extra_args,
+                ],
+                cwd=install_root,
+                # conan packages must be standalone: don't leak host PYTHONPATH
+                extra_env={"PYTHONPATH": ""},
+            )
+        except subprocess.CalledProcessError as exc:
+            self._die_if_remotes_were_unavailable(exc)
+            raise
 
         self._store_graph_hash(ctx, conan, install_root, conanfile, install_args, graph_hash)
 
