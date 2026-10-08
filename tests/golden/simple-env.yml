@@ -17,6 +17,7 @@ print-vars-before:
   provider: custom
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -31,6 +32,7 @@ set-vars:
   provider: custom
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -45,6 +47,7 @@ print-vars-after:
   provider: custom
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

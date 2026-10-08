@@ -18,6 +18,7 @@ docs-tools:
     Deliberately standalone rather than depending on the repo's own uv project --
     the top-level project has no 'docs' dependency-group.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -46,6 +47,7 @@ build-docs:
     output. Not fingerprinted -- like any custom 'cmd:', it reruns every time, which
     is exactly what a doc build wants.
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

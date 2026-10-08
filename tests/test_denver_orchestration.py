@@ -2161,3 +2161,80 @@ def test_depends_on_does_not_cascade_when_force_bypasses_skip_on_success(tmp_pat
     denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"], options=denver.RunOptions(force=True))
     assert exec_recorder["env"]["RAN_A"] == "1"
     assert exec_recorder["env"]["RAN_B"] == "1"
+
+
+# ---- --ci: DENVER_CI and the 'ci:' stage key --------------------------------#
+def test_run_stages_hooks_and_command_see_denver_ci_under_ci(tmp_path, fake_providers, exec_recorder):
+    config = {"stages": ["fakesetup"], "fakesetup": {"provider": "fakesetup"}, "hooks": {"pre-cmd": "precmd.sh"}}
+    env_dir, cfg_path = _env(tmp_path, config)
+    (env_dir / "precmd.sh").write_text('export HOOK_SAW_CI="${DENVER_CI-unset}"\n')
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"], options=denver.RunOptions(ci=True))
+    assert exec_recorder["env"]["HOOK_SAW_CI"] == "1"
+    assert exec_recorder["env"]["DENVER_CI"] == "1"
+
+
+def test_run_stages_denver_ci_unset_without_ci(tmp_path, fake_providers, exec_recorder, monkeypatch):
+    # a stale DENVER_CI in the calling shell is dropped, not passed on
+    monkeypatch.setenv("DENVER_CI", "1")
+    config = {"stages": ["fakesetup"], "fakesetup": {"provider": "fakesetup"}, "hooks": {"pre-cmd": "precmd.sh"}}
+    env_dir, cfg_path = _env(tmp_path, config)
+    (env_dir / "precmd.sh").write_text('export HOOK_SAW_CI="${DENVER_CI-unset}"\n')
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
+    assert exec_recorder["env"]["HOOK_SAW_CI"] == "unset"
+    assert "DENVER_CI" not in exec_recorder["env"]
+
+
+@pytest.mark.parametrize(
+    ("mode", "ci", "runs"),
+    [
+        ("only", True, True),
+        ("only", False, False),
+        ("skip", True, False),
+        ("skip", False, True),
+        (None, True, True),
+        (None, False, True),
+    ],
+)
+def test_run_stages_ci_stage_key(tmp_path, fake_providers, exec_recorder, capsys, mode, ci, runs):
+    config = {
+        "stages": ["fakesetup", "fakesetup2"],
+        "fakesetup": {"provider": "fakesetup"},
+        "fakesetup2": {"provider": "fakesetup", "ci": mode},
+    }
+    env_dir, cfg_path = _env(tmp_path, config)
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"], options=denver.RunOptions(ci=ci))
+    assert ("RAN_FAKESETUP2" in exec_recorder["env"]) is runs
+    err = capsys.readouterr().err
+    assert (f"[2/2] stage 'fakesetup2' skipped (ci: {mode})" in err) is (not runs)
+
+
+def test_run_stages_ci_skip_cascades_through_depends_on(tmp_path, fake_providers, exec_recorder, capsys):
+    config = {
+        "stages": ["a", "b"],
+        "a": {"provider": "fakesetup", "ci": "only"},
+        "b": {"provider": "fakesetup", "depends-on": ["a"]},
+    }
+    env_dir, cfg_path = _env(tmp_path, config)
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
+    err = capsys.readouterr().err
+    assert "[1/2] stage 'a' skipped (ci: only)" in err
+    assert "[2/2] stage 'b' skipped (depends-on 'a')" in err
+
+
+def test_run_stages_disabled_wins_over_ci(tmp_path, fake_providers, exec_recorder, capsys):
+    config = {"stages": ["fakesetup"], "fakesetup": {"provider": "fakesetup", "disabled": True, "ci": "only"}}
+    env_dir, cfg_path = _env(tmp_path, config)
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
+    assert "[1/1] stage 'fakesetup' skipped (disabled: true)" in capsys.readouterr().err
+
+
+def test_run_stages_ci_skip_wrapper_stays_inactive_under_ci(tmp_path, fake_providers, exec_recorder):
+    config = {
+        "stages": ["fakewrap", "fakesetup"],
+        "fakewrap": {"provider": "fakewrap", "ci": "skip"},
+        "fakesetup": {"provider": "fakesetup"},
+    }
+    env_dir, cfg_path = _env(tmp_path, config)
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"], options=denver.RunOptions(ci=True))
+    assert "WRAP_SETUP" not in exec_recorder["env"]
+    assert exec_recorder["args"] == ["echo", "hi"]

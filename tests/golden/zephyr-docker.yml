@@ -15,6 +15,7 @@ netrc:
   provider: netrc
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []
@@ -35,6 +36,7 @@ docker:
   provider: docker
   description: null
   disabled: false
+  ci: null
   depends-on: []
   skip-on-success: []
   skip-on-failure: []

@@ -626,6 +626,8 @@ STATE_DIRNAME = ".denver"
 # content-addressed cache tier. See state_dir_for / Context._init_builtins.
 ENV_WORKDIR_VAR = "DENVER_ENV_WORKDIR"
 CACHE_DIR_VAR = "DENVER_CACHE_DIR"
+# exported as "1" for a run with --ci, removed otherwise -- see _init_builtins
+CI_VAR = "DENVER_CI"
 
 
 def state_dir_for(env_dir, config_path, env=None):
@@ -785,6 +787,14 @@ class Context:
         # denver-owned identifiers always reflect the current run, even over a
         # stale value of the same name already in the real environment
         self.env.update(builtins)
+        # DENVER_CI tells stages, hooks and the final command that --ci was
+        # given. Only written, never read: ``self.ci`` comes from the flag
+        # alone. Without --ci it is removed rather than set to "0", so
+        # ``[ -n "$DENVER_CI" ]`` is the whole test.
+        if self.ci:
+            self.env[CI_VAR] = "1"
+        else:
+            self.env.pop(CI_VAR, None)
         self._prefix_prompt()
 
     @property

@@ -23,7 +23,7 @@ devshell:
   expected-version: 2.35.2
 ```
 
-(`provider:`/`description:`/`disabled:`/`scripts:`/`env:`/`env-prepend:`/`env-append:` are generic keys every
+(`provider:`/`description:`/`disabled:`/`ci:`/`scripts:`/`env:`/`env-prepend:`/`env-append:` are generic keys every
 stage has — see "Generic stage keys" in [Configuration](../configuration/config-file.md). Everything below is
 specific to `nix`.)
 
