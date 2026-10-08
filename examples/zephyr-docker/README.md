@@ -107,6 +107,13 @@ same script from their `postStartCommand`, since their
 > container or mount any host path. Remove the `docker-host.sock` mount from
 > `docker-compose.yml` if you don't want that.
 
+The west cache is on the host in `$DENVER_GLOBAL_ENV_DIR/var/tmp/west` (by
+default `~/.denver/zephyr-docker/var/tmp/west`), so every user has their own
+and removing the env dir removes it too. Inside the container it is still at
+`/var/tmp/west`. Older versions used `/var/tmp/west` on the host; move its
+content to the new location to keep the cache, or delete it. They also
+created an unused `/var/tmp/zephyr` on the host, which can be deleted.
+
 ## Files
 
 | Path | What it is |

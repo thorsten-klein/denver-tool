@@ -32,9 +32,12 @@ services:
       - /var/run/docker.sock:/var/run/docker-host.sock
 
       # build caches, kept outside the container lifecycle so a rebuild
-      # doesn't cost a full re-fetch.
-      - /var/tmp/west:/var/tmp/west                   # west module/blob cache
-      - /var/tmp/zephyr:/var/tmp/zephyr               # twister/zephyr cache
+      # doesn't cost a full re-fetch. The host side is per user under
+      # $DENVER_GLOBAL_ENV_DIR; the container side stays /var/tmp/west because
+      # ../zephyr-devshell/configs/west_base_config points there. This is an
+      # explicit mount, not covered by the $DENVER_GLOBAL_ENV_DIR mount below
+      # (that one only shows the same dir at its host path).
+      - $DENVER_GLOBAL_ENV_DIR/var/tmp/west:/var/tmp/west   # west module/blob cache
       - $CCACHE_READONLY_DIRS:$CCACHE_READONLY_DIRS   # read-only ccache seed from Artifactory
 
       # the workspace itself, plus the host home and denver's own env dir at
