@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=b3071151"></script>
+      <script src="../_static/documentation_options.js?v=ccecd7fb"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/f66c4496a5e9f978559510b62792c3c16724a4b9">1.7.0-8-gf66c449</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/345baeec2639466cfeaea7be0461c460d8ef7f74">1.7.0-9-g345baee</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -484,9 +484,28 @@ before their first run.</p>
 </section>
 <section id="key-reference">
 <h2>Key reference<a class="headerlink" href="#key-reference" title="Link to this heading"></a></h2>
-<ul class="simple">
+<ul>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">exe</span></code></strong> (default: <code class="docutils literal notranslate"><span class="pre">docker</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>) — the docker executable.</p></li>
-<li><p><strong><code class="docutils literal notranslate"><span class="pre">registries</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">[]</span></code>) — ordered list of <code class="docutils literal notranslate"><span class="pre">{url,</span> <span class="pre">username,</span> <span class="pre">password}</span></code> entries to check, each as <code class="docutils literal notranslate"><span class="pre">&lt;url&gt;/&lt;image&gt;</span></code>, once <code class="docutils literal notranslate"><span class="pre">compose.image:</span></code> has
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">authentication</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>) — <code class="docutils literal notranslate"><span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">false</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;may-fail&quot;</span></code>,
+for every <code class="docutils literal notranslate"><span class="pre">registries:</span></code> entry that has <code class="docutils literal notranslate"><span class="pre">username:</span></code>/<code class="docutils literal notranslate"><span class="pre">password:</span></code>. An entry
+can set its own <code class="docutils literal notranslate"><span class="pre">authentication:</span></code>, which wins over this one.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">true</span></code>: denver runs <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span></code> before it checks the registry, and a
+failed login stops the run.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">false</span></code>: denver never runs <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span></code>. The registry is still
+checked, which works for a public image; otherwise the check fails and
+the registry counts as a miss. Use this when you work offline, have no
+credentials, or the registry is down.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;may-fail&quot;</span></code>: like <code class="docutils literal notranslate"><span class="pre">true</span></code>, but a failed login is warned about and the
+registry counts as a miss instead of stopping the run. The normal rules
+for a miss then apply: the next registry is tried, then a local image is
+used or the image is built, and denver stops if the image is found
+nowhere and <code class="docutils literal notranslate"><span class="pre">compose.build:</span> <span class="pre">false</span></code>.</p></li>
+</ul>
+<p>Like any config key it can be set without editing the config file, e.g.
+<code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">docker.authentication=false</span></code>.</p>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">registries</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">[]</span></code>) — ordered list of <code class="docutils literal notranslate"><span class="pre">{url,</span> <span class="pre">username,</span> <span class="pre">password,</span> <span class="pre">authentication}</span></code> entries to check, each as <code class="docutils literal notranslate"><span class="pre">&lt;url&gt;/&lt;image&gt;</span></code>, once <code class="docutils literal notranslate"><span class="pre">compose.image:</span></code> has
 missed locally (or <code class="docutils literal notranslate"><span class="pre">--force</span></code> is set — see below), before ever
 considering a build: each entry in turn, via <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">manifest</span> <span class="pre">inspect</span></code>
 — <strong>never</strong> a real <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">pull</span></code> — first hit wins and no further entry
@@ -499,8 +518,8 @@ error instead of silently doing nothing. <code class="docutils literal notransla
 <code class="docutils literal notranslate"><span class="pre">username:</span></code>/<code class="docutils literal notranslate"><span class="pre">password:</span></code> are optional but, if either is set, both must
 be — when present, <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span> <span class="pre">&lt;url&gt;</span></code> runs automatically, credentials
 piped via stdin (never argv, never logged), right before the manifest
-check against that entry; an entry with neither is assumed
-already-authenticated or public. Under <code class="docutils literal notranslate"><span class="pre">--verbose</span></code>, every check is
+check against that entry (unless <code class="docutils literal notranslate"><span class="pre">authentication:</span></code> says otherwise, see
+above); an entry with neither is assumed already-authenticated or public. Under <code class="docutils literal notranslate"><span class="pre">--verbose</span></code>, every check is
 echoed (<code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">docker</span> <span class="pre">manifest</span> <span class="pre">inspect</span> <span class="pre">&lt;url&gt;/&lt;image&gt;</span></code>) followed by a
 <code class="docutils literal notranslate"><span class="pre">registry</span> <span class="pre">hit:</span></code>/<code class="docutils literal notranslate"><span class="pre">registry</span> <span class="pre">miss:</span></code> line, and a miss also prints the
 check’s own stderr (auth error, unknown tag, …) indented below it. Both fields go through denver’s normal
@@ -606,6 +625,13 @@ private registry in the search list doesn’t need a separate manual
 login step (e.g. a <code class="docutils literal notranslate"><span class="pre">scripts:</span> <span class="pre">login:</span></code> entry run via <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">&lt;env&gt;</span> <span class="pre">--scripts</span> <span class="pre">login</span></code>, <a class="reference internal" href="../configuration/config-file.html"><span class="std std-doc">Configuration</span></a>’s generic one-shot mechanism) — denver logs in
 for you, right before it’s actually needed, only for entries that carry
 credentials.</p></li>
+<li><p><strong>A registry is never required to log in.</strong> The registry is only
+checked when the local image is missing (or with <code class="docutils literal notranslate"><span class="pre">--force</span></code>), and a run
+that does not need it should not stop because its login fails — the
+registry is down, you are offline, have no credentials, or your token has
+expired. <code class="docutils literal notranslate"><span class="pre">authentication:</span> <span class="pre">false</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;may-fail&quot;</span></code> covers these cases
+without removing <code class="docutils literal notranslate"><span class="pre">username:</span></code>/<code class="docutils literal notranslate"><span class="pre">password:</span></code> from the config. Same values and
+meaning as the <a class="reference internal" href="conan.html"><span class="std std-doc">conan provider’s <code class="docutils literal notranslate"><span class="pre">authentication:</span></code></span></a>.</p></li>
 </ul>
 </section>
 </section>

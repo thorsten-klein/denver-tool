@@ -63,8 +63,25 @@ before their first run.
 ## Key reference
 
 - **`exe`** (default: `docker` on `PATH`) — the docker executable.
+- **`authentication`** (default `true`) — `true`, `false` or `"may-fail"`,
+  for every `registries:` entry that has `username:`/`password:`. An entry
+  can set its own `authentication:`, which wins over this one.
+  - `true`: denver runs `docker login` before it checks the registry, and a
+    failed login stops the run.
+  - `false`: denver never runs `docker login`. The registry is still
+    checked, which works for a public image; otherwise the check fails and
+    the registry counts as a miss. Use this when you work offline, have no
+    credentials, or the registry is down.
+  - `"may-fail"`: like `true`, but a failed login is warned about and the
+    registry counts as a miss instead of stopping the run. The normal rules
+    for a miss then apply: the next registry is tried, then a local image is
+    used or the image is built, and denver stops if the image is found
+    nowhere and `compose.build: false`.
+
+  Like any config key it can be set without editing the config file, e.g.
+  `-c docker.authentication=false`.
 - **`registries`** (default `[]`) — ordered list of `{url, username,
-  password}` entries to check, each as `<url>/<image>`, once `compose.image:` has
+  password, authentication}` entries to check, each as `<url>/<image>`, once `compose.image:` has
   missed locally (or `--force` is set — see below), before ever
   considering a build: each entry in turn, via `docker manifest inspect`
   — **never** a real `docker pull` — first hit wins and no further entry
@@ -77,8 +94,8 @@ before their first run.
   `username:`/`password:` are optional but, if either is set, both must
   be — when present, `docker login <url>` runs automatically, credentials
   piped via stdin (never argv, never logged), right before the manifest
-  check against that entry; an entry with neither is assumed
-  already-authenticated or public. Under `--verbose`, every check is
+  check against that entry (unless `authentication:` says otherwise, see
+  above); an entry with neither is assumed already-authenticated or public. Under `--verbose`, every check is
   echoed (`+ docker manifest inspect <url>/<image>`) followed by a
   `registry hit:`/`registry miss:` line, and a miss also prints the
   check's own stderr (auth error, unknown tag, ...) indented below it. Both fields go through denver's normal
@@ -189,3 +206,10 @@ needing a per-provider mechanism for it.
   --scripts login`, [Configuration](../configuration/config-file.md)'s generic one-shot mechanism) — denver logs in
   for you, right before it's actually needed, only for entries that carry
   credentials.
+- **A registry is never required to log in.** The registry is only
+  checked when the local image is missing (or with `--force`), and a run
+  that does not need it should not stop because its login fails — the
+  registry is down, you are offline, have no credentials, or your token has
+  expired. `authentication: false` or `"may-fail"` covers these cases
+  without removing `username:`/`password:` from the config. Same values and
+  meaning as the [conan provider's `authentication:`](conan.md).
