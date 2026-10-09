@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=1b267bf1"></script>
+      <script src="../_static/documentation_options.js?v=0e74bf8e"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/014dde54e34cf369bb3abb1cd7a4327536b50884">1.7.0-13-g014dde5</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/78be21c4cb8c639c94df7ad53ccd66d840f77795">1.7.0-14-g78be21c</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -487,8 +487,9 @@ before their first run.</p>
 <ul>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">exe</span></code></strong> (default: <code class="docutils literal notranslate"><span class="pre">docker</span></code> on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>) — the docker executable.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">authentication</span></code></strong> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>) — <code class="docutils literal notranslate"><span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">false</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;may-fail&quot;</span></code>,
-for every <code class="docutils literal notranslate"><span class="pre">registries:</span></code> entry that has <code class="docutils literal notranslate"><span class="pre">username:</span></code>/<code class="docutils literal notranslate"><span class="pre">password:</span></code>. An entry
-can set its own <code class="docutils literal notranslate"><span class="pre">authentication:</span></code>, which wins over this one.</p>
+for every <code class="docutils literal notranslate"><span class="pre">registries:</span></code> entry (for one without <code class="docutils literal notranslate"><span class="pre">username:</span></code>/<code class="docutils literal notranslate"><span class="pre">password:</span></code>,
+see stored login and netrc below). An entry can set its own
+<code class="docutils literal notranslate"><span class="pre">authentication:</span></code>, which wins over this one.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">true</span></code>: denver runs <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span></code> before it checks the registry, and a
 failed login stops the run.</p></li>
@@ -519,13 +520,37 @@ error instead of silently doing nothing. <code class="docutils literal notransla
 be — when present, <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span> <span class="pre">&lt;url&gt;</span></code> runs automatically, credentials
 piped via stdin (never argv, never logged), right before the manifest
 check against that entry (unless <code class="docutils literal notranslate"><span class="pre">authentication:</span></code> says otherwise, see
-above); an entry with neither is assumed already-authenticated or public. Under <code class="docutils literal notranslate"><span class="pre">--verbose</span></code>, every check is
+above). Under <code class="docutils literal notranslate"><span class="pre">--verbose</span></code>, every check is
 echoed (<code class="docutils literal notranslate"><span class="pre">+</span> <span class="pre">docker</span> <span class="pre">manifest</span> <span class="pre">inspect</span> <span class="pre">&lt;url&gt;/&lt;image&gt;</span></code>) followed by a
 <code class="docutils literal notranslate"><span class="pre">registry</span> <span class="pre">hit:</span></code>/<code class="docutils literal notranslate"><span class="pre">registry</span> <span class="pre">miss:</span></code> line, and a miss also prints the
 check’s own stderr (auth error, unknown tag, …) indented below it. Both fields go through denver’s normal
 <code class="docutils literal notranslate"><span class="pre">${VAR}</span></code> interpolation, so a literal (<code class="docutils literal notranslate"><span class="pre">myusername</span></code>) and an
 env-var-sourced secret (<code class="docutils literal notranslate"><span class="pre">${DOCKER_PASSWORD_DOCKERHUB}</span></code>) are written the same
-way.</p></li>
+way.</p>
+<p>An entry without <code class="docutils literal notranslate"><span class="pre">username:</span></code>/<code class="docutils literal notranslate"><span class="pre">password:</span></code> looks for credentials in this
+order: the login docker has stored (<code class="docutils literal notranslate"><span class="pre">~/.docker/config.json</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">$DOCKER_CONFIG</span></code>), then the <code class="docutils literal notranslate"><span class="pre">machine</span></code> entry for the host in <code class="docutils literal notranslate"><span class="pre">$NETRC</span></code>
+(default <code class="docutils literal notranslate"><span class="pre">~/.netrc</span></code>).</p>
+<ul class="simple">
+<li><p>No stored login, but a netrc entry: denver runs <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span> <span class="pre">&lt;host&gt;</span></code>
+with it (password via stdin) on every run. A failed login stops the
+run — or, with <code class="docutils literal notranslate"><span class="pre">authentication:</span> <span class="pre">&quot;may-fail&quot;</span></code>, the registry is a miss.</p></li>
+<li><p>Neither: the registry is taken as public, no login.</p></li>
+<li><p>Stored login, only under <code class="docutils literal notranslate"><span class="pre">--force</span></code>: denver tests it with a
+non-interactive <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span> <span class="pre">&lt;host&gt;</span></code>, so an expired token shows up
+early, not later as “pull access denied”. If docker rejects it, denver
+tries the netrc entry, then on a terminal runs <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">login</span> <span class="pre">&lt;host&gt;</span></code>
+for you (up to 3 tries). If all fail, the run stops — or, with
+<code class="docutils literal notranslate"><span class="pre">authentication:</span> <span class="pre">&quot;may-fail&quot;</span></code>, the registry is a miss.</p></li>
+<li><p>Registry not reachable (offline, proxy/DNS error, server down): not a
+rejection. The manifest check runs and misses, so denver falls back to
+a local image or a build.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">authentication:</span> <span class="pre">false</span></code> skips all of this. The stored-login test is
+also skipped under <code class="docutils literal notranslate"><span class="pre">--ci</span></code>. Only hosts from <code class="docutils literal notranslate"><span class="pre">registries:</span></code> are used. A
+<a class="reference internal" href="netrc.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">netrc</span></code></span></a> stage before <code class="docutils literal notranslate"><span class="pre">docker</span></code> exports <code class="docutils literal notranslate"><span class="pre">NETRC</span></code>, so its file is
+used.</p>
+</li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">compose.file</span></code></strong> (<strong>required</strong>) — a single path or a list for multiple
 <code class="docutils literal notranslate"><span class="pre">-f</span></code> overlays — never guessed, see “Explicit over implicit” in
 <a class="reference internal" href="../concepts/philosophy.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">../concepts/philosophy.md</span></code></span></a>.</p></li>

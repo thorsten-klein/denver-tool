@@ -62,8 +62,9 @@ before their first run.
 
 - **`exe`** (default: `docker` on `PATH`) — the docker executable.
 - **`authentication`** (default `true`) — `true`, `false` or `"may-fail"`,
-  for every `registries:` entry that has `username:`/`password:`. An entry
-  can set its own `authentication:`, which wins over this one.
+  for every `registries:` entry (for one without `username:`/`password:`,
+  see stored login and netrc below). An entry can set its own
+  `authentication:`, which wins over this one.
   - `true`: denver runs `docker login` before it checks the registry, and a
     failed login stops the run.
   - `false`: denver never runs `docker login`. The registry is still
@@ -92,13 +93,36 @@ before their first run.
   be — when present, `docker login <url>` runs automatically, credentials
   piped via stdin (never argv, never logged), right before the manifest
   check against that entry (unless `authentication:` says otherwise, see
-  above); an entry with neither is assumed already-authenticated or public. Under `--verbose`, every check is
+  above). Under `--verbose`, every check is
   echoed (`+ docker manifest inspect <url>/<image>`) followed by a
   `registry hit:`/`registry miss:` line, and a miss also prints the
   check’s own stderr (auth error, unknown tag, …) indented below it. Both fields go through denver’s normal
   `${VAR}` interpolation, so a literal (`myusername`) and an
   env-var-sourced secret (`${DOCKER_PASSWORD_DOCKERHUB}`) are written the same
   way.
+
+  An entry without `username:`/`password:` looks for credentials in this
+  order: the login docker has stored (`~/.docker/config.json`, or
+  `$DOCKER_CONFIG`), then the `machine` entry for the host in `$NETRC`
+  (default `~/.netrc`).
+  - No stored login, but a netrc entry: denver runs `docker login <host>`
+    with it (password via stdin) on every run. A failed login stops the
+    run — or, with `authentication: "may-fail"`, the registry is a miss.
+  - Neither: the registry is taken as public, no login.
+  - Stored login, only under `--force`: denver tests it with a
+    non-interactive `docker login <host>`, so an expired token shows up
+    early, not later as “pull access denied”. If docker rejects it, denver
+    tries the netrc entry, then on a terminal runs `docker login <host>`
+    for you (up to 3 tries). If all fail, the run stops — or, with
+    `authentication: "may-fail"`, the registry is a miss.
+  - Registry not reachable (offline, proxy/DNS error, server down): not a
+    rejection. The manifest check runs and misses, so denver falls back to
+    a local image or a build.
+
+  `authentication: false` skips all of this. The stored-login test is
+  also skipped under `--ci`. Only hosts from `registries:` are used. A
+  [`netrc`](netrc.md) stage before `docker` exports `NETRC`, so its file is
+  used.
 - **`compose.file`** (**required**) — a single path or a list for multiple
   `-f` overlays — never guessed, see “Explicit over implicit” in
   [`../concepts/philosophy.md`](../concepts/philosophy.md).
