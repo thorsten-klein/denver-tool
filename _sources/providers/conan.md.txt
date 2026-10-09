@@ -108,6 +108,18 @@ needs 'conan' on PATH`.
   the error names the remote that was unavailable. A 401/403 keeps the
   behavior above. Any other login failure that stops the run suggests
   `-c conan.authentication=false` to work from the local cache only.
+
+  Credentials for a remote, first found wins:
+  1. conan's own: the `auth_remote.py` plugin, `credentials.json`,
+     `CONAN_LOGIN_USERNAME_<REMOTE>`/`CONAN_PASSWORD_<REMOTE>`.
+  2. The `machine` entry for the remote's host in `$NETRC` (default
+     `~/.netrc`). `host:port` matches too, `default` never.
+  3. A prompt, only on a terminal.
+
+  If the remote rejects conan's own credentials, denver tries netrc, then
+  the prompt. So in CI a netrc entry is enough. The password is never
+  printed. A [`netrc`](netrc.md) stage before `conan` sets `NETRC`.
+  `authentication: false` never reads netrc.
 - **`profiles`** — `host`/`build`, each a list; every entry becomes its own
   `-pr:h=<value>` / `-pr:b=<value>` flag, in list order. Empty by default
   (no explicit profile flags).

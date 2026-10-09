@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=0e74bf8e"></script>
+      <script src="../_static/documentation_options.js?v=e5c2068c"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/78be21c4cb8c639c94df7ad53ccd66d840f77795">1.7.0-14-g78be21c</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/c9fe6d7d6f763df0302a0d56b623b1d430dd16f6">1.7.0-15-gc9fe6d7</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -532,6 +532,18 @@ If the local cache does not have what is needed, the run still fails, and
 the error names the remote that was unavailable. A 401/403 keeps the
 behavior above. Any other login failure that stops the run suggests
 <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">conan.authentication=false</span></code> to work from the local cache only.</p>
+<p>Credentials for a remote, first found wins:</p>
+<ol class="arabic simple">
+<li><p>conan’s own: the <code class="docutils literal notranslate"><span class="pre">auth_remote.py</span></code> plugin, <code class="docutils literal notranslate"><span class="pre">credentials.json</span></code>,
+<code class="docutils literal notranslate"><span class="pre">CONAN_LOGIN_USERNAME_&lt;REMOTE&gt;</span></code>/<code class="docutils literal notranslate"><span class="pre">CONAN_PASSWORD_&lt;REMOTE&gt;</span></code>.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">machine</span></code> entry for the remote’s host in <code class="docutils literal notranslate"><span class="pre">$NETRC</span></code> (default
+<code class="docutils literal notranslate"><span class="pre">~/.netrc</span></code>). <code class="docutils literal notranslate"><span class="pre">host:port</span></code> matches too, <code class="docutils literal notranslate"><span class="pre">default</span></code> never.</p></li>
+<li><p>A prompt, only on a terminal.</p></li>
+</ol>
+<p>If the remote rejects conan’s own credentials, denver tries netrc, then
+the prompt. So in CI a netrc entry is enough. The password is never
+printed. A <a class="reference internal" href="netrc.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">netrc</span></code></span></a> stage before <code class="docutils literal notranslate"><span class="pre">conan</span></code> sets <code class="docutils literal notranslate"><span class="pre">NETRC</span></code>.
+<code class="docutils literal notranslate"><span class="pre">authentication:</span> <span class="pre">false</span></code> never reads netrc.</p>
 </li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">profiles</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">host</span></code>/<code class="docutils literal notranslate"><span class="pre">build</span></code>, each a list; every entry becomes its own
 <code class="docutils literal notranslate"><span class="pre">-pr:h=&lt;value&gt;</span></code> / <code class="docutils literal notranslate"><span class="pre">-pr:b=&lt;value&gt;</span></code> flag, in list order. Empty by default
