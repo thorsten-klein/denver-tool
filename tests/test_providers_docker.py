@@ -8,7 +8,13 @@ from pathlib import Path
 import pytest
 
 from denver_errors import DenverError
-from denver_providers.docker import DockerProvider, netrc_credentials, registry_host, stored_registry_hosts
+from denver_providers.docker import (
+    MAX_LOGIN_PROMPTS,
+    DockerProvider,
+    netrc_credentials,
+    registry_host,
+    stored_registry_hosts,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -678,6 +684,11 @@ def test_stored_registry_hosts_reads_auths_and_cred_helpers(tmp_path):
     assert stored_registry_hosts({"DOCKER_CONFIG": str(tmp_path)}) == {"docker.io", "ghcr.io"}
 
 
+def test_stored_registry_hosts_not_an_object_is_empty(tmp_path):
+    (tmp_path / "config.json").write_text("[]")
+    assert stored_registry_hosts({"DOCKER_CONFIG": str(tmp_path)}) == set()
+
+
 def test_stored_registry_hosts_without_config_is_empty(tmp_path):
     assert stored_registry_hosts({"DOCKER_CONFIG": str(tmp_path / "missing")}) == set()
 
@@ -750,6 +761,15 @@ def test_stored_login_rejected_relogs_in_on_a_terminal(make_context, run_recorde
     assert logins[0].kwargs["input"] == ""
     assert "input" not in logins[1].kwargs  # interactive: docker prompts itself
     assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+def test_stored_login_relogin_gives_up_after_max_tries(make_context, run_recorder, which, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1)
+
+    with pytest.raises(DenverError, match="were rejected"):
+        run_docker(config, ctx)
+    assert len(_logins(run_recorder)) == 1 + MAX_LOGIN_PROMPTS
 
 
 def test_stored_login_without_force_is_not_checked(make_context, run_recorder, which, tmp_path, monkeypatch):

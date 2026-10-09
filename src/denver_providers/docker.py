@@ -465,25 +465,33 @@ class DockerProvider(Provider):
         return self._login_registry(ctx, exe, registry["url"], registry["username"], registry["password"], may_fail)
 
     def _check_stored_login(self, ctx, exe, url, may_fail):
-        """Make sure docker can log in to ``url``'s host (entry without 'username:'/'password:').
+        """Make sure docker can log in to the host of ``url`` (entry without 'username:'/'password:').
 
-        Credentials, first found wins: docker's stored login, then netrc.
-        No stored login: log in with the netrc entry, if any (else: public).
-        A stored login is tested only under --force (costs a round trip), not
-        under --ci, by a `docker login <host>` with empty stdin, so docker
-        never prompts. Registry not reached: True, the manifest check decides.
-        Rejected: try netrc, then on a terminal ask for a new login
-        (``MAX_LOGIN_PROMPTS`` tries); else die, or under ``may_fail`` warn
-        and return False (a miss).
+        No stored login: use netrc, if it has the host (else public).
+        Stored login: tested only under --force, not under --ci. If rejected:
+        netrc, then a prompt. Else die, or under ``may_fail`` return False.
         """
         host = registry_host(url)
         if host not in stored_registry_hosts(ctx.env):
-            result = self._netrc_login(ctx, exe, host)
-            if result is None or result.returncode == 0 or _unreachable(result):
-                return True
-            return _auth_failed(f"docker: login to '{host}' with credentials from netrc failed", may_fail)
-        if not ctx.force or ctx.ci:
+            return self._login_with_netrc(ctx, exe, host, may_fail)
+        if not ctx.force or ctx.ci or self._stored_login_works(ctx, exe, host):
             return True
+        netrc_result = self._netrc_login(ctx, exe, host)
+        if (netrc_result is not None and netrc_result.returncode == 0) or self._relogin_interactive(ctx, exe, host):
+            return True
+        return _auth_failed(
+            f"docker: stored credentials for '{host}' were rejected -- run 'docker login {host}'", may_fail
+        )
+
+    def _login_with_netrc(self, ctx, exe, host, may_fail):
+        """No stored login: log in with netrc, if it has the host. Not reachable is fine."""
+        result = self._netrc_login(ctx, exe, host)
+        if result is None or result.returncode == 0 or _unreachable(result):
+            return True
+        return _auth_failed(f"docker: login to '{host}' with credentials from netrc failed", may_fail)
+
+    def _stored_login_works(self, ctx, exe, host):
+        """Test the stored login: `docker login <host>` with empty stdin, so no prompt. Not reachable counts as ok."""
         result = ctx.run([exe, "login", host], input="", check=False, capture=True)
         if result.returncode == 0:
             return True
@@ -491,14 +499,7 @@ class DockerProvider(Provider):
             _verbose_note(ctx, f"registry '{host}' unreachable, stored credentials not checked", result)
             return True
         _verbose_note(ctx, f"stored credentials for '{host}' rejected (exit {result.returncode})", result)
-        netrc_result = self._netrc_login(ctx, exe, host)
-        if netrc_result is not None and netrc_result.returncode == 0:
-            return True
-        if self._relogin_interactive(ctx, exe, host):
-            return True
-        return _auth_failed(
-            f"docker: stored credentials for '{host}' were rejected -- run 'docker login {host}'", may_fail
-        )
+        return False
 
     def _netrc_login(self, ctx, exe, host):
         """`docker login <host>` with netrc's credentials for ``host``: the captured result, or None if netrc has none."""
