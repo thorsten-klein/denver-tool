@@ -51,6 +51,8 @@ def _fresh_per_process_state(monkeypatch, tmp_path):
     monkeypatch.setattr(recipes, "_usable_remote_names", None)
     monkeypatch.setattr(recipes, "_unavailable_remotes", set())
     monkeypatch.setattr(recipes, "_usable_remotes_file", lambda: tmp_path / recipes.USABLE_REMOTES_FILENAME)
+    # never use the real ~/.netrc
+    monkeypatch.setenv("NETRC", str(tmp_path / "no-netrc"))
 
 
 # --------------------------------------------------------------------------- #
@@ -242,6 +244,150 @@ def test_authenticate_remote_reraises_when_not_interactive(monkeypatch):
     with pytest.raises(AuthenticationException):
         recipes.authenticate_remote(remote)
     assert prompted == []
+
+
+# --------------------------------------------------------------------------- #
+# netrc
+# --------------------------------------------------------------------------- #
+def _write_netrc(monkeypatch, tmp_path, text="machine artifacts.example.com login bot password tok\n"):
+    path = tmp_path / "netrc"
+    path.write_text(text)
+    monkeypatch.setenv("NETRC", str(path))
+
+
+ARTIFACTS = "https://artifacts.example.com/artifactory/api/conan/team"
+
+
+@pytest.mark.parametrize(
+    ("text", "url", "expected"),
+    [
+        ("machine Artifacts.example.com login bot password tok\n", ARTIFACTS, ("bot", "tok")),
+        (
+            "machine artifacts.example.com:8443 login bot password tok\n",
+            "https://artifacts.example.com:8443/x",
+            ("bot", "tok"),
+        ),
+        (
+            "machine artifacts.example.com login bot password tok\n",
+            "https://artifacts.example.com:8443/x",
+            ("bot", "tok"),
+        ),
+        ("machine other.example.com login bot password tok\n", ARTIFACTS, None),
+        ("default login bot password tok\n", ARTIFACTS, None),
+    ],
+    ids=["host", "host-port", "host-ignores-port", "other-host", "default-ignored"],
+)
+def test_netrc_credentials(monkeypatch, tmp_path, text, url, expected):
+    _write_netrc(monkeypatch, tmp_path, text)
+    assert recipes.netrc_credentials(url) == expected
+
+
+def test_netrc_credentials_without_file_is_none():
+    assert recipes.netrc_credentials(ARTIFACTS) is None
+
+
+def test_authenticate_remote_offers_netrc_as_conan_env(monkeypatch, tmp_path):
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.delenv("CONAN_PASSWORD", raising=False)
+    seen = []
+
+    def user_auth(r, force=False):
+        seen.append((os.environ.get("CONAN_LOGIN_USERNAME_TEAM_REMOTE"), os.environ.get("CONAN_PASSWORD_TEAM_REMOTE")))
+
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=types.SimpleNamespace(user_auth=user_auth)))
+
+    recipes.authenticate_remote(Remote("team-remote", ARTIFACTS))
+
+    assert seen == [("bot", "tok")]
+    assert "CONAN_PASSWORD_TEAM_REMOTE" not in os.environ  # removed again
+
+
+def test_authenticate_remote_keeps_a_username_env_already_set(monkeypatch, tmp_path):
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.delenv("CONAN_PASSWORD", raising=False)
+    monkeypatch.setenv("CONAN_LOGIN_USERNAME_TEAM", "mine")
+    user_auth = lambda r, force=False: None  # noqa: E731
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=types.SimpleNamespace(user_auth=user_auth)))
+
+    recipes.authenticate_remote(Remote("team", ARTIFACTS))
+
+    assert os.environ["CONAN_LOGIN_USERNAME_TEAM"] == "mine"
+
+
+def test_authenticate_remote_conan_password_env_wins_over_netrc(monkeypatch, tmp_path):
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.setenv("CONAN_PASSWORD_TEAM", "from-env")
+    seen = []
+    user_auth = lambda r, force=False: seen.append(os.environ.get("CONAN_PASSWORD_TEAM"))  # noqa: E731
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=types.SimpleNamespace(user_auth=user_auth)))
+
+    recipes.authenticate_remote(Remote("team", ARTIFACTS))
+
+    assert seen == ["from-env"]
+
+
+def _rejecting_api(logged_in, login_error=None):
+    def user_auth(r, force=False):
+        raise AuthenticationException("Wrong user or password")
+
+    def user_login(r, user, password):
+        logged_in.append((r.name, user, password))
+        if login_error:
+            raise login_error
+
+    return types.SimpleNamespace(remotes=types.SimpleNamespace(user_auth=user_auth, user_login=user_login))
+
+
+def test_authenticate_remote_netrc_after_stale_conan_credentials(monkeypatch, tmp_path):
+    # stale conan login -> netrc, no prompt, also in CI
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.setenv("CONAN_PASSWORD_TEAM", "stale")
+    logged_in = []
+    monkeypatch.setattr(recipes, "conan_api", _rejecting_api(logged_in))
+    monkeypatch.setattr(recipes.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(recipes, "_prompt_and_login", lambda r: pytest.fail("prompted"))
+
+    recipes.authenticate_remote(Remote("team", ARTIFACTS))
+
+    assert logged_in == [("team", "bot", "tok")]
+
+
+def test_authenticate_remote_rejected_netrc_is_not_retried(monkeypatch, tmp_path):
+    # netrc itself failed -> prompt, no second netrc try
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.delenv("CONAN_PASSWORD", raising=False)
+    logged_in = []
+    monkeypatch.setattr(recipes, "conan_api", _rejecting_api(logged_in))
+    monkeypatch.setattr(recipes.sys.stdin, "isatty", lambda: True)
+    prompted = []
+    monkeypatch.setattr(recipes, "_prompt_and_login", lambda r: prompted.append(r.name))
+
+    recipes.authenticate_remote(Remote("team", ARTIFACTS))
+
+    assert logged_in == []
+    assert prompted == ["team"]
+
+
+def test_authenticate_remote_rejected_netrc_reraises_when_not_interactive(monkeypatch, tmp_path):
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.setenv("CONAN_PASSWORD_TEAM", "stale")
+    logged_in = []
+    monkeypatch.setattr(recipes, "conan_api", _rejecting_api(logged_in, AuthenticationException("no")))
+    monkeypatch.setattr(recipes.sys.stdin, "isatty", lambda: False)
+
+    remote = Remote("team", ARTIFACTS)
+    with pytest.raises(AuthenticationException):
+        recipes.authenticate_remote(remote)
+    assert logged_in == [("team", "bot", "tok")]
+
+
+def test_conan_login_skips_when_netrc_username_unchanged(monkeypatch, tmp_path):
+    _write_netrc(monkeypatch, tmp_path)
+    api = FakeRemotesAPI([Remote("team", ARTIFACTS)])
+    api._user_info["team"] = {"username": "bot"}
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=api))
+    recipes.conan_login({"team": {}})
+    assert api.auth_calls == []
 
 
 def test_prompt_and_login_uses_input_and_getpass(monkeypatch):
