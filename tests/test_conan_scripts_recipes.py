@@ -302,6 +302,18 @@ def test_authenticate_remote_offers_netrc_as_conan_env(monkeypatch, tmp_path):
     assert "CONAN_PASSWORD_TEAM_REMOTE" not in os.environ  # removed again
 
 
+def test_authenticate_remote_keeps_a_username_env_already_set(monkeypatch, tmp_path):
+    _write_netrc(monkeypatch, tmp_path)
+    monkeypatch.delenv("CONAN_PASSWORD", raising=False)
+    monkeypatch.setenv("CONAN_LOGIN_USERNAME_TEAM", "mine")
+    user_auth = lambda r, force=False: None  # noqa: E731
+    monkeypatch.setattr(recipes, "conan_api", types.SimpleNamespace(remotes=types.SimpleNamespace(user_auth=user_auth)))
+
+    recipes.authenticate_remote(Remote("team", ARTIFACTS))
+
+    assert os.environ["CONAN_LOGIN_USERNAME_TEAM"] == "mine"
+
+
 def test_authenticate_remote_conan_password_env_wins_over_netrc(monkeypatch, tmp_path):
     _write_netrc(monkeypatch, tmp_path)
     monkeypatch.setenv("CONAN_PASSWORD_TEAM", "from-env")
