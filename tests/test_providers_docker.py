@@ -8,7 +8,13 @@ from pathlib import Path
 import pytest
 
 from denver_errors import DenverError
-from denver_providers.docker import DockerProvider
+from denver_providers.docker import DockerProvider, netrc_credentials, registry_host, stored_registry_hosts
+
+
+@pytest.fixture(autouse=True)
+def _no_host_netrc(monkeypatch, tmp_path):
+    """Keep the real ~/.netrc out: a registry without credentials would log in with it."""
+    monkeypatch.setenv("NETRC", str(tmp_path / "no-netrc"))
 
 
 def compose_config(volumes=None, service="dev", returncode=0, stderr=""):
@@ -628,6 +634,247 @@ def test_registry_authentication_false_overrides_section_default(make_context, r
 
     assert not any(" login " in c for c in run_recorder.commands())
     assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/myapp:dev"
+
+
+# ---- registries: without credentials -- stored docker login tested ----------------------#
+def _stored_login_setup(make_context, run_recorder, tmp_path, auths, stored_rc, registries=None, force=True, **section):
+    """Docker stage (--force by default); config.json lists ``auths``; the login test returns ``stored_rc``."""
+    docker_config = tmp_path / "docker-config"
+    docker_config.mkdir()
+    (docker_config / "config.json").write_text(json.dumps({"auths": {a: {} for a in auths}}))
+    registries = registries or [{"url": "registry1.example.com/team"}]
+    config = {"docker": docker_cfg(image="myapp:dev", registries=registries, **section)}
+    ctx = make_context(config=config, env={"DOCKER_CONFIG": str(docker_config)}, force=force)
+    write_compose(ctx)
+    run_recorder.responses["image inspect"] = lambda cmd: type("R", (), {"returncode": 1})()
+    run_recorder.responses["login registry1.example.com"] = lambda cmd: type(
+        "R", (), {"returncode": stored_rc, "stdout": "", "stderr": "Bad Credentials"}
+    )()
+    run_recorder.responses["manifest inspect"] = lambda cmd: type("R", (), {"returncode": 0})()
+    return ctx, config
+
+
+def _not_a_tty(monkeypatch):
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False, raising=False)
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("registry1.example.com", "registry1.example.com"),
+        ("https://Registry1.example.com:5009/team/x", "registry1.example.com:5009"),
+        ("index.docker.io", "docker.io"),
+        ("https://index.docker.io/v1/", "docker.io"),
+    ],
+)
+def test_registry_host(url, expected):
+    assert registry_host(url) == expected
+
+
+def test_stored_registry_hosts_reads_auths_and_cred_helpers(tmp_path):
+    (tmp_path / "config.json").write_text(
+        json.dumps({"auths": {"https://index.docker.io/v1/": {"auth": "secret"}}, "credHelpers": {"ghcr.io": "x"}})
+    )
+    assert stored_registry_hosts({"DOCKER_CONFIG": str(tmp_path)}) == {"docker.io", "ghcr.io"}
+
+
+def test_stored_registry_hosts_without_config_is_empty(tmp_path):
+    assert stored_registry_hosts({"DOCKER_CONFIG": str(tmp_path / "missing")}) == set()
+
+
+def test_stored_login_valid_checks_registry(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=0)
+
+    run_docker(config, ctx)
+
+    login = next(c for c in run_recorder.calls if "login registry1.example.com" in " ".join(map(str, c.cmd)))
+    assert login.kwargs["input"] == ""  # empty stdin: docker never prompts
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+def test_stored_login_not_stored_is_not_checked(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["other.example.com"], stored_rc=1)
+
+    run_docker(config, ctx)
+
+    assert not any(" login " in c for c in run_recorder.commands())
+
+
+def test_stored_login_rejected_dies_without_terminal(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1)
+
+    with pytest.raises(DenverError, match=r"stored credentials for 'registry1\.example\.com' were rejected"):
+        run_docker(config, ctx)
+    assert not any("manifest inspect" in c for c in run_recorder.commands())
+
+
+def test_stored_login_rejected_may_fail_is_a_miss(make_context, run_recorder, which, tmp_path, monkeypatch, caplog):
+    _not_a_tty(monkeypatch)
+    ctx, config = _stored_login_setup(
+        make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1, authentication="may-fail"
+    )
+
+    run_docker(config, ctx)
+
+    assert not any("manifest inspect" in c for c in run_recorder.commands())
+    assert "treating it as a miss" in caplog.text
+
+
+def test_stored_login_authentication_false_is_not_checked(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    ctx, config = _stored_login_setup(
+        make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1, authentication=False
+    )
+
+    run_docker(config, ctx)
+
+    assert not any(" login " in c for c in run_recorder.commands())
+
+
+def test_stored_login_rejected_relogs_in_on_a_terminal(make_context, run_recorder, which, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1)
+    # test rejected, first interactive login fails, second works
+    answers = iter([1, 1, 0])
+    run_recorder.responses["login registry1.example.com"] = lambda cmd: type(
+        "R", (), {"returncode": next(answers), "stdout": "", "stderr": ""}
+    )()
+
+    run_docker(config, ctx)
+
+    logins = [c for c in run_recorder.calls if "login registry1.example.com" in " ".join(map(str, c.cmd))]
+    assert len(logins) == 3
+    assert logins[0].kwargs["input"] == ""
+    assert "input" not in logins[1].kwargs  # interactive: docker prompts itself
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+def test_stored_login_without_force_is_not_checked(make_context, run_recorder, which, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    ctx, config = _stored_login_setup(
+        make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1, force=False
+    )
+
+    run_docker(config, ctx)
+
+    assert not any(" login " in c for c in run_recorder.commands())
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+def test_stored_login_ci_is_not_checked(make_context, run_recorder, which, tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1)
+    ctx.ci = True
+
+    run_docker(config, ctx)
+
+    assert not any(" login " in c for c in run_recorder.commands())
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+@pytest.mark.parametrize(
+    "stderr",
+    [
+        'Get "https://registry1.example.com/v2/": dial tcp: lookup registry1.example.com: no such host',
+        "login attempt to https://registry1.example.com/v2/ failed with status: 504 Gateway Timeout",
+    ],
+    ids=["dns", "proxy-timeout"],
+)
+def test_stored_login_unreachable_falls_through_to_manifest_check(
+    make_context, run_recorder, which, tmp_path, monkeypatch, stderr
+):
+    # offline: no die, no prompt -- the manifest check decides
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True, raising=False)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1)
+    run_recorder.responses["login registry1.example.com"] = lambda cmd: type(
+        "R", (), {"returncode": 1, "stdout": "", "stderr": f"Error response from daemon: {stderr}"}
+    )()
+    run_recorder.responses["manifest inspect"] = lambda cmd: type("R", (), {"returncode": 1})()
+
+    run_docker(config, ctx)
+
+    commands = run_recorder.commands()
+    assert sum("login registry1.example.com" in c for c in commands) == 1
+    assert any("manifest inspect" in c for c in commands)
+    assert any("compose" in c and " build dev" in c for c in commands)
+
+
+def test_netrc_credentials_matches_host(tmp_path):
+    (tmp_path / "netrc").write_text(
+        "machine Registry1.example.com login bot password tok\ndefault login x password y\n"
+    )
+    env = {"NETRC": str(tmp_path / "netrc")}
+    assert netrc_credentials(env, "registry1.example.com") == ("bot", "tok")
+    assert netrc_credentials(env, "other.example.com") is None
+
+
+def test_netrc_credentials_without_file_is_none(tmp_path):
+    assert netrc_credentials({"NETRC": str(tmp_path / "missing")}, "registry1.example.com") is None
+
+
+def _write_netrc(monkeypatch, tmp_path, host="registry1.example.com"):
+    netrc_path = tmp_path / "netrc"
+    netrc_path.write_text(f"machine {host} login bot password tok\n")
+    monkeypatch.setenv("NETRC", str(netrc_path))
+
+
+def _logins(run_recorder):
+    return [c for c in run_recorder.calls if "login registry1.example.com" in " ".join(map(str, c.cmd))]
+
+
+def test_netrc_used_when_docker_has_no_login(make_context, run_recorder, which, tmp_path, monkeypatch):
+    # no --force needed: like 'username:'/'password:', netrc credentials log in on every run
+    _not_a_tty(monkeypatch)
+    _write_netrc(monkeypatch, tmp_path)
+    ctx, config = _stored_login_setup(
+        make_context, run_recorder, tmp_path, ["other.example.com"], stored_rc=0, force=False
+    )
+
+    run_docker(config, ctx)
+
+    (login,) = _logins(run_recorder)
+    assert login.cmd[-3:] == ["-u", "bot", "--password-stdin"]
+    assert login.kwargs["input"] == "tok"  # via stdin, never argv
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+def test_netrc_login_failure_dies(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    _write_netrc(monkeypatch, tmp_path)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["other.example.com"], stored_rc=1)
+
+    with pytest.raises(DenverError, match="credentials from netrc failed"):
+        run_docker(config, ctx)
+
+
+def test_netrc_is_fallback_for_rejected_stored_login(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    _write_netrc(monkeypatch, tmp_path)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=1)
+    answers = iter([1, 0])  # stored login rejected, netrc works
+    run_recorder.responses["login registry1.example.com"] = lambda cmd: type(
+        "R", (), {"returncode": next(answers), "stdout": "", "stderr": ""}
+    )()
+
+    run_docker(config, ctx)
+
+    logins = _logins(run_recorder)
+    assert len(logins) == 2
+    assert logins[1].kwargs["input"] == "tok"
+    assert ctx.env["DENVER_DOCKER_IMAGE"] == "registry1.example.com/team/myapp:dev"
+
+
+def test_netrc_not_used_when_stored_login_works(make_context, run_recorder, which, tmp_path, monkeypatch):
+    _not_a_tty(monkeypatch)
+    _write_netrc(monkeypatch, tmp_path)
+    ctx, config = _stored_login_setup(make_context, run_recorder, tmp_path, ["registry1.example.com"], stored_rc=0)
+
+    run_docker(config, ctx)
+
+    assert len(_logins(run_recorder)) == 1
 
 
 # ---- --force ----------------------------------------------------------------------------#
