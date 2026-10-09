@@ -375,8 +375,9 @@ def test_authenticate_remote_rejected_netrc_reraises_when_not_interactive(monkey
     monkeypatch.setattr(recipes, "conan_api", _rejecting_api(logged_in, AuthenticationException("no")))
     monkeypatch.setattr(recipes.sys.stdin, "isatty", lambda: False)
 
+    remote = Remote("team", ARTIFACTS)
     with pytest.raises(AuthenticationException):
-        recipes.authenticate_remote(Remote("team", ARTIFACTS))
+        recipes.authenticate_remote(remote)
     assert logged_in == [("team", "bot", "tok")]
 
 
