@@ -123,12 +123,12 @@ def print_banner(text):
 
 
 def _netrc_login_after_rejection(remote, credentials):
-    """user_login() with netrc's ``credentials`` after conan's own ones were rejected; True if it worked."""
-    print(f"Remote '{remote.name}' rejected the stored credentials, trying the netrc entry for its host.")
+    """Log in with the netrc ``credentials``. True if it worked."""
+    print(f"Remote '{remote.name}' rejected the stored login. Trying netrc.")
     try:
         conan_api.remotes.user_login(remote, *credentials)
     except AuthenticationException:
-        print(f"Remote '{remote.name}' rejected the netrc credentials too.")
+        print(f"Remote '{remote.name}' rejected the netrc login too.")
         return False
     return True
 
@@ -142,9 +142,9 @@ def _prompt_and_login(remote):
 
 
 def netrc_credentials(url):
-    """``(login, password)`` for ``url``'s host from ``$NETRC`` (else ``~/.netrc``); None if not there or unreadable.
+    """``(login, password)`` for the host of ``url`` from ``$NETRC`` (default ``~/.netrc``), or None.
 
-    A ``machine`` matches the url's host, or its ``host:port``; ``default`` never does.
+    Matches ``host`` or ``host:port``. Never ``default``.
     """
     parts = urlsplit(url if "://" in url else f"//{url}")
     names = {(parts.hostname or "").lower(), parts.netloc.rpartition("@")[2].lower()} - {""}
@@ -160,19 +160,17 @@ def netrc_credentials(url):
 
 
 def _conan_env_names(remote_name):
-    """The CONAN_LOGIN_USERNAME_<REMOTE>/CONAN_PASSWORD_<REMOTE> conan reads for ``remote_name`` (see remote_credentials.py)."""
+    """Names of the user and password env vars conan reads for ``remote_name``."""
     suffix = remote_name.replace("-", "_").upper()
     return f"CONAN_LOGIN_USERNAME_{suffix}", f"CONAN_PASSWORD_{suffix}"
 
 
 @contextlib.contextmanager
 def _netrc_as_conan_env(remote, credentials):
-    """Offer netrc's ``credentials`` to conan as its env vars, only while inside, and only if no password env is set.
+    """Put the netrc ``credentials`` in conan's env vars, if no password env var is set. Yields True if it did.
 
-    Yields whether it did. conan reads its env vars after its auth plugin
-    and credentials.json, and before its own prompt -- so netrc slots in
-    right there. Restored on exit, so the password never reaches a child
-    process.
+    conan reads these after its plugin and credentials.json, before its
+    prompt. Removed again on exit, so no child process sees the password.
     """
     user_var, password_var = _conan_env_names(remote.name)
     if credentials is None or os.getenv(password_var) or os.getenv("CONAN_PASSWORD"):
@@ -180,7 +178,7 @@ def _netrc_as_conan_env(remote, credentials):
         return
     saved = {var: os.environ.get(var) for var in (user_var, password_var)}
     os.environ[user_var], os.environ[password_var] = credentials
-    print(f"Info: using the netrc entry for the host of remote '{remote.name}'.")
+    print(f"Info: using netrc for remote '{remote.name}'.")
     try:
         yield True
     finally:
@@ -192,23 +190,14 @@ def _netrc_as_conan_env(remote, credentials):
 
 
 def authenticate_remote(remote, *, force=False):
-    """conan_api.remotes.user_auth(remote), retrying with netrc, then an interactive prompt, on AuthenticationException.
+    """Log in to ``remote``. Order: conan's own credentials, netrc, then a prompt.
 
-    conan's own credential resolution (auth-plugin -> credentials.json ->
-    CONAN_LOGIN_USERNAME/CONAN_PASSWORD -> its own interactive prompt) stops
-    at the first non-interactive source that *matches* -- even a stale/wrong
-    one -- and never falls through to its own prompt in that case (see
-    conan/internal/rest/remote_credentials.py). ``$NETRC``'s entry for the
-    remote's host (netrc_credentials()) is offered as conan's env vars when
-    none of those are set, so it comes before conan's prompt. On
-    AuthenticationException denver falls back on its own: first the netrc
-    entry via user_login() (if conan's failing source was not netrc
-    itself), then, if stdin is a TTY, prompt for credentials ourselves and
-    retry once via user_login(). Non-interactive (no TTY, e.g. CI)
-    re-raises instead of hanging on a prompt nobody can answer. Under
-    --authentication-may-fail the prompt is asked the same way; if the
-    credentials typed in fail too (or the prompt gets EOF), the error
-    propagates and the remote is skipped (see _usable_remotes).
+    conan stops at the first credentials it finds, even stale ones, and
+    then does not prompt. So if they are rejected, denver tries netrc
+    (unless that was what failed), then prompts on a terminal. No
+    terminal (e.g. CI): the error is raised. Under
+    --authentication-may-fail a failed prompt skips the remote (see
+    _usable_remotes).
     """
     credentials = netrc_credentials(remote.url)
     offered = False

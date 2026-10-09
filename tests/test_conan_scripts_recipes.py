@@ -51,7 +51,7 @@ def _fresh_per_process_state(monkeypatch, tmp_path):
     monkeypatch.setattr(recipes, "_usable_remote_names", None)
     monkeypatch.setattr(recipes, "_unavailable_remotes", set())
     monkeypatch.setattr(recipes, "_usable_remotes_file", lambda: tmp_path / recipes.USABLE_REMOTES_FILENAME)
-    # keep the real ~/.netrc out: a remote would log in with it
+    # never use the real ~/.netrc
     monkeypatch.setenv("NETRC", str(tmp_path / "no-netrc"))
 
 
@@ -299,7 +299,7 @@ def test_authenticate_remote_offers_netrc_as_conan_env(monkeypatch, tmp_path):
     recipes.authenticate_remote(Remote("team-remote", ARTIFACTS))
 
     assert seen == [("bot", "tok")]
-    assert "CONAN_PASSWORD_TEAM_REMOTE" not in os.environ  # restored: never reaches a child process
+    assert "CONAN_PASSWORD_TEAM_REMOTE" not in os.environ  # removed again
 
 
 def test_authenticate_remote_conan_password_env_wins_over_netrc(monkeypatch, tmp_path):
@@ -327,7 +327,7 @@ def _rejecting_api(logged_in, login_error=None):
 
 
 def test_authenticate_remote_netrc_after_stale_conan_credentials(monkeypatch, tmp_path):
-    # stale credentials.json / env -> netrc, no prompt, even without a TTY (CI)
+    # stale conan login -> netrc, no prompt, also in CI
     _write_netrc(monkeypatch, tmp_path)
     monkeypatch.setenv("CONAN_PASSWORD_TEAM", "stale")
     logged_in = []
@@ -341,7 +341,7 @@ def test_authenticate_remote_netrc_after_stale_conan_credentials(monkeypatch, tm
 
 
 def test_authenticate_remote_rejected_netrc_is_not_retried(monkeypatch, tmp_path):
-    # netrc was conan's source itself -> straight to the prompt, no second netrc login
+    # netrc itself failed -> prompt, no second netrc try
     _write_netrc(monkeypatch, tmp_path)
     monkeypatch.delenv("CONAN_PASSWORD", raising=False)
     logged_in = []

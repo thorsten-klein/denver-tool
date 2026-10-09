@@ -109,19 +109,17 @@ needs 'conan' on PATH`.
   behavior above. Any other login failure that stops the run suggests
   `-c conan.authentication=false` to work from the local cache only.
 
-  Where the credentials for a remote come from, first found wins: conan's
-  own sources (the `auth_remote.py` plugin, `credentials.json`, then
-  `CONAN_LOGIN_USERNAME_<REMOTE>`/`CONAN_PASSWORD_<REMOTE>` or
-  `CONAN_PASSWORD`), then the `machine` entry for the remote's host in
-  `$NETRC` (default `~/.netrc`; a `machine host:port` entry matches too,
-  `default` never), then, on a terminal, a prompt. Without a terminal
-  (e.g. CI) there is no prompt, so a netrc entry is enough to log in.
-  If one of conan's own sources has credentials but the remote rejects
-  them (stale `credentials.json`, rotated password), denver tries the
-  netrc entry next, then the prompt. The netrc password is passed to
-  conan only for the login itself and is never printed. A
-  [`netrc`](netrc.md) stage before `conan` exports `NETRC`, so its file is
-  used. `authentication: false` never reads netrc.
+  Credentials for a remote, first found wins:
+  1. conan's own: the `auth_remote.py` plugin, `credentials.json`,
+     `CONAN_LOGIN_USERNAME_<REMOTE>`/`CONAN_PASSWORD_<REMOTE>`.
+  2. The `machine` entry for the remote's host in `$NETRC` (default
+     `~/.netrc`). `host:port` matches too, `default` never.
+  3. A prompt, only on a terminal.
+
+  If the remote rejects conan's own credentials, denver tries netrc, then
+  the prompt. So in CI a netrc entry is enough. The password is never
+  printed. A [`netrc`](netrc.md) stage before `conan` sets `NETRC`.
+  `authentication: false` never reads netrc.
 - **`profiles`** — `host`/`build`, each a list; every entry becomes its own
   `-pr:h=<value>` / `-pr:b=<value>` flag, in list order. Empty by default
   (no explicit profile flags).
