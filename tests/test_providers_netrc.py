@@ -9,7 +9,7 @@ import pytest
 
 from denver_errors import DenverError
 from denver_providers import netrc_verify
-from denver_providers.netrc import MAX_PROMPTS, NetrcProvider, ask_token, host_of
+from denver_providers.netrc import MAX_PROMPTS, NetrcProvider, ask_token, ask_username, host_of
 
 SECRET = "s3cr3t-token"
 
@@ -74,6 +74,7 @@ def interactive(monkeypatch, answers):
         return answers.pop(0)
 
     monkeypatch.setattr("denver_providers.netrc.ask_token", fake_ask)
+    monkeypatch.setattr("denver_providers.netrc.ask_username", fake_ask)
     return asked
 
 
@@ -98,6 +99,11 @@ def test_host_of(url, host):
 def test_ask_token_reads_without_echo(monkeypatch):
     monkeypatch.setattr("getpass.getpass", lambda prompt: f"  {SECRET} ")
     assert ask_token("?") == SECRET
+
+
+def test_ask_username_reads_with_echo(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt: "  me ")
+    assert ask_username("?") == "me"
 
 
 # ---- config defaults ----------------------------------------------------------#
@@ -128,6 +134,11 @@ def test_machine_is_complete_and_token_stays_raw(make_context):
     ]
 
 
+def test_machine_may_leave_out_username_and_token(make_context):
+    cfg = resolved(make_context(), machines=[{"url": "a.b"}])
+    assert cfg["machines"] == [{"url": "a.b", "username": None, "token": None, "overwrite": False, "verify": None}]
+
+
 def test_endpoints_are_interpolated(make_context):
     ctx = make_context(env={"BASE": "https://x"})
     assert resolved(ctx, endpoints={"h": "${BASE}/ping"})["endpoints"] == {"h": "https://x/ping"}
@@ -143,6 +154,9 @@ def test_endpoints_are_interpolated(make_context):
         {"verify": [1]},
         {"verify": [""]},
         {"prompt-interactive": 1},
+        {"machines": [{"url": "a", "username": ""}]},
+        {"machines": [{"url": "a", "token": 1}]},
+        {"machines": [{"url": "a", "username": "u", "overwrite": True}]},
         {"expiry-warning": 1.5},
         {"expiry-warning": -1},
         {"expiry-warning": True},
@@ -154,8 +168,6 @@ def test_endpoints_are_interpolated(make_context):
         {"machines": ["a"]},
         {"machines": [{"url": "a", "username": "u", "token": "t", "nope": 1}]},
         {"machines": [{"username": "u", "token": "t"}]},
-        {"machines": [{"url": "a", "token": "t"}]},
-        {"machines": [{"url": "a", "username": "u"}]},
         {"machines": [{"url": "https://", "username": "u", "token": "t"}]},
         {"machines": [{"url": "a", "username": "${UNSET_USER}", "token": "t"}]},
         {"machines": [{"url": "a", "username": "u", "token": "t", "overwrite": "yes"}]},
@@ -365,6 +377,71 @@ def test_asked_token_is_not_checked_when_verify_is_off(ctx_for, monkeypatch, tmp
     run(ctx_for({"machines": [machine(**({"verify": False} if off == "machine" else {}))], **extra}))
     assert SECRET in (tmp_path / "netrc").read_text()
     assert check.calls == []
+
+
+# ---- setup(): missing username/token --------------------------------------------------------#
+def missing(**extra):
+    return {"machines": [{"url": "https://artifacts.corp/x", **extra}]}
+
+
+def test_missing_username_and_token_are_asked_for(ctx_for, fake_check, monkeypatch, tmp_path):
+    asked = interactive(monkeypatch, ["me", SECRET])
+    run(ctx_for(missing()))
+    assert "username for artifacts.corp" in asked[0]
+    assert "me@artifacts.corp" in asked[1]
+    assert (tmp_path / "netrc").read_text() == f"machine artifacts.corp login me password {SECRET}\n"
+    assert fake_check.calls[0] == ["artifacts.corp"]  # the typed token is checked
+
+
+def test_only_the_missing_token_is_asked_for(ctx_for, fake_check, monkeypatch, tmp_path):
+    asked = interactive(monkeypatch, [SECRET])
+    run(ctx_for(missing(username="bot")))
+    assert len(asked) == 1
+    assert "no 'token:'" in asked[0]
+    assert f"login bot password {SECRET}" in (tmp_path / "netrc").read_text()
+
+
+def test_only_the_missing_username_is_asked_for(ctx_for, fake_check, monkeypatch, tmp_path):
+    asked = interactive(monkeypatch, ["me"])
+    run(ctx_for(missing(token="${TOK}"), env={"TOK": SECRET}))
+    assert len(asked) == 1
+    assert f"login me password {SECRET}" in (tmp_path / "netrc").read_text()
+
+
+def test_host_in_the_file_is_not_asked_for(ctx_for, fake_check, monkeypatch, tmp_path):
+    (tmp_path / "netrc").write_text("machine artifacts.corp login u password p\n")
+    asked = interactive(monkeypatch, [])
+    run(ctx_for(missing()))
+    assert asked == []
+
+
+def test_empty_username_answer_dies(ctx_for, monkeypatch):
+    interactive(monkeypatch, [""])
+    ctx = ctx_for(missing())
+    with pytest.raises(DenverError, match="no username entered"):
+        run(ctx)
+
+
+def test_empty_token_answer_dies(ctx_for, monkeypatch):
+    interactive(monkeypatch, ["me", ""])
+    ctx = ctx_for(missing())
+    with pytest.raises(DenverError, match=r"no working token entered \(no 'token:'\)"):
+        run(ctx)
+
+
+@pytest.mark.parametrize(("extra", "key"), [({}, "username"), ({"username": "bot"}, "token")])
+def test_missing_value_dies_without_a_terminal(ctx_for, extra, key):
+    ctx = ctx_for(missing(**extra))
+    with pytest.raises(DenverError, match=f"no '{key}:' and no terminal"):
+        run(ctx)
+
+
+def test_missing_value_is_not_asked_with_prompt_interactive_off(ctx_for, monkeypatch):
+    asked = interactive(monkeypatch, ["me", SECRET])
+    ctx = ctx_for({**missing(), "prompt-interactive": False})
+    with pytest.raises(DenverError, match="no 'username:' and no terminal"):
+        run(ctx)
+    assert asked == []
 
 
 # ---- setup(): verify -----------------------------------------------------------------#
