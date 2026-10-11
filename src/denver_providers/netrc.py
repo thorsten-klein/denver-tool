@@ -45,6 +45,11 @@ def ask_token(prompt):
     return getpass.getpass(prompt).strip()
 
 
+def ask_username(prompt):
+    """One user name typed at the terminal, with echo. Empty if the user just pressed enter."""
+    return input(prompt).strip()
+
+
 class NetrcProvider(Provider):
     """Maintains and verifies a .netrc file -- see doc/providers/netrc.md for its config keys."""
 
@@ -161,25 +166,39 @@ class NetrcProvider(Provider):
 
     @classmethod
     def _machine(cls, ctx, machine):
-        """One 'machines:' entry, validated and with every key present."""
-        die_on_unknown_keys(machine, cls.MACHINE_KEYS, "netrc: 'machines:' entry")
-        die_unless_required_strings(machine, ("url", "username", "token"), "netrc: 'machines:' entry")
+        """One 'machines:' entry, validated and with every key present ('username'/'token' None if left out)."""
+        where = "netrc: 'machines:' entry"
+        die_on_unknown_keys(machine, cls.MACHINE_KEYS, where)
+        given = [key for key in ("username", "token") if machine.get(key) is not None]
+        die_unless_required_strings(machine, ("url", *given), where)
         url = interpolate(machine["url"], ctx.variables)
-        if not host_of(url):
-            die(f"netrc: 'machines:' entry: no host in url {machine['url']!r}")
-        username = interpolate(machine["username"], ctx.variables)
-        if not username.strip():
-            die(f"netrc: machine '{host_of(url)}': 'username:' is empty after expanding {machine['username']!r}")
+        host = host_of(url)
+        if not host:
+            die(f"{where}: no host in url {machine['url']!r}")
+        username = cls._username_setting(ctx, machine.get("username"), host)
         verify = machine.get("verify")
         if verify is not None and not isinstance(verify, bool):
-            die(f"netrc: machine '{host_of(url)}': 'verify:' must be a boolean (got {verify!r})")
+            die(f"netrc: machine '{host}': 'verify:' must be a boolean (got {verify!r})")
+        overwrite = cls._bool(machine, "overwrite", default=False)
+        if overwrite and len(given) < 2:
+            die(f"netrc: machine '{host}': 'overwrite: true' needs 'username:' and 'token:'")
         return {
             "url": url,
             "username": username,
-            "token": machine["token"],
-            "overwrite": cls._bool(machine, "overwrite", default=False),
+            "token": machine.get("token"),
+            "overwrite": overwrite,
             "verify": verify,
         }
+
+    @staticmethod
+    def _username_setting(ctx, username, host):
+        """A machine's 'username:', expanded; None if left out; dies if it expands to nothing."""
+        if username is None:
+            return None
+        expanded = interpolate(username, ctx.variables)
+        if not expanded.strip():
+            die(f"netrc: machine '{host}': 'username:' is empty after expanding {username!r}")
+        return expanded
 
     # ---- lifecycle ----------------------------------------------------------- #
     def setup(self, ctx):
@@ -265,25 +284,39 @@ class NetrcProvider(Provider):
         host = host_of(machine["url"])
         if netrc_file.has_machine(text, host) and not machine["overwrite"]:
             return text
-        token = self._token(ctx, cfg, machine, host)
-        if have.get(host) == (machine["username"], token):
+        username = machine["username"] or self._username(ctx, cfg, host)
+        token = self._token(ctx, cfg, machine, host, username)
+        if have.get(host) == (username, token):
             return text
-        self._check_writable(host, machine["username"], token)
-        return netrc_file.set_machine(text, host, machine["username"], token)
+        self._check_writable(host, username, token)
+        return netrc_file.set_machine(text, host, username, token)
 
-    def _token(self, ctx, cfg, machine, host):
+    def _username(self, ctx, cfg, host):
+        """A user name for a machine without 'username:', asked for on a terminal, else a die."""
+        if not self._interactive(ctx, cfg):
+            die(f"netrc[{self.stage}]: machine '{host}': no 'username:' and no terminal to ask for one")
+        username = ask_username(f"netrc[{self.stage}]: username for {host}: ")
+        if not username:
+            die(f"netrc[{self.stage}]: machine '{host}': no username entered")
+        return username
+
+    def _token(self, ctx, cfg, machine, host, username):
         """A machine's token, expanded; asked for if that came out empty and a terminal is there, else a die."""
-        token = interpolate(machine["token"], ctx.variables)
-        if token.strip():
-            return token.strip()
+        written = machine["token"]
+        token = interpolate(written, ctx.variables).strip() if written is not None else ""
+        if token:
+            return token
+        why = f"{written} is empty" if written is not None else "no 'token:'"
         if self._interactive(ctx, cfg):
-            prompt = f"netrc[{self.stage}]: token for {machine['username']}@{host} ({machine['token']} is empty): "
+            prompt = f"netrc[{self.stage}]: token for {username}@{host} ({why}): "
             check = self._is_verified(cfg, host) and machine["verify"] is not False
-            token, _ = self._ask_checked(cfg, host, machine["username"], prompt, check=check)
+            token, _ = self._ask_checked(cfg, host, username, prompt, check=check)
             if token:
                 return token
-            die(f"netrc[{self.stage}]: machine '{host}': no working token entered ({machine['token']} is empty)")
-        die(f"netrc[{self.stage}]: machine '{host}': {machine['token']} is empty -- is the variable set?")
+            die(f"netrc[{self.stage}]: machine '{host}': no working token entered ({why})")
+        if written is None:
+            die(f"netrc[{self.stage}]: machine '{host}': no 'token:' and no terminal to ask for one")
+        die(f"netrc[{self.stage}]: machine '{host}': {written} is empty -- is the variable set?")
         return ""  # pragma: no cover -- unreachable, die() above never returns; satisfies ruff's RET503
 
     def _ask_checked(self, cfg, host, login, prompt, *, check):
