@@ -417,26 +417,30 @@ def test_host_in_the_file_is_not_asked_for(ctx_for, fake_check, monkeypatch, tmp
 
 def test_empty_username_answer_dies(ctx_for, monkeypatch):
     interactive(monkeypatch, [""])
+    ctx = ctx_for(missing())
     with pytest.raises(DenverError, match="no username entered"):
-        run(ctx_for(missing()))
+        run(ctx)
 
 
 def test_empty_token_answer_dies(ctx_for, monkeypatch):
     interactive(monkeypatch, ["me", ""])
+    ctx = ctx_for(missing())
     with pytest.raises(DenverError, match=r"no working token entered \(no 'token:'\)"):
-        run(ctx_for(missing()))
+        run(ctx)
 
 
 @pytest.mark.parametrize(("extra", "key"), [({}, "username"), ({"username": "bot"}, "token")])
 def test_missing_value_dies_without_a_terminal(ctx_for, extra, key):
+    ctx = ctx_for(missing(**extra))
     with pytest.raises(DenverError, match=f"no '{key}:' and no terminal"):
-        run(ctx_for(missing(**extra)))
+        run(ctx)
 
 
 def test_missing_value_is_not_asked_with_prompt_interactive_off(ctx_for, monkeypatch):
     asked = interactive(monkeypatch, ["me", SECRET])
+    ctx = ctx_for({**missing(), "prompt-interactive": False})
     with pytest.raises(DenverError, match="no 'username:' and no terminal"):
-        run(ctx_for({**missing(), "prompt-interactive": False}))
+        run(ctx)
     assert asked == []
 
 
