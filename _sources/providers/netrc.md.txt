@@ -35,15 +35,17 @@ stage, see [Configuration](../configuration/config-file.md).)
 - **`seed-from`** — a file to copy into `path` **once**, when `path` is empty. Default: none.
 - **`machines`** — a list of entries to write into `path`:
   - **`url`** (required) — a URL or a host name. Only the host is used (`https://a.b:8443/x` → `a.b`).
-  - **`username`** (required) — the `login`.
-  - **`token`** (required) — the `password`. Write `${NAME}` to read an environment variable.
+  - **`username`** — the `login`. If left out, it is asked for (see "Prompts").
+  - **`token`** — the `password`. Write `${NAME}` to read an environment variable. If left out,
+    it is asked for (see "Prompts").
   - **`overwrite`** — default `false`. If the host is already in the file, `false` keeps it and
-    `true` replaces it.
+    `true` replaces it. `true` needs `username` and `token`.
   - **`verify`** — `false` skips the check for this host.
 - **`verify`** — check the tokens. Default: `true`. A boolean turns the check on or off for every
   host. A list of URLs or host names (only the host is used) checks just those hosts and leaves the
   others alone; an empty list checks nothing.
-- **`prompt-interactive`** — ask for a token on a terminal. Default: `true`. See "Prompts".
+- **`prompt-interactive`** — ask for a missing username or token on a terminal. Default: `true`.
+  See "Prompts".
 - **`endpoints`** — `host: url` pairs: the URL to check that host against (Basic auth).
 - **`expiry-warning`** — warn when a GitHub token ends within this many days. Default: `7`.
 - **`recheck-after`** — seconds before an unchanged file is checked again. Default: `86400`.
@@ -82,8 +84,22 @@ passes.
 
 With `prompt-interactive: true` and a terminal, denver asks for a token (no echo) when:
 
-- a needed token is empty, or
-- a token is `REJECTED`.
+- a needed token is empty,
+- a token is `REJECTED`, or
+- a machine has no `username` or `token` and its host is not in the file yet.
+
+So a list of URLs is enough. Each user types their own login once:
+
+```yaml
+netrc:
+  provider: netrc
+  machines:
+  - url: https://artifacts.example.com
+  - url: https://gitlab.example.com
+    username: ${USER}
+```
+
+The username is asked with echo, the token without.
 
 A typed token is **checked before it is saved**. If it is rejected, nothing is written and you
 are asked again. You get 3 tries per host, then the run stops. A token is also accepted when the
