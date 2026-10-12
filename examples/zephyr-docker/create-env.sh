@@ -14,7 +14,11 @@ DENVER_GLOBAL_CONFIG_DIR=${DENVER_GLOBAL_CONFIG_DIR:-$HOME/.denver}
 DENVER_GLOBAL_ENV_DIR=${DENVER_GLOBAL_ENV_DIR:-$DENVER_GLOBAL_CONFIG_DIR/zephyr-docker}
 HOST_HOME=${HOST_HOME:-$HOME}
 CCACHE_DIR=${CCACHE_DIR:-$DENVER_GLOBAL_ENV_DIR/.ccache}
-CCACHE_READONLY_DIRS=$CCACHE_DIR.fallback
+# read-only ccache seed from Artifactory: a copy of a local cache, used as
+# file remote storage with the local cache layout (implies read-only). Unlike
+# a plain read-only dir, its manifests are also merged if the local manifest
+# has no matching entry. Hits are copied into the local cache.
+CCACHE_FALLBACK_DIR=$CCACHE_DIR.fallback
 XAUTHORITY_HOST=${XAUTHORITY:-$HOME/.Xauthority}
 
 find_workspace_root() {
@@ -55,7 +59,7 @@ PERSISTENT_DIRS=(
     "$DENVER_GLOBAL_ENV_DIR/.java"
     "$DENVER_GLOBAL_ENV_DIR/.local/share"
     "$DENVER_GLOBAL_ENV_DIR/ctcache"
-    "$CCACHE_READONLY_DIRS"
+    "$CCACHE_FALLBACK_DIR"
     "$DENVER_GLOBAL_ENV_DIR/.copilot"
     "$DENVER_GLOBAL_ENV_DIR/.claude"
     "$DENVER_GLOBAL_ENV_DIR/.gemini"
@@ -118,7 +122,8 @@ render_env_file() {
     echo "XAUTHORITY_HOST=$XAUTHORITY_HOST"
     echo "XAUTHORITY=/home/ubuntu/.Xauthority"
     echo "CCACHE_DIR=$CCACHE_DIR"
-    echo "CCACHE_READONLY_DIRS=$CCACHE_READONLY_DIRS"
+    echo "CCACHE_FALLBACK_DIR=$CCACHE_FALLBACK_DIR"
+    echo "CCACHE_REMOTE_STORAGE=file:$CCACHE_FALLBACK_DIR @layout=local"
     echo "HOST_HOME=$HOST_HOME"
     echo "DOCKER_HOME=/home/ubuntu"
     echo "DENVER_DIR=$DENVER_DIR"

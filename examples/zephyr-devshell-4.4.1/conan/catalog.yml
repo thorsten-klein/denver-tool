@@ -1,4 +1,4 @@
-ccache/4.13: ccache/4.13@denver/snapshot#25bab3063cc03e3f14fd59ed28b26028
+ccache/4.14.1: ccache/4.14.1@denver/snapshot#53403d433fa92c4cc3f8ba1cefddbb82
 clang/21.1.4: clang/21.1.4@denver/snapshot#824b3a01c962155b7e06630454cad2a5
 cmake/3.31.9: cmake/3.31.9@denver/snapshot#e546a5c08931ee21994485358ad9bdc8
 doxygen/1.15.0: doxygen/1.15.0@denver/snapshot#3411fdef3f923668eeb15255f55af993

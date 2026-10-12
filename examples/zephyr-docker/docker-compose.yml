@@ -38,7 +38,7 @@ services:
       # explicit mount, not covered by the $DENVER_GLOBAL_ENV_DIR mount below
       # (that one only shows the same dir at its host path).
       - $DENVER_GLOBAL_ENV_DIR/var/tmp/west:/var/tmp/west   # west module/blob cache
-      - $CCACHE_READONLY_DIRS:$CCACHE_READONLY_DIRS   # read-only ccache seed from Artifactory
+      - $CCACHE_FALLBACK_DIR:$CCACHE_FALLBACK_DIR   # read-only ccache seed from Artifactory
 
       # the workspace itself, plus the host home and denver's own env dir at
       # matching paths so absolute paths resolve the same inside/outside
