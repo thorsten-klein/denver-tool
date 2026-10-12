@@ -1,0 +1,4 @@
+sources:
+  ccache-4.14.1.tar.gz:
+    md5: 8b1c734d6bce73fa6d9f80f60dc03e61
+    url: https://github.com/ccache/ccache/archive/refs/tags/v4.14.1.tar.gz

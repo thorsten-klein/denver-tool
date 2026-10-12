@@ -26,7 +26,7 @@ class ConanRecipe(ConanFile):
         self.tool_requires(catalog[name], **kwargs)
 
     def build_requirements(self):
-        self.tool_requires_from_catalog("ccache/4.13")
+        self.tool_requires_from_catalog("ccache/4.14.1")
         self.tool_requires_from_catalog("clang/21.1.4")
         self.tool_requires_from_catalog("cmake/3.31.9")
         self.tool_requires_from_catalog("doxygen/1.15.0")
