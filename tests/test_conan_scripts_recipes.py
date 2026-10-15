@@ -1722,3 +1722,176 @@ def test_cli_lets_unrelated_errors_through(monkeypatch):
     monkeypatch.setattr(recipes, "main", broken)
     with pytest.raises(RuntimeError, match="a genuine bug"):
         recipes._cli()
+
+
+# --------------------------------------------------------------------------- #
+# remove_local_builds / repair_cache
+# --------------------------------------------------------------------------- #
+RREF = RecipeReference.loads("foo/1.0@denver/snapshot#rrev1")
+
+
+def _package_list(*prefs, recipe=RREF):
+    package_list = recipes.PackagesList()
+    package_list.add_ref(recipe)
+    for pref in prefs:
+        package_list.add_pref(pref)
+    return package_list
+
+
+class FakeCacheApi:
+    """A fake ConanAPI: ``paths`` maps a package ID to its cache path, ``broken`` lists broken refs/prefs."""
+
+    def __init__(self, package_list, paths=None, broken=()):
+        self.removed = []
+        self.list = types.SimpleNamespace(select=lambda pattern: package_list)
+        self.cache = types.SimpleNamespace(
+            package_path=lambda pref: (paths or {})[pref.package_id], check_integrity=self._check_integrity
+        )
+        self.remove = types.SimpleNamespace(
+            package=lambda pref, remote=None: self.removed.append(pref.repr_notime()),
+            recipe=lambda ref: self.removed.append(ref.repr_notime()),
+        )
+        self._broken = {str(c) for c in broken}
+        self._package_list = package_list
+
+    def _check_integrity(self, package_list):
+        for ref, prefs in package_list.items():
+            if ref.repr_notime() in self._broken or any(p.repr_notime() in self._broken for p in prefs):
+                raise ConanException("broken")
+
+
+LOCAL_PATH = "/home/u/.conan2/p/b/foo1234/p"
+DOWNLOADED_PATH = "/home/u/.conan2/p/foo5678/p"
+
+
+def test_is_built_locally(monkeypatch):
+    pref = PkgReference(RREF, "local", "prev1")
+    other = PkgReference(RREF, "downloaded", "prev1")
+    api = FakeCacheApi(_package_list(pref, other), {"local": LOCAL_PATH, "downloaded": DOWNLOADED_PATH})
+    monkeypatch.setattr(recipes, "conan_api", api)
+    assert recipes.is_built_locally(pref)
+    assert not recipes.is_built_locally(other)
+
+
+def test_is_built_locally_false_when_not_in_the_cache(monkeypatch):
+    pref = PkgReference(RREF, "gone", "prev1")
+    api = FakeCacheApi(_package_list(pref))
+    api.cache.package_path = lambda p: (_ for _ in ()).throw(ConanException("not found"))
+    monkeypatch.setattr(recipes, "conan_api", api)
+    assert not recipes.is_built_locally(pref)
+
+
+def _remove_local_builds(monkeypatch, prefs, paths, on_remote, capsys):
+    api = FakeCacheApi(_package_list(*prefs), paths)
+    monkeypatch.setattr(recipes, "conan_api", api)
+    mirror = Remote("mirror", "https://mirror")
+    monkeypatch.setattr(recipes, "_usable_remotes", lambda: [mirror])
+    asked = []
+
+    def conan_list(pref, remotes=None):
+        asked.append((pref.package_id, remotes))
+        return ([pref], mirror) if pref.package_id in on_remote else ([], None)
+
+    monkeypatch.setattr(recipes, "conan_list", conan_list)
+    recipes.remove_local_builds(RECIPE_NO_REV, [mirror])
+    return api, asked, capsys.readouterr().out
+
+
+RECIPE_NO_REV = RecipeReference.loads("foo/1.0@denver/snapshot")
+
+
+def test_remove_local_builds_removes_what_a_remote_provides(monkeypatch, capsys):
+    built = PkgReference(RREF, "pid", "prev1")
+    downloaded = PkgReference(RREF, "other", "prev1")
+    api, asked, out = _remove_local_builds(
+        monkeypatch, [built, downloaded], {"pid": LOCAL_PATH, "other": DOWNLOADED_PATH}, {"pid"}, capsys
+    )
+    assert api.removed == [built.repr_notime()]
+    assert asked == [("pid", ["mirror"])]  # only the local build is looked up
+    assert "Removing locally built package" in out
+    assert "remote 'mirror'" in out
+
+
+def test_remove_local_builds_keeps_what_no_remote_provides(monkeypatch, capsys):
+    built = PkgReference(RREF, "pid", "prev1")
+    api, _, out = _remove_local_builds(monkeypatch, [built], {"pid": LOCAL_PATH}, set(), capsys)
+    assert api.removed == []
+    assert "Keeping locally built package" in out
+
+
+def test_remove_local_builds_removes_every_revision_of_the_package_id(monkeypatch, capsys):
+    revisions = [PkgReference(RREF, "pid", "prev1"), PkgReference(RREF, "pid", "prev2")]
+    api, asked, _ = _remove_local_builds(monkeypatch, revisions, {"pid": LOCAL_PATH}, {"pid"}, capsys)
+    assert api.removed == [p.repr_notime() for p in revisions]
+    assert len(asked) == 1  # once per package ID
+
+
+def test_remove_local_builds_of_skips_everything_without_a_usable_remote(monkeypatch, capsys):
+    monkeypatch.setattr(recipes, "_usable_remotes", lambda: [])
+    monkeypatch.setattr(recipes, "remove_local_builds", lambda *a: pytest.fail("nothing to scan without a remote"))
+    recipes._remove_local_builds_of({Path("a"): RECIPE_NO_REV})
+    assert "No conan remote logged in" in capsys.readouterr().out
+
+
+def test_remove_local_builds_of_continues_after_a_conan_error(monkeypatch, capsys):
+    seen = []
+
+    def remove_local_builds(ref, remotes):
+        seen.append(ref)
+        if len(seen) == 1:
+            raise ConanException("remote broke")
+
+    monkeypatch.setattr(recipes, "remove_local_builds", remove_local_builds)
+    monkeypatch.setattr(recipes, "_usable_remotes", lambda: [Remote("mirror", "https://mirror")])
+    other = RecipeReference.loads("bar/2.0@denver/snapshot")
+    recipes._remove_local_builds_of({Path("a"): RECIPE_NO_REV, Path("b"): other})
+    assert seen == [RECIPE_NO_REV, other]
+    assert (
+        "Warning: Failed to check foo/1.0@denver/snapshot for locally built packages, continuing: remote broke"
+        in capsys.readouterr().out
+    )
+
+
+def test_repair_cache_removes_only_the_broken_package(monkeypatch):
+    good = PkgReference(RREF, "good", "prev1")
+    bad = PkgReference(RREF, "bad", "prev1")
+    api = FakeCacheApi(_package_list(good, bad), broken=[bad.repr_notime()])
+    monkeypatch.setattr(recipes, "conan_api", api)
+    assert recipes.repair_cache()
+    assert api.removed == [bad.repr_notime()]
+
+
+def test_repair_cache_removes_a_broken_recipe_with_its_packages(monkeypatch):
+    pref = PkgReference(RREF, "pid", "prev1")
+    api = FakeCacheApi(_package_list(pref), broken=[RREF.repr_notime()])
+    monkeypatch.setattr(recipes, "conan_api", api)
+    assert recipes.repair_cache()
+    assert api.removed == [RREF.repr_notime()]  # not its package as well
+
+
+def test_repair_cache_false_when_nothing_is_broken(monkeypatch):
+    api = FakeCacheApi(_package_list(PkgReference(RREF, "pid", "prev1")))
+    monkeypatch.setattr(recipes, "conan_api", api)
+    assert not recipes.repair_cache()
+    assert api.removed == []
+
+
+@pytest.mark.parametrize(("repaired", "exit_code"), [(True, 0), (False, recipes.EXIT_NOTHING_REPAIRED)])
+def test_main_repair_cache_exit_code(monkeypatch, repaired, exit_code):
+    monkeypatch.setattr(sys, "argv", ["recipes.py", "--repair-cache"])
+    monkeypatch.setattr(recipes, "repair_cache", lambda: repaired)
+    monkeypatch.setattr(recipes, "prepare", lambda *a, **k: pytest.fail("repair must not touch the remotes"))
+    with pytest.raises(SystemExit) as raised:
+        recipes.main()
+    assert raised.value.code == exit_code
+
+
+def test_process_catalog_remove_local_builds_stops_before_create(monkeypatch):
+    args = recipes._build_arg_parser().parse_args(["--remove-local-builds", "-d", "x", "--create"])
+    monkeypatch.setattr(recipes, "generate_catalog", lambda *a, **k: {})
+    monkeypatch.setattr(recipes, "get_recipes_from_entries", lambda *a: {Path("a"): RECIPE_NO_REV})
+    removed = []
+    monkeypatch.setattr(recipes, "_remove_local_builds_of", removed.append)
+    monkeypatch.setattr(recipes, "get_recipes_prefs", lambda r: pytest.fail("no package reference needed"))
+    recipes._process_catalog([Path("x")], args)
+    assert removed == [{Path("a"): RECIPE_NO_REV}]

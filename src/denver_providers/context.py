@@ -1284,10 +1284,13 @@ class Context:
         return result
 
     def _child_env(self, extra_env):
-        """ctx.env plus this call's own ``extra_env`` overrides, every value stringified."""
+        """ctx.env plus this call's own ``extra_env`` overrides, as strings (``None`` removes a variable)."""
         env = dict(self.env)
-        if extra_env:
-            env.update({k: str(v) for k, v in extra_env.items()})
+        for key, value in (extra_env or {}).items():
+            if value is None:
+                env.pop(key, None)
+            else:
+                env[key] = str(value)
         return env
 
     def _echo_command(self, printable, echo):

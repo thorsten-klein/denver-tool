@@ -698,6 +698,16 @@ def test_run_forwards_args(make_context, run_recorder):
     assert call.kwargs["env"]["E"] == "1"
 
 
+def test_run_extra_env_none_removes_the_variable_for_that_call_only(make_context, run_recorder):
+    ctx = make_context()
+    ctx.env["GONE"] = "1"
+    ctx.run(["true"], extra_env={"GONE": None, "ABSENT": None})
+    env = run_recorder.calls[-1].kwargs["env"]
+    assert "GONE" not in env
+    assert "ABSENT" not in env
+    assert ctx.env["GONE"] == "1"
+
+
 def test_run_echo(make_context, run_recorder, capsys):
     # the '+cmd' echo is --verbose only (see _echo_command)
     ctx = make_context(verbose=True)

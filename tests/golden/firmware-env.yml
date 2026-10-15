@@ -163,6 +163,7 @@ conan-packages:
     - <REPO>/examples/firmware-env/conan/recipes
     export-tool: <REPO>/src/denver_providers/conan_scripts/recipes.py
   remotes: {}
+  remove-local-builds: true
   user: denver
 best-practices:
   provider: custom
