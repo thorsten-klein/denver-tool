@@ -34,12 +34,10 @@ find_workspace_root() {
 WEST_TOPDIR=$(find_workspace_root)
 
 resolve_container_image() {
-    # docker-compose.yml is the single source of truth for the tag; fall
-    # back to a fixed name if compose config can't be parsed for any reason.
+    # read the 'image:' line ('docker compose config' is slow)
     local tag
-    tag=$(docker compose -f "$SELF_DIR/docker-compose.yml" config --format=json 2>/dev/null | jq -r '.services.dev.image' || true)
-    [ -z "$tag" ] || [ "$tag" = "null" ] && tag="zephyr-docker:latest"
-    echo "$tag"
+    tag=$(sed -n 's/^ *image: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' "$SELF_DIR/docker-compose.yml" | head -n 1)
+    echo "${tag:-zephyr-docker:latest}"
 }
 CONTAINER_IMAGE=$(resolve_container_image)
 
