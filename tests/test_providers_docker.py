@@ -1237,6 +1237,18 @@ def test_bind_mount_check_disabled_skips_compose_config(make_context, run_record
     assert not any("config" in argv for argv in run_recorder.argvs())
 
 
+def test_bind_mount_check_skipped_with_fast(make_context, run_recorder, which, tmp_path):
+    """--fast skips the check."""
+    run_recorder.responses["config --format json"] = compose_config([
+        {"type": "bind", "source": str(tmp_path / "missing"), "target": "/m"}
+    ])
+    config = {"docker": docker_cfg()}
+    ctx = make_context(config=config, fast=True)
+    write_compose(ctx)
+    run_docker(config, ctx)
+    assert not any("config" in argv for argv in run_recorder.argvs())
+
+
 def test_bind_mount_check_compose_config_failure_dies(make_context, run_recorder, which):
     """A failing 'compose config' dies with its stderr."""
     run_recorder.responses["config --format json"] = compose_config(returncode=1, stderr="yaml: line 3: oops\n")
