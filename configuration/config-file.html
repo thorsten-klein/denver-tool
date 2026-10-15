@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=ac8b60ba"></script>
+      <script src="../_static/documentation_options.js?v=ec4e9f2c"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/6062fd09bae1b30deedd358369e114249baf4f7b">1.7.0-19-g6062fd0</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/e37e78bb4b61df1b70d85aa675560f7c707e8da5">1.7.0-20-ge37e78b</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -614,7 +614,9 @@ every script in the list exits <code class="docutils literal notranslate"><span 
 included — is skipped for this run, as if it had been <code class="docutils literal notranslate"><span class="pre">--skip</span></code>ped for this
 one invocation. The two lists are independent: give either, both (each
 checked on its own group; either group being fully satisfied skips the
-stage), or neither (no skip check at all). <code class="docutils literal notranslate"><span class="pre">--force</span></code> bypasses both.</p></li>
+stage), or neither (no skip check at all). <code class="docutils literal notranslate"><span class="pre">--force</span></code> bypasses both.
+The scripts run before the stage’s setup. A <code class="docutils literal notranslate"><span class="pre">uv</span></code> stage gives them its
+venv (<code class="docutils literal notranslate"><span class="pre">VIRTUAL_ENV</span></code>, <code class="docutils literal notranslate"><span class="pre">PATH</span></code>).</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">scripts</span></code></strong> — the generic one-shot mechanism: <code class="docutils literal notranslate"><span class="pre">scripts:</span> <span class="pre">&lt;name&gt;:</span> <span class="pre">[...]</span></code>
 declares scripts run by <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span> <span class="pre">&lt;env&gt;</span> <span class="pre">--scripts</span> <span class="pre">&lt;name&gt;</span></code> instead of the
 normal pipeline. See “Hooks and scripts” below.</p></li>

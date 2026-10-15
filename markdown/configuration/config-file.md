@@ -191,6 +191,8 @@ These keys may appear in *any* stage’s section, whatever its provider:
   one invocation. The two lists are independent: give either, both (each
   checked on its own group; either group being fully satisfied skips the
   stage), or neither (no skip check at all). `--force` bypasses both.
+  The scripts run before the stage’s setup. A `uv` stage gives them its
+  venv (`VIRTUAL_ENV`, `PATH`).
 - **`scripts`** — the generic one-shot mechanism: `scripts: <name>: [...]`
   declares scripts run by `denver run <env> --scripts <name>` instead of the
   normal pipeline. See “Hooks and scripts” below.

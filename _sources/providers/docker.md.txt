@@ -161,7 +161,8 @@ before their first run.
   if one is missing. Without this, docker creates the missing path as a
   root-owned directory (e.g. `~/.gitconfig` becomes a directory). The mounts
   are read from `docker compose config`. Create needed paths in a `hooks:
-  pre-<stage>:` script, or set `false` to turn the check off.
+  pre-<stage>:` script, or set `false` to turn the check off. Skipped with
+  `--fast` (it is slow).
 
 Need something computed at runtime before build/run — a compose `.env` file,
 a login, anything a static compose file can't express? Use a `hooks:

@@ -111,7 +111,8 @@ a stage with no `uv` on `PATH` fails with `uv[<stage>]: needs 'exe' on PATH`.
 it only runs when it’s set to a command explicitly. The same is true of the
 generic `skip-on-success:`/`skip-on-failure:` keys (see “Generic stage keys” in
 [Configuration](../configuration/config-file.md)): with neither given there
-is simply no skip check for this stage.
+is simply no skip check for this stage. The scripts get the venv of the
+stage (`VIRTUAL_ENV`, `PATH`), even if it does not exist yet.
 
 ## One venv, one interpreter
 
