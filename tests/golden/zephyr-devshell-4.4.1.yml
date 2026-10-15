@@ -105,6 +105,7 @@ conan:
     - <REPO>/examples/zephyr-devshell-4.4.1/conan/recipes
     export-tool: <REPO>/src/denver_providers/conan_scripts/recipes.py
   remotes: {}
+  remove-local-builds: true
   user: denver
 uv:
   provider: uv

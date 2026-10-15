@@ -152,6 +152,14 @@ needs 'conan' on PATH`.
   reconciling an empty `remotes:` to "exhaustive" would otherwise silently
   disable everything `config:` just set up. An explicit (non-empty)
   `remotes:` still reconciles as normal regardless of `config:`.
+- **`remove-local-builds`** (default `true`) — after the export, remove
+  packages of the `recipes:` that were built locally, if a remote has the
+  same package. `conan install` then downloads it.
+  Why: a locally built package is in another folder
+  (`<conan home>/p/b/<folder>/p`) than a downloaded one
+  (`<conan home>/p/<folder>/p`). The paths may end up in the compiler
+  commands, which prevents portable caches. Packages that no remote has are kept.
+  Skipped with `authentication: false` or if no remote is logged in.
 - **`user`** (default `"denver"`) / **`channel`** (default `"snapshot"`) —
   become the user/channel half of every reference the recipes-exporter
   generates while exporting recipes (`name/version@user/channel`).
@@ -179,6 +187,15 @@ needs 'conan' on PATH`.
   reconciled, conan just uses whatever's already in its local cache/home.
   Add `remotes:` (or a `config:` that installs its own remote config) only
   once real remote access is actually needed.
+- **A broken cache is repaired after a failed `conan install`.** An
+  interrupted install can leave broken recipes or packages in the conan 2.x
+  cache (missing or changed files). Then every subsequent `conan install` fails.
+  So if `conan install` fails, `recipes.py --repair-cache` checks the cache
+  (`conan cache check-integrity`) and removes only the broken recipes and
+  packages. The check reads every file and is slow, so it only runs after a failure.
+- **`conan install` runs without `CCACHE_REMOTE_STORAGE`.** Conan builds
+  packages with the ccache on `PATH`. That can be an older ccache, which
+  fails on `@layout=local` (needs ccache 4.14).
 - **Skips `conan install` when the dependency graph is unchanged.** Before
   wiping and reinstalling, the install step runs a fast `conan graph info`
   query (no downloads/builds) and hashes its output; if that hash matches

@@ -1200,3 +1200,100 @@ def test_base_classes_omitted_when_unset(make_context, run_recorder, which):
 
     run_conan(config, ctx)
     assert not any("--base-classes-dir" in c for c in run_recorder.commands())
+
+
+# ---- remove-local-builds -------------------------------------------------- #
+def _remove_local_builds_argv(run_recorder):
+    return next((a for a in run_recorder.argvs() if "--remove-local-builds" in a), None)
+
+
+def _setup_with_recipe(make_context, run_recorder, conan_cfg=None):
+    default_profile_ok(run_recorder)
+    config = {"conan": {**(conan_cfg or {})}}
+    ctx = make_context(config=config)
+    (ctx.env_dir / "conanA").mkdir(parents=True)
+    _ensure_default_conanfile(ctx, config, {"dirs": ["conanA"], "catalog": "catalog.yml"})
+    run_conan(config, ctx)
+    return ctx
+
+
+def test_remove_local_builds_runs_after_export_before_install(make_context, run_recorder, which):
+    _setup_with_recipe(make_context, run_recorder)
+    argvs = run_recorder.argvs()
+    export = next(i for i, a in enumerate(argvs) if "--export" in a)
+    remove = next(i for i, a in enumerate(argvs) if "--remove-local-builds" in a)
+    install = next(i for i, a in enumerate(argvs) if "install" in a and "graph" not in a and "config" not in a)
+    assert export < remove < install
+
+
+def test_remove_local_builds_passes_the_recipes_without_exporting_again(make_context, run_recorder, which):
+    ctx = _setup_with_recipe(make_context, run_recorder)
+    argv = _remove_local_builds_argv(run_recorder)
+    assert "--export" not in argv
+    assert "--export-catalog" not in argv
+    assert argv[argv.index("--recipes-dir") + 1] == str(ctx.env_dir / "conanA")
+
+
+def test_remove_local_builds_can_be_disabled(make_context, run_recorder, which):
+    _setup_with_recipe(make_context, run_recorder, {"remove-local-builds": False})
+    assert _remove_local_builds_argv(run_recorder) is None
+
+
+def test_remove_local_builds_skipped_without_authentication(make_context, run_recorder, which):
+    _setup_with_recipe(make_context, run_recorder, {"authentication": False})
+    assert _remove_local_builds_argv(run_recorder) is None
+
+
+def test_remove_local_builds_failure_only_warns(make_context, run_recorder, which, caplog):
+    run_recorder.responses["--remove-local-builds"] = lambda cmd: type(
+        "R", (), {"returncode": 3, "stdout": "", "stderr": ""}
+    )()
+    _setup_with_recipe(make_context, run_recorder)
+    assert any("conan install" in c or " install " in c for c in run_recorder.commands())
+    assert "removing locally built packages failed (exit 3)" in caplog.text
+
+
+# ---- repair of a broken cache after a failed install ---------------------- #
+def _install_attempts(run_recorder):
+    return [a for a in run_recorder.argvs() if "install" in a and "graph" not in a and "config" not in a]
+
+
+def test_failed_install_repairs_the_cache_and_retries_once(make_context, run_recorder, which, tmp_path):
+    attempts = []
+
+    def install_fails_once(cmd):
+        attempts.append(cmd)
+        if len(attempts) == 1:
+            raise subprocess.CalledProcessError(1, cmd)
+        return type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    run_recorder.responses["conan install"] = install_fails_once
+    _may_fail_install_cmd(make_context, run_recorder, tmp_path, {"authentication": True})
+    assert len(attempts) == 2
+    argvs = run_recorder.argvs()
+    installs = [i for i, a in enumerate(argvs) if "install" in a and "conan" in str(a[0])]
+    repair = next(i for i, a in enumerate(argvs) if "--repair-cache" in a)
+    assert installs[0] < repair < installs[1]
+
+
+def test_failed_install_is_not_retried_if_nothing_was_broken(make_context, run_recorder, which, tmp_path):
+    run_recorder.responses["conan install"] = _failing_install
+    run_recorder.responses["--repair-cache"] = lambda cmd: type(
+        "R", (), {"returncode": 1, "stdout": "", "stderr": ""}
+    )()
+    with pytest.raises(subprocess.CalledProcessError):
+        _may_fail_install_cmd(make_context, run_recorder, tmp_path, {"authentication": True})
+    assert len(_install_attempts(run_recorder)) == 1
+
+
+def test_install_hides_the_ccache_remote_storage(make_context, run_recorder, which, tmp_path):
+    # an older ccache on PATH fails on '@layout=local'
+    default_profile_ok(run_recorder)
+    config = {"conan": {}}
+    ctx = make_context(config=config)
+    ctx.env["CCACHE_REMOTE_STORAGE"] = "file:/cache @layout=local"
+    _ensure_default_conanfile(ctx, config)
+    run_conan(config, ctx)
+    install = next(c for c in run_recorder.calls if "install" in [str(x) for x in c.cmd] and "graph" not in c.cmd)
+    assert "CCACHE_REMOTE_STORAGE" not in install.kwargs["env"]
+    assert ctx.env["CCACHE_REMOTE_STORAGE"] == "file:/cache @layout=local"

@@ -29,12 +29,13 @@ import os
 import re
 import subprocess
 import sys
+import typing
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import yaml
 from conan.api.conan_api import ConanAPI
-from conan.api.model import PkgReference, RecipeReference, Remote
+from conan.api.model import ListPattern, PackagesList, PkgReference, RecipeReference, Remote
 from conan.cli.commands.test import run_test
 from conan.internal.errors import (
     AuthenticationException,
@@ -82,6 +83,10 @@ class _ConanAPIProxy:
 
 
 conan_api = _ConanAPIProxy()
+
+
+# exit code of --repair-cache if nothing was broken (same as in conan.py)
+EXIT_NOTHING_REPAIRED = 1
 
 
 class CatalogError(Exception):
@@ -553,6 +558,89 @@ def get_cache_path(ref_or_pref):
     return None
 
 
+def is_built_locally(pref) -> bool:
+    """Whether ``pref`` was built locally (in ``<cache>/p/b/<folder>/p``), not downloaded."""
+    path = get_cache_path(pref)
+    return path is not None and path.parent.parent.name == 'b'
+
+
+def _local_builds_by_package_id(ref) -> dict[str, list]:
+    """The locally built packages of ``ref``, by package ID."""
+    local_builds: dict[str, list] = {}
+    for _, prevs in conan_api.list.select(ListPattern(f"{ref.repr_notime()}:*#*")).items():
+        for prev in filter(is_built_locally, prevs):
+            local_builds.setdefault(prev.package_id, []).append(prev)
+    return local_builds
+
+
+def remove_local_builds(ref, remotes):
+    """Remove the locally built packages of ``ref`` that one of ``remotes`` has too.
+
+    A locally built package is in another folder than a downloaded one, and
+    this path ends up in the keys of ccache and ctcache. After the removal,
+    ``conan install`` downloads the package. Packages no remote has are kept.
+    """
+    remote_names = [r.name for r in remotes]
+    for package_id, prevs in _local_builds_by_package_id(ref).items():
+        pref = PkgReference(ref, package_id)
+        found, remote = conan_list(pref, remote_names)
+        if not found or remote is None:
+            print(f"Info: Keeping locally built package {pref.repr_notime()} (no remote has it)")
+            continue
+        for prev in prevs:
+            print(f"Info: Removing locally built package {prev.repr_notime()} (remote '{remote.name}' has it)")
+            conan_api.remove.package(prev, remote=None)
+
+
+def _remove_local_builds_of(recipes_ref):
+    """remove_local_builds() for every recipe -- only if a remote is logged in. A failure only warns."""
+    remotes = _usable_remotes()
+    if not remotes:
+        print("Info: No conan remote logged in, keeping the locally built packages")
+        return
+    for ref in recipes_ref.values():
+        try:
+            remove_local_builds(ref, remotes)
+        except ConanException as e:
+            print(f"Warning: Failed to check {ref!r} for locally built packages, continuing: {e}")
+
+
+def is_corrupt(ref_or_pref) -> bool:
+    """Whether a recipe or package in the cache is broken (`conan cache check-integrity`)."""
+    package_list = PackagesList()
+    if isinstance(ref_or_pref, PkgReference):
+        package_list.add_ref(typing.cast(RecipeReference, ref_or_pref.ref))
+        package_list.add_pref(ref_or_pref)
+    else:
+        package_list.add_ref(ref_or_pref)
+    try:
+        conan_api.cache.check_integrity(package_list)
+    except ConanException:
+        return True
+    return False
+
+
+def repair_cache() -> bool:
+    """Remove broken recipes and packages from the conan cache. True if any were removed.
+
+    Only the broken ones: other recipes may not be on any remote. Reads every
+    file, so only run it after a failed install.
+    """
+    repaired = False
+    for ref, prefs in conan_api.list.select(ListPattern("*#*:*#*")).items():
+        if is_corrupt(ref):
+            print(f"Info: Removing broken recipe (with its packages) from the cache: {ref.repr_notime()}")
+            conan_api.remove.recipe(ref)
+            repaired = True
+            continue
+        for pref in prefs:
+            if is_corrupt(pref):
+                print(f"Info: Removing broken package from the cache: {pref.repr_notime()}")
+                conan_api.remove.package(pref, remote=None)
+                repaired = True
+    return repaired
+
+
 def _import_build_catalog():
     """Import build_catalog late -- it must not be imported at module import time.
 
@@ -978,6 +1066,11 @@ def _process_catalog(recipes_dirs, args):
     if args.export:
         _export_missing_recipes(recipes_ref)
 
+    if args.remove_local_builds:
+        # nothing else to do
+        _remove_local_builds_of(recipes_ref)
+        return
+
     recipes_pref = get_recipes_prefs(recipes_ref)
     _run_per_pref_actions(recipes_pref, args)
 
@@ -993,6 +1086,16 @@ def _build_arg_parser():
     )
     parser.add_argument('--export', action='store_true', help='run "conan export"')
     parser.add_argument('--create', action='store_true', help='run "conan create"')
+    parser.add_argument(
+        '--remove-local-builds',
+        action='store_true',
+        help='remove locally built packages of the recipes that a remote has too',
+    )
+    parser.add_argument(
+        '--repair-cache',
+        action='store_true',
+        help=f'remove broken recipes and packages from the cache, then exit ({EXIT_NOTHING_REPAIRED}: none found)',
+    )
     parser.add_argument('--upload', action='store_true', help='run "conan upload"')
     parser.add_argument('--remote', default=None, help='select a conan remote (required by --ci/--upload)')
     parser.add_argument(
@@ -1141,6 +1244,27 @@ def _validate_catalog_args(parser, args):
         parser.error('--catalog-yml only applies with --no-generate; --export-catalog writes the generated one')
 
 
+def _load_earlier_remotes_record(args):
+    """The usable remotes an earlier step wrote down (None: none), and remember its unavailable ones.
+
+    Not for --prepare (starts fresh) and --no-remote (uses no remote).
+    """
+    if args.prepare or args.no_remote:
+        return None
+    usable, unavailable = _load_usable_remotes()
+    _unavailable_remotes.update(unavailable)
+    return usable
+
+
+def _repair_cache_and_exit():
+    """--repair-cache: repair the cache, then exit (EXIT_NOTHING_REPAIRED if nothing was broken)."""
+    print_banner("Check the conan cache")
+    if not repair_cache():
+        print("Info: No broken recipes or packages in the conan cache")
+        sys.exit(EXIT_NOTHING_REPAIRED)
+    sys.exit(0)
+
+
 def main():
     """CLI entry point: parse args, prepare remotes, then generate/export/create/upload/ci as requested."""
     global _no_remote, _auth_may_fail, _usable_remote_names  # one-per-process switches, see their definitions
@@ -1148,12 +1272,11 @@ def main():
     args = parser.parse_args()
     _no_remote = args.no_remote
     _auth_may_fail = args.authentication_may_fail
-    if not args.prepare and not _no_remote:
-        # --prepare starts the run afresh; every later step sticks to what
-        # it (or an export before this one) found
-        _usable_remote_names, unavailable = _load_usable_remotes()
-        _unavailable_remotes.update(unavailable)
+    _usable_remote_names = _load_earlier_remotes_record(args)
     known_unavailable = set(_unavailable_remotes)
+
+    if args.repair_cache:
+        _repair_cache_and_exit()
 
     _validate_remote_required(parser, args)
     _apply_base_classes_pythonpath(args.base_classes_dir)

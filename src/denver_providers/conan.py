@@ -46,6 +46,9 @@ AUTH_MAY_FAIL = "may-fail"
 USABLE_REMOTES_FILENAME = "denver-usable-remotes.json"
 CONANBUILDENV_NAME = "conanbuildenv.sh"
 
+# exit code of recipes.py --repair-cache if nothing was broken (same as in recipes.py)
+EXIT_NOTHING_REPAIRED = 1
+
 
 class ConanProvider(Provider):
     """Provisions native tools via Conan and exposes them on PATH -- see doc/providers/conan.md for its config keys."""
@@ -64,6 +67,7 @@ class ConanProvider(Provider):
         "config",
         "remotes",
         "keep-remotes",
+        "remove-local-builds",
         "user",
         "channel",
     )
@@ -202,6 +206,7 @@ class ConanProvider(Provider):
         """Fill in the remotes/user/channel keys the remote reconciliation and generated references use."""
         resolved["remotes"] = cfg.get("remotes") or {}
         resolved["keep-remotes"] = bool(cfg.get("keep-remotes", False))
+        resolved["remove-local-builds"] = bool(cfg.get("remove-local-builds", True))
         resolved["user"] = cfg.get("user") or "denver"
         resolved["channel"] = cfg.get("channel") or "snapshot"
 
@@ -285,6 +290,7 @@ class ConanProvider(Provider):
             )
 
         self._export_recipes(ctx, cfg, python, recipes, base_classes_args)
+        self._remove_local_builds(ctx, cfg, python, recipes, base_classes_args)
 
         # 'conanfile:' is the only toggle: unset means "export/pin recipes
         # without installing anything" -- there is no separate 'install:'
@@ -362,6 +368,7 @@ class ConanProvider(Provider):
         if has_recipes or reconcile_remotes:
             banner(ctx, self.stage, "prepare (skipped by --fast)")
         banner(ctx, self.stage, "export (skipped by --fast)")
+        banner(ctx, self.stage, "remove-local-builds (skipped by --fast)")
         banner(ctx, self.stage, "install (skipped by --fast)")
         buildenv = ctx.env_workdir / CONAN_INSTALL_DIRNAME / CONANBUILDENV_NAME
         if not buildenv.is_file():
@@ -415,14 +422,30 @@ class ConanProvider(Provider):
             if recipe["dirs"]:
                 ctx.run(self._export_cmd(cfg, python, recipe, base_classes_args, may_fail_args))
 
+    def _remove_local_builds(self, ctx, cfg, python, recipes, base_classes_args):
+        """Remove locally built packages that a remote has too, so `conan install` downloads them. A failure only warns."""
+        if not (cfg["remove-local-builds"] and cfg["authentication"] and self._has_recipes(recipes)):
+            return
+        banner(ctx, self.stage, "remove-local-builds")
+        may_fail_args = ["--authentication-may-fail"] if self._auth_may_fail(cfg) else []
+        for recipe in (r for r in recipes if r["dirs"]):
+            cmd = self._export_cmd(
+                cfg, python, recipe, base_classes_args, may_fail_args, action="--remove-local-builds"
+            )
+            result = ctx.run(cmd, check=False)
+            if result.returncode != 0:
+                warn(
+                    f"conan[{self.stage}]: removing locally built packages failed (exit {result.returncode}) -- continuing"
+                )
+
     @staticmethod
-    def _export_cmd(cfg, python, recipe, base_classes_args, may_fail_args=()):
-        """The exporter's `--export` argv for one 'recipes:' entry, covering all of its dirs at once."""
-        export_cmd = [python, recipe["export-tool"], "--export"]
+    def _export_cmd(cfg, python, recipe, base_classes_args, may_fail_args=(), action="--export"):
+        """The exporter's argv (`action`, default `--export`) for one 'recipes:' entry, with all of its dirs."""
+        export_cmd = [python, recipe["export-tool"], action]
         for recipe_dir in recipe["dirs"]:
             export_cmd += ["--recipes-dir", recipe_dir]
         export_cmd += ["--user", cfg["user"], "--channel", cfg["channel"]]
-        if recipe["catalog"]:
+        if recipe["catalog"] and action == "--export":
             export_cmd += ["--export-catalog", recipe["catalog"]]
         return [*export_cmd, *base_classes_args, *ConanProvider._no_remote_args(cfg), *may_fail_args]
 
@@ -592,28 +615,52 @@ class ConanProvider(Provider):
         # conan writes conanbuildenv.sh straight into install_root (the
         # --output-folder), exactly where _activate_buildenv reads it from --
         # a single conanfile needs no per-conanfile subdir or aggregation.
+        install_cmd = [
+            conan,
+            "install",
+            str(conanfile),
+            *build_args,
+            *profile_args,
+            f"--output-folder={install_root}",
+            *deployer_args,
+            f"--deployer-folder={symlinks_dir}",
+            *extra_args,
+        ]
         try:
-            ctx.run(
-                [
-                    conan,
-                    "install",
-                    str(conanfile),
-                    *build_args,
-                    *profile_args,
-                    f"--output-folder={install_root}",
-                    *deployer_args,
-                    f"--deployer-folder={symlinks_dir}",
-                    *extra_args,
-                ],
-                cwd=install_root,
-                # conan packages must be standalone: don't leak host PYTHONPATH
-                extra_env={"PYTHONPATH": ""},
-            )
+            self._run_install(ctx, install_cmd, install_root)
         except subprocess.CalledProcessError as exc:
-            self._die_if_remotes_were_unavailable(exc)
-            raise
+            if not self._repair_cache(ctx, exc):
+                self._die_if_remotes_were_unavailable(exc)
+                raise
+            info(f"conan[{self.stage}]: broken recipes or packages removed -- running `conan install` again")
+            try:
+                self._run_install(ctx, install_cmd, install_root)
+            except subprocess.CalledProcessError as retry_exc:
+                self._die_if_remotes_were_unavailable(retry_exc)
+                raise
 
         self._store_graph_hash(ctx, conan, install_root, conanfile, install_args, graph_hash)
+
+    @staticmethod
+    def _run_install(ctx, install_cmd, install_root):
+        """Run `conan install`."""
+        ctx.run(
+            install_cmd,
+            cwd=install_root,
+            extra_env={
+                # conan packages must be standalone: don't leak host PYTHONPATH
+                "PYTHONPATH": "",
+                # an older ccache on PATH fails on '@layout=local' (needs ccache 4.14)
+                "CCACHE_REMOTE_STORAGE": None,
+            },
+        )
+
+    def _repair_cache(self, ctx, exc):
+        """Remove broken recipes and packages from the conan cache. True if any were removed."""
+        warn(f"conan[{self.stage}]: `conan install` failed (exit {exc.returncode}) -- checking the conan cache")
+        python = ctx.which("python3") or "python3"
+        result = ctx.run([python, str(DEFAULT_RECIPES_EXPORTER), "--repair-cache"], check=False)
+        return result.returncode == 0
 
     def _graph_unchanged(self, ctx, conan, install_root, conanfile, install_args):
         """Whether `_install` can skip entirely, plus the graph hash computed along the way (None if not queried).
