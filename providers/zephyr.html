@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=fe0226a2"></script>
+      <script src="../_static/documentation_options.js?v=8fc836a9"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/aa68885b151d164c25b49c7fd26e0046a758d535">1.7.0-17-gaa68885</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/f01de1780046c078510c086fac9f111aa9d52ae4">1.7.0-18-gf01de17</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -511,6 +511,16 @@ not exist, or when <code class="docutils literal notranslate"><span class="pre">
 <code class="docutils literal notranslate"><span class="pre">--fast</span></code>, or nothing changed since the last run).</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--ci</span></code></strong> always adds a fixed shallow-clone strategy (<code class="docutils literal notranslate"><span class="pre">--narrow</span> <span class="pre">-o=--depth=1</span></code>) to <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code>, on top of whatever <code class="docutils literal notranslate"><span class="pre">update-args:</span></code>
 already configures.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code> checks out with parallel workers.</strong> It runs with git’s
+<code class="docutils literal notranslate"><span class="pre">checkout.workers=0</span></code> (git &gt;= 2.32, one worker per CPU), passed via
+<code class="docutils literal notranslate"><span class="pre">GIT_CONFIG_COUNT</span></code>/<code class="docutils literal notranslate"><span class="pre">GIT_CONFIG_KEY_&lt;n&gt;</span></code>/<code class="docutils literal notranslate"><span class="pre">GIT_CONFIG_VALUE_&lt;n&gt;</span></code> (appended
+to any the environment already has), so no git config file is changed.</p></li>
+<li><p><strong>Patches of different modules are applied in parallel.</strong> <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">patch</span></code>
+applies one patch after the other and has no jobs option of its own. So
+for a <code class="docutils literal notranslate"><span class="pre">patches.yml</span></code> whose patches name a <code class="docutils literal notranslate"><span class="pre">module:</span></code>, there is one <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">patch</span> <span class="pre">--dst-module</span> <span class="pre">&lt;module&gt;</span> <span class="pre">apply</span></code> per destination module, run in
+parallel through <code class="docutils literal notranslate"><span class="pre">xargs</span> <span class="pre">-P</span> <span class="pre">&lt;CPUs&gt;</span></code>; the patches of one module stay in
+order. A <code class="docutils literal notranslate"><span class="pre">patches.yml</span></code> without any <code class="docutils literal notranslate"><span class="pre">module:</span></code> is applied in one go, as
+before.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--fast</span></code></strong> only checks the workspace is already configured — dies with
 a clear message if it isn’t, rather than running <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code>.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">--force</span></code></strong> always reruns <code class="docutils literal notranslate"><span class="pre">west</span> <span class="pre">update</span></code> (even if this stage’s own

@@ -85,6 +85,16 @@ west reads it itself, no provider-specific handling needed.
   `--fast`, or nothing changed since the last run).
 - **`--ci`** always adds a fixed shallow-clone strategy (`--narrow -o=--depth=1`) to `west update`, on top of whatever `update-args:`
   already configures.
+- **`west update` checks out with parallel workers.** It runs with git’s
+  `checkout.workers=0` (git >= 2.32, one worker per CPU), passed via
+  `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_<n>`/`GIT_CONFIG_VALUE_<n>` (appended
+  to any the environment already has), so no git config file is changed.
+- **Patches of different modules are applied in parallel.** `west patch`
+  applies one patch after the other and has no jobs option of its own. So
+  for a `patches.yml` whose patches name a `module:`, there is one `west patch --dst-module <module> apply` per destination module, run in
+  parallel through `xargs -P <CPUs>`; the patches of one module stay in
+  order. A `patches.yml` without any `module:` is applied in one go, as
+  before.
 - **`--fast`** only checks the workspace is already configured — dies with
   a clear message if it isn’t, rather than running `west update`.
 - **`--force`** always reruns `west update` (even if this stage’s own
