@@ -2203,9 +2203,10 @@ def _skip_for_dynamic_reason(ctx, config, provider, skip_state):
     cfg = config.get(provider.stage) or {}
     skip_reason = None
     if not ctx.force:
+        extra_env = provider.skip_scripts_env(ctx)
         skip_reason = _skip_kind_reason(
-            ctx, cfg, "skip-on-success", 0, "skip-on-success scripts all exited 0"
-        ) or _skip_kind_reason(ctx, cfg, "skip-on-failure", 1, "skip-on-failure scripts all exited 1")
+            ctx, cfg, "skip-on-success", 0, "skip-on-success scripts all exited 0", extra_env
+        ) or _skip_kind_reason(ctx, cfg, "skip-on-failure", 1, "skip-on-failure scripts all exited 1", extra_env)
     if not skip_reason:
         return False
     info(f"{provider.name}[{provider.stage}]: {skip_reason}; skipping stage")
@@ -2214,21 +2215,21 @@ def _skip_for_dynamic_reason(ctx, config, provider, skip_state):
     return True
 
 
-def _skip_kind_reason(ctx, cfg, key, expected_code, message):
+def _skip_kind_reason(ctx, cfg, key, expected_code, message, extra_env=None):
     """``message`` if ``cfg[key]``'s scripts all exit ``expected_code``, else None -- one 'skip-on-*:' kind."""
     scripts = cfg.get(key) or []
-    if scripts and _skip_scripts_exit(ctx, key, scripts, expected_code):
+    if scripts and _skip_scripts_exit(ctx, key, scripts, expected_code, extra_env):
         return message
     return None
 
 
-def _skip_scripts_exit(ctx, label, scripts, expected_code):
+def _skip_scripts_exit(ctx, label, scripts, expected_code, extra_env=None):
     """True if every ``scripts`` entry exits with ``expected_code``."""
     for script in scripts:
         path = Path(script)
         if not path.is_file():
             die(f"{label}: script not found: {path}")
-        result = ctx.run([path], check=False, capture=False, query=True, echo=False)
+        result = ctx.run([path], check=False, capture=False, query=True, echo=False, extra_env=extra_env)
         if result.returncode != expected_code:
             return False
     return True
