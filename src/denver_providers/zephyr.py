@@ -10,6 +10,8 @@ Full key reference, worked examples and design notes: ``doc/providers/zephyr.md`
 import os
 from pathlib import Path
 
+import yaml
+
 from .base import Provider, fill_unset
 from .context import (
     banner,
@@ -24,6 +26,11 @@ from .context import (
 # extra `west update` args added on top of 'update-args:' whenever ctx.ci --
 # a fixed shallow-clone strategy, not a denver config key (see doc/providers/zephyr.md).
 CI_UPDATE_ARGS = ("--narrow", "-o=--depth=1")
+
+# git config entries (via GIT_CONFIG_COUNT/KEY/VALUE, so no git config file is
+# changed) added to every `west update`: check the working trees out with
+# parallel workers (git >= 2.32; 0 = one worker per CPU).
+UPDATE_GIT_CONFIG = {"checkout.workers": "0"}
 
 # west's own per-workspace marker dir, holding its config file.
 WEST_DIRNAME = ".west"
@@ -320,7 +327,17 @@ class ZephyrProvider(Provider):
         update_args = list(cfg.get("update-args") or [])
         if ctx.ci:
             update_args += CI_UPDATE_ARGS
-        ctx.run([west, "update", *update_args], cwd=top)
+        ctx.run([west, "update", *update_args], cwd=top, extra_env=self._git_config_env(ctx, UPDATE_GIT_CONFIG))
+
+    @staticmethod
+    def _git_config_env(ctx, entries):
+        """GIT_CONFIG_COUNT/KEY_n/VALUE_n for ``entries``, appended to any the environment already carries."""
+        count = int(ctx.env.get("GIT_CONFIG_COUNT") or 0)
+        env = {"GIT_CONFIG_COUNT": count + len(entries)}
+        for index, (key, value) in enumerate(entries.items(), start=count):
+            env[f"GIT_CONFIG_KEY_{index}"] = key
+            env[f"GIT_CONFIG_VALUE_{index}"] = value
+        return env
 
     @staticmethod
     def _auto_cache_entries(ctx, west, top):
@@ -403,11 +420,37 @@ class ZephyrProvider(Provider):
         for project in reversed(self._west_projects(ctx, west, top)):
             for patch_path in cfg["patches-yml-path"]:
                 if (project / patch_path).is_file():
-                    ctx.run(
-                        [west, "-v", "patch", "--src-module", str(project), "--patch-yml", patch_path, "apply"],
-                        cwd=top,
-                        extra_env=committer,
-                    )
+                    self._apply_patches_yml(ctx, west, top, project, patch_path, committer)
+
+    @staticmethod
+    def _apply_patches_yml(ctx, west, top, project, patch_path, committer):
+        """`west patch apply` one patches.yml, the destination modules in parallel.
+
+        The patches of different destination modules are independent, and
+        `west patch` has no jobs option of its own (applying them one after the
+        other takes ~0.25 s per patch). So there is one `west patch --dst-module
+        <module> apply` per destination module, one job per CPU; the patches of
+        one module stay in order.
+        """
+        patch = [west, "-v", "patch", "--src-module", str(project), "--patch-yml", patch_path]
+        modules = ZephyrProvider._patch_dst_modules(project / patch_path)
+        if not modules:
+            ctx.run([*patch, "apply"], cwd=top, extra_env=committer)
+            return
+        ctx.run(
+            ["xargs", "-P", str(os.cpu_count() or 1), "-I{}", *patch, "--dst-module", "{}", "apply"],
+            cwd=top,
+            extra_env=committer,
+            input="".join(f"{module}\n" for module in modules),
+        )
+
+    @staticmethod
+    def _patch_dst_modules(patches_yml):
+        """The distinct ``module:`` of every patch in ``patches_yml``, in order (none if it lists no patches)."""
+        content = yaml.safe_load(patches_yml.read_text())
+        patches = content.get("patches") if isinstance(content, dict) else None
+        modules = [p["module"] for p in patches or [] if isinstance(p, dict) and p.get("module")]
+        return list(dict.fromkeys(modules))
 
     def _update_blobs_cache(self, ctx, cfg, west, top):
         """Regenerate 'blobs-cache:' (a path:url listing of every west blob), if configured."""

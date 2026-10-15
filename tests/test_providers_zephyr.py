@@ -1,5 +1,6 @@
 """Tests for providers.zephyr.ZephyrProvider."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -661,3 +662,69 @@ def test_auto_cache_untouched_without_west_update(make_context, run_recorder, wh
     run_zephyr(config, ctx)
     assert (cache / "broken" / "0123abcd").is_dir()
     assert not any("update.auto-cache" in c for c in run_recorder.commands())
+
+
+# ---- git checkout workers / shared cache / parallel patches ---------------------#
+def _update_call(run_recorder):
+    return next(
+        c
+        for c in run_recorder.calls
+        if [str(x) for x in c.cmd][-1:] == ["update"] or "update" in [str(x) for x in c.cmd][1:2]
+    )
+
+
+def test_update_checks_out_with_parallel_workers(make_context, run_recorder, which):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config)
+    run_zephyr(config, ctx)
+    env = _update_call(run_recorder).kwargs["env"]
+    assert env["GIT_CONFIG_COUNT"] == "1"
+    assert (env["GIT_CONFIG_KEY_0"], env["GIT_CONFIG_VALUE_0"]) == ("checkout.workers", "0")
+    assert "GIT_CONFIG_COUNT" not in ctx.env  # only west update gets it
+
+
+def test_update_appends_to_the_git_config_of_the_environment(make_context, run_recorder, which):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config)
+    ctx.env.update({"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "a.b", "GIT_CONFIG_VALUE_0": "c"})
+    run_zephyr(config, ctx)
+    env = _update_call(run_recorder).kwargs["env"]
+    assert env["GIT_CONFIG_COUNT"] == "2"
+    assert (env["GIT_CONFIG_KEY_0"], env["GIT_CONFIG_VALUE_0"]) == ("a.b", "c")
+    assert (env["GIT_CONFIG_KEY_1"], env["GIT_CONFIG_VALUE_1"]) == ("checkout.workers", "0")
+
+
+def _project_with_patches(tmp_path, content):
+    proj = tmp_path / "proj"
+    (proj / "zephyr").mkdir(parents=True)
+    (proj / "zephyr" / "patches.yml").write_text(content)
+    return proj
+
+
+def test_patches_of_different_modules_are_applied_in_parallel(make_context, run_recorder, which, tmp_path):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config)
+    proj = _project_with_patches(
+        tmp_path,
+        "patches:\n  - path: a.patch\n    module: zephyr-rtos\n  - path: b.patch\n    module: hal\n"
+        "  - path: c.patch\n    module: zephyr-rtos\n",
+    )
+    run_recorder.responses["list -f {abspath}"] = resp(stdout=f"{proj}\n")
+    run_zephyr(config, ctx)
+    call = next(c for c in run_recorder.calls if "--src-module" in [str(x) for x in c.cmd])
+    argv = [str(x) for x in call.cmd]
+    assert argv[:3] == ["xargs", "-P", str(os.cpu_count() or 1)]
+    assert argv[argv.index("--dst-module") + 1] == "{}"
+    assert argv[-1] == "apply"
+    assert call.kwargs["input"] == "zephyr-rtos\nhal\n"  # one job per module, in order
+
+
+def test_patches_yml_without_modules_is_applied_in_one_go(make_context, run_recorder, which, tmp_path):
+    config = {"zephyr": {"west-yml": "west.yml"}}
+    ctx = make_ctx(make_context, config)
+    proj = _project_with_patches(tmp_path, "patches: []\n")
+    run_recorder.responses["list -f {abspath}"] = resp(stdout=f"{proj}\n")
+    run_zephyr(config, ctx)
+    argv = next(a for a in run_recorder.argvs() if "--src-module" in a)
+    assert argv[0] != "xargs"
+    assert "--dst-module" not in argv
