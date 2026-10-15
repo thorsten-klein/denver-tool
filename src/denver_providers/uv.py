@@ -8,6 +8,7 @@ Full key reference, worked examples and design notes: ``doc/providers/uv.md``.
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from .base import Provider, fill_unset
@@ -457,6 +458,15 @@ class UvProvider(Provider):
             f"Re-run with --force to recreate it at {wanted}, or give this stage its own 'venv:' "
             f"to keep both interpreters (one venv holds exactly one interpreter)."
         )
+
+    def skip_scripts_env(self, ctx):
+        """The venv of this stage: the skip scripts run before it is activated."""
+        venv_dir = ctx.venv_dir_for(self.config_section(ctx).get("venv"))
+        path = ctx.env.get("PATH")
+        return {
+            "VIRTUAL_ENV": str(venv_dir),
+            "PATH": f"{venv_dir / 'bin'}{os.pathsep}{path}" if path else str(venv_dir / "bin"),
+        }
 
     def _activate(self, ctx, venv_dir):
         """Activate the venv purely via env vars (equivalent to `activate`)."""

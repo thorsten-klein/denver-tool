@@ -338,8 +338,9 @@ class DockerProvider(Provider):
 
         self._stash_for_wrap(exe, compose_files, compose)
 
-        # after $DENVER_DOCKER_IMAGE is set, as the compose file may use it
-        if compose["check-bind-mounts"]:
+        # after $DENVER_DOCKER_IMAGE is set, as the compose file may use it.
+        # Not with --fast: it is slow.
+        if compose["check-bind-mounts"] and not ctx.fast:
             self._check_bind_mount_sources(ctx, exe, compose["service"])
 
         self._build_or_skip(ctx, exe, image, compose, registries, remote_ref, found_locally)

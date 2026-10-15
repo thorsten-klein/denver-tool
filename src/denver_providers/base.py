@@ -100,6 +100,10 @@ class Provider:
     def setup(self, ctx):
         """Prepare the environment. Mutate ctx.env; run tools as needed."""
 
+    def skip_scripts_env(self, ctx):  # noqa: ARG002 -- default no-op; overriders use ctx
+        """Extra env vars for the skip-on-success/skip-on-failure scripts."""
+        return {}
+
     def wrap(self, ctx, cmd):  # noqa: ARG002 -- default no-op; overriders use ctx
         """Return the command that should actually be executed."""
         return cmd

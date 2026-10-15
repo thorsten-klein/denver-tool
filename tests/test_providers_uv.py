@@ -846,3 +846,31 @@ def test_apply_patches_resolves_relative_path_from_import(make_context, run_reco
     run_uv(config, ctx)
     expected = f"venv-patcher apply -f {base_dir / 'patches.yml'}"
     assert any(expected in c for c in run_recorder.commands())
+
+
+# ---- skip_scripts_env ------------------------------------------------------- #
+def _uv_provider(ctx, config, stage="uv"):
+    ctx.config = config
+    config[stage] = UvProvider.resolve_defaults(ctx, config.get(stage) or {}, config)
+    provider = UvProvider(config)
+    provider.stage = stage
+    return provider
+
+
+def test_skip_scripts_env_activates_the_stage_venv(make_context):
+    config = {"uv": {}}
+    ctx = make_context(config=config)
+    ctx.env["PATH"] = "/usr/bin"
+    env = _uv_provider(ctx, config).skip_scripts_env(ctx)
+    venv = ctx.venv_dir_for(None)
+    assert env == {"VIRTUAL_ENV": str(venv), "PATH": f"{venv / 'bin'}:/usr/bin"}
+    assert ctx.env["PATH"] == "/usr/bin"  # only for the scripts
+
+
+def test_skip_scripts_env_uses_the_stage_own_venv(make_context):
+    config = {"uv-2": {"venv": "other"}}
+    ctx = make_context(config=config)
+    ctx.env.pop("PATH", None)
+    env = _uv_provider(ctx, config, stage="uv-2").skip_scripts_env(ctx)
+    venv = ctx.venv_dir_for("other")
+    assert env == {"VIRTUAL_ENV": str(venv), "PATH": str(venv / "bin")}

@@ -1230,6 +1230,17 @@ def test_run_stages_skip_on_success_runs_stage_when_script_exits_nonzero(tmp_pat
     assert exec_recorder["env"]["RAN_FAKESETUP"] == "1"
 
 
+def test_run_stages_skip_on_success_script_of_a_uv_stage_sees_its_venv(tmp_path, exec_recorder, caplog):
+    env_dir, cfg_path = _env(tmp_path, {})
+    _executable_script(
+        env_dir / "check.sh",
+        '#!/bin/sh\ncase ":$PATH:" in *":$VIRTUAL_ENV/bin:"*) exit 0;; esac\nexit 1\n',
+    )
+    config = {"stages": ["uv"], "uv": {"provider": "uv", "skip-on-success": ["check.sh"]}}
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
+    assert "uv[uv]: skip-on-success scripts all exited 0; skipping stage" in caplog.text
+
+
 def test_run_stages_skip_on_failure_skips_stage_when_script_exits_1(tmp_path, fake_providers, exec_recorder):
     env_dir, cfg_path = _env(tmp_path, {})
     _executable_script(env_dir / "check.sh", "#!/bin/sh\nexit 1\n")

@@ -34,12 +34,10 @@ find_workspace_root() {
 WEST_TOPDIR=$(find_workspace_root)
 
 resolve_container_image() {
-    # docker-compose.yml is the single source of truth for the tag; fall
-    # back to a fixed name if compose config can't be parsed for any reason.
+    # read the 'image:' line ('docker compose config' is slow)
     local tag
-    tag=$(docker compose -f "$SELF_DIR/docker-compose.yml" config --format=json 2>/dev/null | jq -r '.services.dev.image' || true)
-    [ -z "$tag" ] || [ "$tag" = "null" ] && tag="zephyr-docker:latest"
-    echo "$tag"
+    tag=$(sed -n 's/^ *image: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' "$SELF_DIR/docker-compose.yml" | head -n 1)
+    echo "${tag:-zephyr-docker:latest}"
 }
 CONTAINER_IMAGE=$(resolve_container_image)
 
@@ -85,7 +83,12 @@ done
 # ~/.claude.json, next to ~/.claude/ rather than inside it. It must exist
 # before the container starts (docker creates a directory for a missing bind
 # mount source), and an empty file is not valid JSON for Claude Code.
-[ -f "$DENVER_GLOBAL_ENV_DIR/.claude.json" ] || echo '{}' > "$DENVER_GLOBAL_ENV_DIR/.claude.json"
+CLAUDE_JSON=$DENVER_GLOBAL_ENV_DIR/.claude.json
+# docker may have created a directory here: remove it if empty
+if [ -d "$CLAUDE_JSON" ] && ! rmdir "$CLAUDE_JSON" 2>/dev/null; then
+    echo "Warning: $CLAUDE_JSON is a directory, remove it: sudo rm -r $CLAUDE_JSON" >&2
+fi
+[ -e "$CLAUDE_JSON" ] || echo '{}' > "$CLAUDE_JSON"
 
 # A non-interactive stdin is how we tell an ad-hoc CI runner apart from an
 # interactive devshell (CI runners of this kind don't allocate a tty).
