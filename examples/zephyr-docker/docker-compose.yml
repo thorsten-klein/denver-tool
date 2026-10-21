@@ -1,6 +1,6 @@
 services:
   dev:
-    image: "zephyr-docker:20261008"
+    image: "zephyr-docker:20261021"
     build:
       context: container
       dockerfile: Dockerfile

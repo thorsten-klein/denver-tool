@@ -23,6 +23,10 @@ ZEPHYR_TOOLCHAIN_DEPS=(
 )
 apt_install "${ZEPHYR_TOOLCHAIN_DEPS[@]}"
 
+# conan packages built from source (--build=missing), e.g. the cmake bootstrap
+CONAN_BUILD_DEPS=(libssl-dev)
+apt_install "${CONAN_BUILD_DEPS[@]}"
+
 # interactive/debugging conveniences -- not required for a headless build
 DEVSHELL_TOOLS=(
     apt-utils git-core strace mc pcmanfm gedit vim nano gdb-multiarch
