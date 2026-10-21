@@ -118,7 +118,11 @@ class DenverConanFile(ConanFile):
         if spec.custom:
             self.run(spec.custom)
         else:
-            download(self, spec.url, filename=source_name, verify=False, md5=spec.md5)
+            # fetch to a .part file and move it into place only once the md5
+            # matches -- a cut-off download must not look like a finished one
+            part = path.with_name(path.name + ".part")
+            download(self, spec.url, filename=str(part), verify=False, md5=spec.md5)
+            part.replace(path)
 
         exported = Path(self.export_sources_folder) / source_name
         if not exported.exists():
