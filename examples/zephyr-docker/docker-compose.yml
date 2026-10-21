@@ -18,6 +18,10 @@ services:
     # ignore SIGTERM/SIGINT unless it installs a handler
     init: true
     user: ${HOST_UID:-1000}:${HOST_GID:-1000}
+    # serial devices (/dev/ttyACM*): docker adds the groups of the image
+    # user only if the host UID is the one of 'ubuntu' (1000)
+    group_add:
+      - dialout
     privileged: true
     volumes:
       # host passthrough: display, TLS trust store, device hotplug
