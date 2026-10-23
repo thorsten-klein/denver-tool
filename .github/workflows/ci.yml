@@ -9,11 +9,11 @@ on:
     - opened
     - synchronize
     - reopened
-  # weekly on develop (scheduled runs always use the default branch), so a
+  # daily on develop (scheduled runs always use the default branch), so a
   # breaking change in a dependency, runner image or upstream download shows
-  # up even in a week without any commit
+  # up even on a day without any commit
   schedule:
-  - cron: '0 18 * * 5'
+  - cron: '0 18 * * *'
     timezone: Europe/Berlin
   # by hand for any branch: 'Run workflow' in the Actions tab, or
   # `gh workflow run ci.yml --ref <branch>`
