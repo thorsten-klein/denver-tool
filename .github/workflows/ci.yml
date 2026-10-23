@@ -15,6 +15,9 @@ on:
   schedule:
   - cron: '0 18 * * 5'
     timezone: Europe/Berlin
+  # by hand for any branch: 'Run workflow' in the Actions tab, or
+  # `gh workflow run ci.yml --ref <branch>`
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
