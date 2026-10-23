@@ -2210,6 +2210,7 @@ def _skip_for_dynamic_reason(ctx, config, provider, skip_state):
     if not skip_reason:
         return False
     info(f"{provider.name}[{provider.stage}]: {skip_reason}; skipping stage")
+    provider.setup_skipped(ctx)
     if skip_state is not None:
         skip_state.reasons[provider.stage] = skip_reason
     return True

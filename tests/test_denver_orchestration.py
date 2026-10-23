@@ -2,6 +2,7 @@
 
 import inspect
 import json
+import os
 import re
 import sys
 import textwrap
@@ -1239,6 +1240,33 @@ def test_run_stages_skip_on_success_script_of_a_uv_stage_sees_its_venv(tmp_path,
     config = {"stages": ["uv"], "uv": {"provider": "uv", "skip-on-success": ["check.sh"]}}
     denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
     assert "uv[uv]: skip-on-success scripts all exited 0; skipping stage" in caplog.text
+
+
+def test_run_stages_skipped_uv_stage_still_activates_its_venv(tmp_path, exec_recorder):
+    # the skip script found the install done -- the command (and every later
+    # stage) must still get the venv's tools, not the host's
+    env_dir, cfg_path = _env(tmp_path, {})
+    venv_file = tmp_path / "venv.txt"
+    _executable_script(
+        env_dir / "check.sh",
+        f'#!/bin/sh\nmkdir -p "$VIRTUAL_ENV/bin"\nprintf %s "$VIRTUAL_ENV" > {venv_file}\n',
+    )
+    config = {"stages": ["uv"], "uv": {"provider": "uv", "skip-on-success": ["check.sh"]}}
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
+    venv = venv_file.read_text()
+    assert exec_recorder["env"]["VIRTUAL_ENV"] == venv
+    assert exec_recorder["env"]["PATH"].split(os.pathsep)[0] == str(Path(venv) / "bin")
+
+
+def test_run_stages_skipped_uv_stage_without_a_venv_activates_nothing(tmp_path, exec_recorder):
+    env_dir, cfg_path = _env(tmp_path, {})
+    venv_file = tmp_path / "venv.txt"
+    _executable_script(env_dir / "check.sh", f'#!/bin/sh\nprintf %s "$VIRTUAL_ENV" > {venv_file}\n')
+    config = {"stages": ["uv"], "uv": {"provider": "uv", "skip-on-success": ["check.sh"]}}
+    denver.run_stages(env_dir, config, cfg_path, ["echo", "hi"])
+    venv = venv_file.read_text()
+    assert exec_recorder["env"].get("VIRTUAL_ENV") != venv
+    assert str(Path(venv) / "bin") not in exec_recorder["env"]["PATH"].split(os.pathsep)
 
 
 def test_run_stages_skip_on_failure_skips_stage_when_script_exits_1(tmp_path, fake_providers, exec_recorder):
