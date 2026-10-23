@@ -468,6 +468,12 @@ class UvProvider(Provider):
             "PATH": f"{venv_dir / 'bin'}{os.pathsep}{path}" if path else str(venv_dir / "bin"),
         }
 
+    def setup_skipped(self, ctx):
+        """A skip script found the install done: later stages still need the venv activated."""
+        venv_dir = ctx.venv_dir_for(self.config_section(ctx).get("venv"))
+        if venv_dir.is_dir():
+            self._activate(ctx, venv_dir)
+
     def _activate(self, ctx, venv_dir):
         """Activate the venv purely via env vars (equivalent to `activate`)."""
         ctx.set("VIRTUAL_ENV", venv_dir)

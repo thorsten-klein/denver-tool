@@ -104,6 +104,9 @@ class Provider:
         """Extra env vars for the skip-on-success/skip-on-failure scripts."""
         return {}
 
+    def setup_skipped(self, ctx):
+        """Run instead of setup() when a skip-on-success/skip-on-failure script skips the stage."""
+
     def wrap(self, ctx, cmd):  # noqa: ARG002 -- default no-op; overriders use ctx
         """Return the command that should actually be executed."""
         return cmd
