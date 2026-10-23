@@ -112,7 +112,9 @@ it only runs when it’s set to a command explicitly. The same is true of the
 generic `skip-on-success:`/`skip-on-failure:` keys (see “Generic stage keys” in
 [Configuration](../configuration/config-file.md)): with neither given there
 is simply no skip check for this stage. The scripts get the venv of the
-stage (`VIRTUAL_ENV`, `PATH`), even if it does not exist yet.
+stage (`VIRTUAL_ENV`, `PATH`), even if it does not exist yet. A skip only
+skips the install: an existing venv is still activated, so later stages use
+its tools.
 
 ## One venv, one interpreter
 
