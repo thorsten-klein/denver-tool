@@ -55,9 +55,20 @@ jobs:
       # back to downloading a tarball, and a checkout with no .git has no
       # tags for setuptools-scm to derive the version from. macOS runners
       # already have git/tar/xz, so only Linux needs this.
+      # Retried: while the AlmaLinux mirrors sync, every mirror can answer 404
+      # for a metadata file the repo index already lists, which fails dnf
+      # outright. Dropping the cached metadata lets the next try fetch a
+      # consistent set.
       - name: Install build prerequisites (Linux container)
         if: matrix.container != ''
-        run: dnf -y install python3.12 python3.12-pip git tar xz
+        run: |
+          for attempt in 1 2 3; do
+            dnf -y install python3.12 python3.12-pip git tar xz && exit 0
+            [ "$attempt" = 3 ] && exit 1
+            echo "dnf failed (attempt $attempt of 3), retrying in 60s"
+            dnf clean metadata
+            sleep 60
+          done
 
       - uses: actions/checkout@v7
         with:
