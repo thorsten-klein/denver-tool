@@ -12,7 +12,7 @@ class ConanRecipe(ConanFile):
         # this unit's catalog, written by denver next to this conanfile (see
         # 'catalog:' in ../denver.toml). It already covers every recipe dir the
         # unit installs from -- this env's own conan/recipes and the shared
-        # ../zephyr-devshell/conan/recipes (ccache, clang, cmake, ...) alike --
+        # ../zephyr-devshell/conan/recipes (ccache, cmake, llvm-project, ...) alike --
         # so there is exactly one file to read, with no second catalog to
         # merge in.
         catalog = yaml.safe_load(load(self.recipe_path / "catalog.yml"))
@@ -27,11 +27,11 @@ class ConanRecipe(ConanFile):
 
     def build_requirements(self):
         self.tool_requires_from_catalog("ccache/4.14.1")
-        self.tool_requires_from_catalog("clang/21.1.4")
         self.tool_requires_from_catalog("cmake/3.31.9")
         self.tool_requires_from_catalog("doxygen/1.15.0")
         self.tool_requires_from_catalog("fish/4.8.1")
         self.tool_requires_from_catalog("jlink/8.82")
+        self.tool_requires_from_catalog("llvm-project/23.1.4")
         self.tool_requires_from_catalog("ninja/1.13.2")
         self.tool_requires_from_catalog("protoc/33.2")
         self.tool_requires_from_catalog("python-cache/denver")
