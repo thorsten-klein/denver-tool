@@ -330,7 +330,7 @@ Create `envs/firmware-env/requirements.txt`:
 
 ```default
 # needed by the conan provider
-conan==2.31.2
+conan==2.33.0
 
 # what the use case asked for
 pytest==9.1.1
