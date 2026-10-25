@@ -130,6 +130,26 @@ needs 'conan' on PATH`.
   `settings.yml`, ...) is installed into the conan cache by conan itself —
   denver never opens or interprets any file inside a `config:` directory,
   it only invokes the command.
+- **`global-conf`** — optional; a mapping of conf names to values. Each
+  entry is written into `<conan home>/global.conf` as `name=value`, after
+  `config:` was installed. All other lines of that file stay as they are.
+  An entry replaces the lines with the same name (`name=...`, `name+=...`,
+  ...). A new name is added at the end. The file is only written when
+  something changes.
+
+  ```yaml
+  global-conf:
+    core:non_interactive: true
+    tools.build:jobs: 8
+    tools.build:cxxflags: ["-O2"]
+    user.my:token: '{{ os.getenv("MY_TOKEN") }}'
+  ```
+
+  A string is written as it is. Conan renders `global.conf` as a Jinja
+  template itself, so `{{ ... }}` works. Any other value (a bool, a number,
+  a list, ...) is written as a Python literal (`True`, `8`, `['-O2']`),
+  which is what conan reads. Mappings merge key by key across `import:`
+  layers, so a derived env can add or change single entries.
 - **`remotes`** — optional; a project-owned, *exhaustive* list of the conan
   remotes this env wants. Each entry: `url`, `verify_ssl` (default `true`),
   `enabled` (default `true`). When the prepare stage runs, the recipes-exporter

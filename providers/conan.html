@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=dc150357"></script>
+      <script src="../_static/documentation_options.js?v=17ab5d2b"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/65cd072e8fa18276437e184e36cca20245903423">1.7.1-11-g65cd072</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/9ac7b5997fff25b433f83b31b28133eb687178de">1.7.1-12-g9ac7b59</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -554,6 +554,25 @@ conan’s own <code class="docutils literal notranslate"><span class="pre">confi
 <code class="docutils literal notranslate"><span class="pre">settings.yml</span></code>, …) is installed into the conan cache by conan itself —
 denver never opens or interprets any file inside a <code class="docutils literal notranslate"><span class="pre">config:</span></code> directory,
 it only invokes the command.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">global-conf</span></code></strong> — optional; a mapping of conf names to values. Each
+entry is written into <code class="docutils literal notranslate"><span class="pre">&lt;conan</span> <span class="pre">home&gt;/global.conf</span></code> as <code class="docutils literal notranslate"><span class="pre">name=value</span></code>, after
+<code class="docutils literal notranslate"><span class="pre">config:</span></code> was installed. All other lines of that file stay as they are.
+An entry replaces the lines with the same name (<code class="docutils literal notranslate"><span class="pre">name=...</span></code>, <code class="docutils literal notranslate"><span class="pre">name+=...</span></code>,
+…). A new name is added at the end. The file is only written when
+something changes.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">global-conf</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">core:non_interactive</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">tools.build:jobs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8</span>
+<span class="w">  </span><span class="nt">tools.build:cxxflags</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"-O2"</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">user.my:token</span><span class="p">:</span><span class="w"> </span><span class="s">'{{</span><span class="nv"> </span><span class="s">os.getenv("MY_TOKEN")</span><span class="nv"> </span><span class="s">}}'</span>
+</pre></div>
+</div>
+<p>A string is written as it is. Conan renders <code class="docutils literal notranslate"><span class="pre">global.conf</span></code> as a Jinja
+template itself, so <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">...</span> <span class="pre">}}</span></code> works. Any other value (a bool, a number,
+a list, …) is written as a Python literal (<code class="docutils literal notranslate"><span class="pre">True</span></code>, <code class="docutils literal notranslate"><span class="pre">8</span></code>, <code class="docutils literal notranslate"><span class="pre">['-O2']</span></code>),
+which is what conan reads. Mappings merge key by key across <code class="docutils literal notranslate"><span class="pre">import:</span></code>
+layers, so a derived env can add or change single entries.</p>
+</li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">remotes</span></code></strong> — optional; a project-owned, <em>exhaustive</em> list of the conan
 remotes this env wants. Each entry: <code class="docutils literal notranslate"><span class="pre">url</span></code>, <code class="docutils literal notranslate"><span class="pre">verify_ssl</span></code> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>),
 <code class="docutils literal notranslate"><span class="pre">enabled</span></code> (default <code class="docutils literal notranslate"><span class="pre">true</span></code>). When the prepare stage runs, the recipes-exporter
