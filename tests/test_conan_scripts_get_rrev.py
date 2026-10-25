@@ -154,15 +154,14 @@ def test_get_rrev_tracked_source_drops_its_entry(tmp_path, monkeypatch, capsys):
 
     get_rrev.compute_rrev(recipe_dir)
 
-    # no 'sources: {}' left behind either
-    assert yaml.safe_load((recipe_dir / "conandata.yml").read_text()) == {}
+    assert (recipe_dir / "conandata.yml").read_text() == "sources:\n"
 
 
 def test_get_rrev_tracked_source_content_changes_rrev(tmp_path, monkeypatch):
     recipe_dir = _recipe_dir(tmp_path)
     src = "data.tar"
     (recipe_dir / src).write_text("payload")
-    (recipe_dir / "conandata.yml").write_text("{}")
+    (recipe_dir / "conandata.yml").write_text("sources:\n")
     _stub_inspect(monkeypatch, name="foo", version="1.0", exports_sources=[src])
     _stub_git_tracked(monkeypatch, {str(recipe_dir / src)})
 
@@ -171,7 +170,7 @@ def test_get_rrev_tracked_source_content_changes_rrev(tmp_path, monkeypatch):
     _, _, after = get_rrev.compute_rrev(recipe_dir)
 
     assert before != after
-    assert (recipe_dir / "conandata.yml").read_text() == "{}"  # no pin needed
+    assert (recipe_dir / "conandata.yml").read_text() == "sources:\n"  # no pin needed
 
 
 def test_get_rrev_tracked_source_missing_file_and_no_pin_errors(tmp_path, monkeypatch):

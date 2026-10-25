@@ -6,8 +6,8 @@ jlink/8.82: jlink/8.82@denver/snapshot#18176d66413c46929405fa913231439d
 llvm-project/23.1.4: llvm-project/23.1.4@denver/snapshot#0ae73d6c0e4bb8a77bf7a498e3c6090f
 ninja/1.13.2: ninja/1.13.2@denver/snapshot#423edc5d1b9bdd6a2da4b12329e7fb25
 protoc/33.2: protoc/33.2@denver/snapshot#3764cee08b8473223c7d789159f3eacf
-python-cache/denver: python-cache/denver@denver/snapshot#f0b3adb4bb8972e350742bb45280ef8f
+python-cache/denver: python-cache/denver@denver/snapshot#d2d693cb1e8c422d7fd999659e70e5c4
 systemview/3.62b: systemview/3.62b@denver/snapshot#c31f7f0d03b6fbab0c7ca5c6a85819e7
-west-blobs-cache/denver: west-blobs-cache/denver@denver/snapshot#1f177645524ce3b3ea2ec9b15b8047ab
+west-blobs-cache/denver: west-blobs-cache/denver@denver/snapshot#24dfc2948118f2e8d5aaeaa7a337ffb1
 zephyr-sdk/0.17.4: zephyr-sdk/0.17.4@denver/snapshot#3339f5427d4caa72effbe8dec4ebdf75
 zephyr-sdk/1.0.1: zephyr-sdk/1.0.1@denver/snapshot#aa805404b346f7e8f4f88557aedf805a

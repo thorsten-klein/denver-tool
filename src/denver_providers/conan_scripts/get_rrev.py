@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -242,9 +243,9 @@ def _sync_export_sources(
         entries.append((f"export_source/{exports_source}", md5))
 
     if changed:
-        if not yml_sources:
-            del yml_data["sources"]  # no 'sources: {}' left behind
-        save(conandata_yml, yaml.safe_dump(yml_data, default_flow_style=False))
+        text = yaml.safe_dump(yml_data, default_flow_style=False)
+        # an empty 'sources:' instead of 'sources: {}'
+        save(conandata_yml, re.sub(r"^sources: \{\}$", "sources:", text, flags=re.MULTILINE))
     return entries
 
 
