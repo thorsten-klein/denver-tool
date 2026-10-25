@@ -2,9 +2,9 @@
 """Computes a conan recipe's RREV (recipe revision) by replicating conan's own conanmanifest.txt hashing.
 
 Also ensures each of the recipe's exports_sources is present locally (via
-git, a configured url, or a custom fetch command) and has a pinned md5 in
-conandata.yml, rewriting conandata.yml when a source is added/changed/
-removed. Used by build_catalog.py to keep catalog.yml's pinned revisions in sync
+git, a configured url, or a custom fetch command). A downloaded source gets a
+pinned md5 in conandata.yml; a git-tracked one gets none, since git and the
+manifest already cover it. conandata.yml is rewritten when a pin changes. Used by build_catalog.py to keep catalog.yml's pinned revisions in sync
 with recipe content; also runnable standalone (see __main__ below).
 """
 
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -105,7 +106,7 @@ def _fetch_export_source(
     resulting conandata.yml diff needs to be reviewed like any other lockfile-style pin.
     """
     custom = entry.get("custom")
-    url = entry.get("url")
+    url = entry.get("url") or ""
     if custom:
         print(
             f"Warning: no md5 pinned for '{exports_source}' in '{conandata_yml}' -- running "
@@ -113,7 +114,7 @@ def _fetch_export_source(
             "md5 for the first time. Review this conandata.yml diff before committing it."
         )
         subprocess.run(shlex.split(custom), check=True, cwd=conanfile_dir)
-    elif url:
+    else:  # _check_download_entry made sure there is a url
         if urlparse(url).scheme not in ("http", "https"):
             raise GetRREVError(f"Error: 'url' must be http(s), got: {url!r}")
         print(
@@ -123,28 +124,22 @@ def _fetch_export_source(
         )
         # scheme validated above -- file:/ and other non-http(s) schemes are rejected
         urlretrieve(url, exports_source_abs)  # nosec B310
-    else:
-        raise GetRREVError(f"Error: don't know how to get file {exports_source_abs}")
 
 
-def _reconcile_tracked_entry(entry: dict, exports_source_abs: Path) -> bool:
-    """Re-pin a git-tracked source's md5 from disk (``entry`` mutated in place). Returns True if changed."""
-    changed = entry.pop("url", None) is not None  # url on a tracked file doesn't make sense
+def _tracked_source_md5(exports_source: str, yml_sources: dict, exports_source_abs: Path) -> tuple[str, bool]:
+    """Hash a git-tracked source from disk and drop its conandata.yml entry. Returns ``(md5, changed)``.
+
+    No md5 is pinned for it: git versions the file, and its line in the
+    manifest already changes the RREV when the file changes.
+    """
+    changed = yml_sources.pop(exports_source, None) is not None
     if not exports_source_abs.exists():
-        return changed
-    file_md5 = md5sum(exports_source_abs)
-    if entry.get("md5") == file_md5:
-        return changed
-    entry["md5"] = file_md5
-    return True
+        raise GetRREVError(f"Error: '{exports_source_abs}' is tracked by git but missing on disk")
+    return md5sum(exports_source_abs), changed
 
 
-def _reconcile_export_source_entry(
-    conanfile_dir: Path, exports_source: str, entry: dict, exports_source_abs: Path
-) -> bool:
-    """Sync ``entry``'s git-tracked/url bookkeeping to match reality (mutated in place). Returns True if changed."""
-    if _is_git_tracked(conanfile_dir, exports_source_abs):
-        return _reconcile_tracked_entry(entry, exports_source_abs)
+def _check_download_entry(conanfile_dir: Path, exports_source: str, entry: dict, exports_source_abs: Path) -> None:
+    """Fail unless an untracked source says how to get it (``url`` or ``custom``)."""
     if not entry.get("url") and not entry.get("custom"):
         message = f"Error: 'url' must be specified for {exports_source} in {conanfile_dir}"
         if exports_source_abs.exists():
@@ -155,7 +150,6 @@ def _reconcile_export_source_entry(
                 f"part of the repo, stage it: git add {exports_source_abs}"
             )
         raise GetRREVError(message)
-    return False
 
 
 def _validate_pinned_md5(md5: str, exports_source: str, conandata_yml: Path) -> None:
@@ -204,25 +198,23 @@ def _ensure_md5(
 def _sync_export_source(
     conanfile_dir: Path, exports_source: str, yml_sources: dict, conandata_yml: Path
 ) -> tuple[str, bool]:
-    """Ensure ``exports_source`` is present locally with a valid, pinned md5.
+    """Ensure ``exports_source`` is present locally; pin an md5 only for a download.
 
-    The md5 pin is required in conandata.yml even for git-tracked sources: real
-    ``conan export`` (DenverConanFile.export_sources -> check_md5()) reads it back
-    out of conandata.yml itself and verifies the local file against it, independent
-    of this script's own manifest hashing below -- it isn't just an artifact of how
-    this script computes RREV.
-    Mutates ``yml_sources[exports_source]`` in place. Returns ``(md5, changed)`` where
+    Mutates ``yml_sources`` in place. Returns ``(md5, changed)`` where
     ``changed`` tells the caller whether conandata.yml needs to be rewritten.
     """
+    exports_source_abs = conanfile_dir / exports_source
+    if _is_git_tracked(conanfile_dir, exports_source_abs):
+        return _tracked_source_md5(exports_source, yml_sources, exports_source_abs)
+
     changed = exports_source not in yml_sources
     entry = yml_sources.setdefault(exports_source, {}) or {}
     yml_sources[exports_source] = entry
 
-    exports_source_abs = conanfile_dir / exports_source
-    entry_changed = _reconcile_export_source_entry(conanfile_dir, exports_source, entry, exports_source_abs)
+    _check_download_entry(conanfile_dir, exports_source, entry, exports_source_abs)
     md5, md5_changed = _ensure_md5(conanfile_dir, exports_source, entry, exports_source_abs, conandata_yml)
 
-    return md5, changed or entry_changed or md5_changed
+    return md5, changed or md5_changed
 
 
 def _sync_export_sources(
@@ -251,7 +243,9 @@ def _sync_export_sources(
         entries.append((f"export_source/{exports_source}", md5))
 
     if changed:
-        save(conandata_yml, yaml.safe_dump(yml_data, default_flow_style=False))
+        text = yaml.safe_dump(yml_data, default_flow_style=False)
+        # an empty 'sources:' instead of 'sources: {}'
+        save(conandata_yml, re.sub(r"^sources: \{\}$", "sources:", text, flags=re.MULTILINE))
     return entries
 
 
