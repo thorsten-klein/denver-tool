@@ -39,7 +39,7 @@ docker:
     file: docker-compose.yml
     service: dev
     build: true
-  # host-side bootstrap (containerd/docker/make/jq/QEMU/udev rules); run via
+  # host-side bootstrap (containerd/docker/make/jq/QEMU, docker group and proxy); run via
   # `denver run examples/zephyr-docker --scripts setup`, not on every normal run.
   scripts:
     setup:

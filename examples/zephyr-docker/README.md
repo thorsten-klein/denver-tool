@@ -68,7 +68,9 @@ every new container.
 
 **2. `scripts: setup:` — the things a container genuinely cannot do.** You
 cannot install Docker from inside Docker, and udev rules belong to the host
-kernel. Those live in a named script list that is **not** run on every start:
+kernel. The script also adds you to the `docker` group and passes your
+`$http_proxy`/`$https_proxy` to the docker daemon and client. Those live in a
+named script list that is **not** run on every start:
 
 ```bash
 denver run examples/zephyr-docker --scripts setup    # once per machine
