@@ -94,7 +94,7 @@ stage, and can already use denver built-ins like `WEST_TOPDIR` and
 `find_package(Zephyr)` path and west's system config.
 
 **Recipes without a conanfile.** This base ships a directory of shared Conan
-recipes (`cmake`, `ninja`, `clang`, `ccache`, `doxygen`, `protoc`, `jlink`,
+recipes (`cmake`, `ninja`, `llvm-project`, `ccache`, `doxygen`, `protoc`, `jlink`,
 `systemview`, `zephyr-sdk`, `fish`) but declares no `recipes:` entry for
 them, and that is not an oversight: `conanfile:` (what to install) and
 `recipes:` (what to export) are independent, and this base has no conanfile

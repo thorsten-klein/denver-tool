@@ -14,7 +14,7 @@ drops you into a `bash` with that venv on `PATH`:
 
 ```console
 $ denver run examples/zephyr-uv -- conan --version
-Conan version 2.23.0
+Conan version 2.33.0
 ```
 
 The venv is created on the first run and reused afterwards; the install is

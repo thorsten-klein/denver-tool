@@ -1,6 +1,6 @@
 # General
 west==1.5.99
-conan==2.23.0
+conan==2.33.0
 uv==0.9.13
 pip==25.3
 

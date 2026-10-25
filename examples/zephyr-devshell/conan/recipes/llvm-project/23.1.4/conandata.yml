@@ -1,0 +1,4 @@
+sources:
+  LLVM-23.1.4-Linux-X64.tar.xz:
+    md5: 928fa02c69fbb458151965f9914aff5a
+    url: https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.4/LLVM-23.1.4-Linux-X64.tar.xz

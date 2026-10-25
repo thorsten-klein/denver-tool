@@ -5,9 +5,9 @@ from DenverConanFile import DenverConanFile
 
 
 class ConanRecipe(DenverConanFile):
-    name = "clang"
-    version = "21.1.4"
-    description = "clang compiler"
+    name = "llvm-project"
+    version = "23.1.4"
+    description = "LLVM prebuilt release (clang, clang-format, clang-tidy, ...)"
     url = "https://github.com/llvm/llvm-project/"
     license = "LLVM-exception"  # assumed to cover the whole prebuilt archive
     settings = "os", "arch"

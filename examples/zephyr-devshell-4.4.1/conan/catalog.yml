@@ -1,12 +1,12 @@
 ccache/4.14.1: ccache/4.14.1@denver/snapshot#1d2c618eb817958145969637972815a0
-clang/21.1.4: clang/21.1.4@denver/snapshot#0df7616be09791978ee111978c5e4c83
 cmake/3.31.9: cmake/3.31.9@denver/snapshot#d85390644e05e3772ea7f02389e46a83
 doxygen/1.15.0: doxygen/1.15.0@denver/snapshot#c01be94a41114362bcc54044cbab4e53
 fish/4.8.1: fish/4.8.1@denver/snapshot#3d7cefdb1bb01190b53f4af7261aaee4
 jlink/8.82: jlink/8.82@denver/snapshot#79424641f002e9aeed004f10f5afaac5
+llvm-project/23.1.4: llvm-project/23.1.4@denver/snapshot#f72bd6692efc49e0198535ffbb882c14
 ninja/1.13.2: ninja/1.13.2@denver/snapshot#8ad94e0caf6cc728a38362cc78957a8e
 protoc/33.2: protoc/33.2@denver/snapshot#2aebfa90886e1dab0269295746f8c51d
-python-cache/denver: python-cache/denver@denver/snapshot#cfe29951fb1d40a398ed05bb1155032f
+python-cache/denver: python-cache/denver@denver/snapshot#081e4ab125d36bf060eb9074a677e6cc
 systemview/3.62b: systemview/3.62b@denver/snapshot#5e7f65a8159b979b7d9609562e968ea2
 west-blobs-cache/denver: west-blobs-cache/denver@denver/snapshot#035e732b23b33da280eb5f45c51cf4ae
 zephyr-sdk/0.17.4: zephyr-sdk/0.17.4@denver/snapshot#4abf4000d95d81ee7fbbf26ebc8f2970
