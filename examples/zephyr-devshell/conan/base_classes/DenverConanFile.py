@@ -103,15 +103,16 @@ class DenverConanFile(ConanFile):
         spec = self._source_spec(source_name)
         path = Path(source_name)
 
-        if not spec.md5:
-            raise DenverConanFileError(f"'{source_name}': conandata.yml is missing 'md5'")
-
         if path.exists():
-            check_md5(self, source_name, spec.md5)
+            # only a download has an md5: git and the manifest cover a tracked file
+            if spec.md5:
+                check_md5(self, source_name, spec.md5)
             return
 
         if not spec.url and not spec.custom:
             raise DenverConanFileError(f"'{source_name}': conandata.yml needs 'url' (or 'custom') to fetch it")
+        if not spec.md5:
+            raise DenverConanFileError(f"'{source_name}': conandata.yml is missing 'md5'")
 
         self.output.info(f"fetching '{source_name}' to export alongside the recipe")
         self.conf = self.conf_info  # hotfix conan bug

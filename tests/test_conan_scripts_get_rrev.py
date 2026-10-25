@@ -142,19 +142,36 @@ def test_get_rrev_denver_conan_file_none_skipped(tmp_path, monkeypatch):
     assert rrev
 
 
-def test_get_rrev_tracked_source_removes_url_and_computes_md5(tmp_path, monkeypatch, capsys):
+def test_get_rrev_tracked_source_drops_its_entry(tmp_path, monkeypatch, capsys):
     recipe_dir = _recipe_dir(tmp_path)
     src = "data.tar"
     (recipe_dir / src).write_text("payload")
-    (recipe_dir / "conandata.yml").write_text(yaml.safe_dump({"sources": {src: {"url": "http://should-be-removed"}}}))
+    (recipe_dir / "conandata.yml").write_text(
+        yaml.safe_dump({"sources": {src: {"url": "http://should-be-removed", "md5": "a" * 32}}})
+    )
     _stub_inspect(monkeypatch, name="foo", version="1.0", exports_sources=[src])
     _stub_git_tracked(monkeypatch, {str(recipe_dir / src)})
 
     get_rrev.compute_rrev(recipe_dir)
 
-    saved = yaml.safe_load((recipe_dir / "conandata.yml").read_text())
-    assert "url" not in saved["sources"][src]
-    assert "md5" in saved["sources"][src]
+    # no 'sources: {}' left behind either
+    assert yaml.safe_load((recipe_dir / "conandata.yml").read_text()) == {}
+
+
+def test_get_rrev_tracked_source_content_changes_rrev(tmp_path, monkeypatch):
+    recipe_dir = _recipe_dir(tmp_path)
+    src = "data.tar"
+    (recipe_dir / src).write_text("payload")
+    (recipe_dir / "conandata.yml").write_text("{}")
+    _stub_inspect(monkeypatch, name="foo", version="1.0", exports_sources=[src])
+    _stub_git_tracked(monkeypatch, {str(recipe_dir / src)})
+
+    _, _, before = get_rrev.compute_rrev(recipe_dir)
+    (recipe_dir / src).write_text("changed")
+    _, _, after = get_rrev.compute_rrev(recipe_dir)
+
+    assert before != after
+    assert (recipe_dir / "conandata.yml").read_text() == "{}"  # no pin needed
 
 
 def test_get_rrev_tracked_source_missing_file_and_no_pin_errors(tmp_path, monkeypatch):
@@ -162,11 +179,10 @@ def test_get_rrev_tracked_source_missing_file_and_no_pin_errors(tmp_path, monkey
     src = "missing.tar"
     (recipe_dir / "conandata.yml").write_text("{}")
     _stub_inspect(monkeypatch, name="foo", version="1.0", exports_sources=[src])
-    # git reports it as tracked, but the file isn't actually present and no
-    # md5/url/custom pin exists in conandata.yml either
+    # git reports it as tracked, but the file isn't actually present
     _stub_git_tracked(monkeypatch, {str(recipe_dir / src)})
 
-    with pytest.raises(get_rrev.GetRREVError, match="don't know how to get file"):
+    with pytest.raises(get_rrev.GetRREVError, match="tracked by git but missing"):
         get_rrev.compute_rrev(recipe_dir)
 
 
@@ -288,7 +304,7 @@ def test_get_rrev_keeps_sources_not_in_exports_sources(tmp_path, monkeypatch):
     get_rrev.compute_rrev(recipe_dir)
 
     saved = yaml.safe_load((recipe_dir / "conandata.yml").read_text())
-    assert saved["sources"]["other.tar"] == downloaded
+    assert saved["sources"] == {"other.tar": downloaded}
 
 
 def test_get_rrev_bare_recipe_conandata_untouched(tmp_path, monkeypatch):
@@ -309,10 +325,7 @@ def test_get_rrev_no_rewrite_when_nothing_changed(tmp_path, monkeypatch):
     recipe_dir = _recipe_dir(tmp_path)
     src = "data.tar"
     (recipe_dir / src).write_text("payload")
-    from conan.internal.util.files import md5sum
-
-    correct_md5 = md5sum(recipe_dir / src)
-    (recipe_dir / "conandata.yml").write_text(yaml.safe_dump({"sources": {src: {"md5": correct_md5}}}))
+    (recipe_dir / "conandata.yml").write_text("{}")
     _stub_inspect(monkeypatch, name="foo", version="1.0", exports_sources=[src])
     _stub_git_tracked(monkeypatch, {str(recipe_dir / src)})
 
@@ -328,10 +341,10 @@ def test_get_rrev_missing_md5_after_all_branches_raises(tmp_path, monkeypatch):
     # forces the final safety-net error.
     recipe_dir = _recipe_dir(tmp_path)
     src = "data.tar"
-    (recipe_dir / src).write_text("payload")
-    (recipe_dir / "conandata.yml").write_text(yaml.safe_dump({"sources": {src: {}}}))
+    (recipe_dir / src).write_text("payload")  # an earlier download, not tracked
+    (recipe_dir / "conandata.yml").write_text(yaml.safe_dump({"sources": {src: {"url": "http://example/x"}}}))
     _stub_inspect(monkeypatch, name="foo", version="1.0", exports_sources=[src])
-    _stub_git_tracked(monkeypatch, {str(recipe_dir / src)})
+    _stub_git_tracked(monkeypatch, set())
 
     import denver_providers.conan_scripts.get_rrev as mod
 
