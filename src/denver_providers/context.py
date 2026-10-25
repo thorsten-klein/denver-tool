@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from denver_errors import die
+from denver_providers import prompt as prompt_hooks
 from denver_providers.stagelog import KEEP_RUNS, StageTee, log_only, logging_active, prune_runs, sync_window_size
 
 # Every line a --dry-run emits starts with '[dry-run ', so the whole preview
@@ -749,6 +750,10 @@ class Context:
         self.config_path = Path(config_path) if config_path else self.env_dir / "denver.yml"
         self.env_workdir = state_dir_for(self.env_dir, self.config_path)
         self.logs_dir = self.env_workdir / ".logs"
+        # the prompt hooks and the list of files this env was built from (see prompt.py)
+        self.shell_hooks_dir = self.env_workdir / ".shell"
+        # every existing file a config path resolved to (see resolve_path)
+        self.input_files = set()
         # log files (--log): off unless start_run_log() is called
         self.stage_logs = False
         self._run_log_dir = None
@@ -923,57 +928,51 @@ class Context:
 
     @property
     def prompt_command(self):
-        """The snippet denver appends to PROMPT_COMMAND, re-applying ``prompt_prefix`` to PS1.
+        """The snippet denver appends to PROMPT_COMMAND: it sources the bash hook (see prompt.py).
 
         PROMPT_COMMAND is bash's own standard pre-prompt hook, not something
         denver owns -- denver only adds to whatever is already in it. That
         hook is what makes the marker survive at all: bash runs it before
         drawing *every* prompt, i.e. after the rc files that would otherwise
         have discarded an inherited PS1 (see _prefix_prompt).
-
-        The ``case`` guard is not decoration: without it this would re-prefix
-        on every single prompt, growing PS1 to '(env) (env) (env) ...' line
-        after line. The match is "contains", not "starts with": VS Code's
-        shell integration wraps PS1 in its own escape sequences, so the
-        marker is no longer at the very start once it has been applied.
-        ``case`` rather than a bash-only conditional so a POSIX-ish shell
-        sourcing it doesn't choke.
         """
-        prefix = self.prompt_prefix
-        return f'case "$PS1" in *"{prefix}"*) ;; *) export PS1="{prefix}$PS1";; esac'
+        return prompt_hooks.prompt_command(self.shell_hooks_dir)
 
     def _prefix_prompt(self):
-        """Mark the shell denver execs with ``prompt_prefix``, via each shell's own prompt variable.
+        """Set zsh's PROMPT to ``prompt`` -- the default for a zsh whose rc files set none.
 
-        None of these belong to denver -- it writes the variables the shells
-        themselves define: PS1/PROMPT_COMMAND for bash, PROMPT for zsh, and
-        SHELL_PROMPT_PREFIX, which fish reads natively from 4.8.0 on.
+        bash and fish get the marker from the hooks install_prompt_hooks
+        writes. PS1 is deliberately *not* set: an interactive bash re-reads
+        its own rc files after denver execs it and assigns PS1 outright, so
+        anything denver put there is discarded before the user ever sees it.
 
-        PS1 is deliberately *not* set: an interactive bash re-reads its own
-        rc files after denver execs it and assigns PS1 outright, so anything
-        denver put there is discarded before the user ever sees it.
-        PROMPT_COMMAND is bash's answer to exactly that -- it runs after
-        those rc files, before every prompt -- so that is where the marker
-        goes instead.
-
-        Prefixing is idempotent: a wrapper provider re-invokes denver inside
-        the container (see denver.py's reinvoke_command) with this env
-        already applied, and the inner run must not stack a second copy.
+        PROMPT and PS1 are the *same* parameter in zsh, so an inherited PS1
+        (denver sets none of its own) would win over this one if it happened
+        to come later in environ -- re-inserting PROMPT last (pop + assign)
+        makes this zsh-syntax value the one zsh keeps, whatever it inherited.
         """
-        snippet = self.prompt_command
-        # a trailing ';' on the inherited value would make '<existing>; <snippet>'
-        # a bash syntax error ('cmd; ; case ...'), so it's normalised away
-        existing = self.env.get("PROMPT_COMMAND", "").strip().rstrip(";").strip()
-        if snippet not in existing:
-            self.env["PROMPT_COMMAND"] = f"{existing}; {snippet}" if existing else snippet
-
-        # zsh's own prompt variable. PROMPT and PS1 are the *same* parameter
-        # in zsh, so an inherited PS1 (denver sets none of its own, see
-        # above) would win over this one if it happened to come later in
-        # environ -- re-inserting PROMPT last (pop + assign) makes this
-        # zsh-syntax value the one zsh keeps, whatever it inherited.
         self.env.pop("PROMPT", None)
         self.env["PROMPT"] = self.prompt
+
+    def install_prompt_hooks(self):
+        """Write the prompt hooks and point bash, zsh and fish at them (see prompt.install).
+
+        Called once the state dir exists, and only for a real run: ZDOTDIR
+        pointing to a hook that was never written would make zsh skip the
+        user's own startup files.
+        """
+        if not self.dry_run:
+            prompt_hooks.install(self.env, self.shell_hooks_dir)
+
+    def write_env_inputs(self, config_files):
+        """Record the files this env was built from, for the prompt hooks to watch (see prompt.write_inputs).
+
+        These are ``config_files`` and every existing file a config path
+        resolved to (scripts, compose files, ...). Called right before the
+        final command starts, so files the stages wrote are older than the list.
+        """
+        if not self.dry_run:
+            prompt_hooks.write_inputs(self.env, self.shell_hooks_dir, [*config_files, *self.input_files])
 
     @property
     def variables(self):
@@ -1074,11 +1073,12 @@ class Context:
         if not isinstance(value, (str, os.PathLike)):
             die(f"expected a path in the denver config, got a {type(value).__name__}: {value!r}")
         p = Path(value).expanduser()
-        if p.is_absolute():
-            return p
-        found = self._existing_under(p, Path(base) if base else self.env_dir)
-        # default to env-dir-relative even if missing (caller may create it)
-        return found if found else (self.env_dir / p).resolve()
+        if not p.is_absolute():
+            # default to env-dir-relative even if missing (caller may create it)
+            p = self._existing_under(p, Path(base) if base else self.env_dir) or (self.env_dir / p).resolve()
+        if p.is_file():
+            self.input_files.add(p)
+        return p
 
     def resolve_command(self, cmd):
         """A literal argv (e.g. 'patches-apply:') with every relative-path-looking token resolved.

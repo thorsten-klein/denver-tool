@@ -512,30 +512,6 @@ def test_ps1_left_alone(make_context):
     assert ctx.env["PS1"] == r"\u@\h:\w\$ "
 
 
-def test_prompt_command_set_when_none_inherited(make_context):
-    ctx = make_context()
-    assert ctx.env["PROMPT_COMMAND"] == ctx.prompt_command
-    assert "(myenv) " in ctx.env["PROMPT_COMMAND"]
-
-
-def test_prompt_command_appended_to_existing(make_context):
-    ctx = make_context(env={"PROMPT_COMMAND": "__set_title"})
-    assert ctx.env["PROMPT_COMMAND"] == f"__set_title; {ctx.prompt_command}"
-
-
-def test_prompt_command_trailing_semicolon_normalised(make_context):
-    # '<existing>; <snippet>' with a trailing ';' already on the inherited
-    # value would be a bash syntax error ('__set_title; ; case ...')
-    ctx = make_context(env={"PROMPT_COMMAND": "__set_title ; "})
-    assert ctx.env["PROMPT_COMMAND"] == f"__set_title; {ctx.prompt_command}"
-
-
-def test_prompt_command_not_appended_twice(make_context):
-    ctx = make_context(env={"PROMPT_COMMAND": "__set_title"})
-    again = make_context(env={"PROMPT_COMMAND": ctx.env["PROMPT_COMMAND"]})
-    assert again.env["PROMPT_COMMAND"] == ctx.env["PROMPT_COMMAND"]
-
-
 def test_zsh_prompt_set(make_context):
     ctx = make_context()
     assert ctx.env["PROMPT"] == "(myenv) %m%#"
@@ -559,15 +535,6 @@ def test_zsh_prompt_wins_in_real_zsh(make_context):
     env = {"PATH": os.environ["PATH"], **{k: ctx.env[k] for k in ("PS1", "PROMPT")}}
     result = subprocess.run(["zsh", "-c", 'printf "%s" "$PS1"'], env=env, capture_output=True, text=True, check=True)
     assert result.stdout == "(myenv) %m%#"
-
-
-def test_prompt_command_is_idempotent_per_prompt(make_context):
-    # bash runs PROMPT_COMMAND before *every* prompt: without the 'case'
-    # guard PS1 would grow '(myenv) (myenv) ...' line after line.
-    ctx = make_context()
-    script = f"PS1='$ '\n{ctx.prompt_command}\n{ctx.prompt_command}\n{ctx.prompt_command}\nprintf '%s' \"$PS1\""
-    result = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True)
-    assert result.stdout == "(myenv) $ "
 
 
 def test_variables_property(make_context):
@@ -1078,22 +1045,6 @@ def test_resolve_command_leaves_non_string_tokens_untouched(make_context):
     # resolve_command must pass those through rather than crash on Path().
     ctx = make_context()
     assert ctx.resolve_command(["apply.sh", 1]) == ["apply.sh", 1]
-
-
-def test_prompt_command_does_not_restack_when_ps1_is_wrapped(make_context):
-    # VS Code shell integration puts its own escape sequence in front of PS1,
-    # so the marker is no longer the very first thing in it
-    ctx = make_context()
-    ps1 = subprocess.run(
-        [
-            "bash",
-            "-c",
-            f'PS1=$\'\\\\[\\\\e]633;A\\\\a\\\\]\'"{ctx.prompt_prefix}$ "; {ctx.prompt_command}; {ctx.prompt_command}; printf %s "$PS1"',
-        ],
-        capture_output=True,
-        text=True,
-    ).stdout
-    assert ps1.count(ctx.prompt_prefix) == 1
 
 
 def test_write_export_env_banner_printed_by_interactive_shells(make_context, tmp_path):

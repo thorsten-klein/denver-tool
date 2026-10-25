@@ -265,7 +265,9 @@ name is already exported:
 - **`SHELL_PROMPT_PREFIX`** — `(<env>) `: the text marking a shell as
   running inside this environment, so a prompt reads
   `(raspberry-pico) dev@host:~/ws$`. fish reads this natively from **fish
-  4.8.0** onwards (see below).
+  4.8.0** onwards. It turns red when the env is outdated (see below).
+- **`DENVER_ENV_INPUTS`** — the file listing the files this env was built
+  from. Set right before the final command starts (see below).
 
 These are exported into the environment too, so scripts, compose files and
 the final command can read them as ordinary variables. `DENVER_ENV_DIR` —
@@ -311,25 +313,50 @@ $DENVER_ENV_WORKDIR/.logs/runs/20261002-071712-123123/
 
 ### The prompt marker
 
-denver marks the shell it starts by writing the prompt variables **the
-shells themselves define** — it contributes to them, it does not own them:
+denver marks the shell it starts with `(<env>) `. It writes a small hook per
+shell into `$DENVER_ENV_WORKDIR/.shell/`, and points each shell at it with
+the variables **the shells themselves define** — it adds to them, it does
+not own them:
 
 | Variable | Shell | denver writes |
 | --- | --- | --- |
-| `PROMPT_COMMAND` | bash | its snippet, appended after whatever was there |
-| `PROMPT` | zsh | `(<env>) %m%#` — short host, then `%` (or `#` for root) |
-| `SHELL_PROMPT_PREFIX` | fish ≥ 4.8.0 | `(<env>) ` |
+| `PROMPT_COMMAND` | bash | a snippet that sources the hook, after whatever was there |
+| `ZDOTDIR` | zsh | the hook's dir. Its `.zshenv` sets `ZDOTDIR` back (your old value is in `DENVER_ZDOTDIR`), runs your own `.zshenv`, and adds the hook to `precmd_functions`. zsh then reads your other startup files as usual. |
+| `PROMPT` | zsh | `(<env>) %m%#` — short host, then `%` (or `#` for root), for a zsh whose rc files set no prompt |
+| `XDG_DATA_DIRS` | fish | the hook's dir first; fish loads `fish/vendor_conf.d/denver.fish` from it |
+| `SHELL_PROMPT_PREFIX` | fish ≥ 4.8.0 | `(<env>) `; fish shows it itself |
+
+The hooks run before each prompt. In bash and zsh they put the marker in
+front of `PS1`, or replace the one they put there before, so it never
+stacks up. In all three shells they set `SHELL_PROMPT_PREFIX`.
 
 **`PS1` is deliberately not set.** An interactive bash re-reads its rc files
 after denver execs it and assigns `PS1` outright, so anything denver put
-there would be discarded before the user ever saw it. `PROMPT_COMMAND` is
-bash's answer to exactly that — it runs after those rc files, before every
-prompt — so that is where the marker goes for bash instead.
+there would be discarded before the user ever saw it. `PROMPT_COMMAND` runs
+after those rc files, before every prompt — so that is where the marker
+goes for bash instead.
 
-The `PROMPT_COMMAND` snippet is idempotent: it re-applies the prefix only if
-it isn't already present (bash would otherwise grow `PS1` by one copy per
-prompt), and a wrapper provider re-invoking denver inside a container never
-appends a second copy.
+A wrapper provider runs denver a second time inside the container. That run
+finds the hooks already in place and adds nothing twice.
+
+#### An outdated env
+
+Right before the final command starts, denver writes the list of files the
+env was built from: every config file it read (with `import:` and `-f`
+files), and every existing file a path in the config named (scripts,
+compose files, ...). `DENVER_ENV_INPUTS` points to that list.
+
+When one of these files is newer than the list, or is gone, the hook marks
+the shell as outdated:
+
+- the marker turns red and names the file: `(<env>: denver.yml changed) `,
+- the shell prints once: `denver: denver.yml changed since this shell started. Start the env again to use it.`
+
+To get the change, leave the shell and run `denver run` again. The check is
+only a hint: it looks at file times, not at what changed. In fish older
+than 4.8.0 you only get the warning, since that fish does not show
+`SHELL_PROMPT_PREFIX`. A wrapper with no setup stages runs no denver inside
+the container, so its shell gets no hook.
 
 One ordering subtlety, handled in `Context._prefix_prompt`: in zsh `PROMPT`
 and `PS1` are the *same* parameter, so an inherited `PS1` would win over
