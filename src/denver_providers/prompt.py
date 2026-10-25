@@ -3,8 +3,8 @@
 denver writes one hook per shell into ``<env workdir>/.shell/``. Each runs
 before every prompt. It sets ``SHELL_PROMPT_PREFIX`` (and the prompt itself
 in bash and zsh) to ``(<env>) ``. When a file the env was built from changed
-since, the prefix turns red and names the file, and the shell prints a
-warning once.
+since, the prefix turns red and says ``outdated env``, and the shell prints
+a warning once.
 
 The files the env was built from are listed in the file ``DENVER_ENV_INPUTS``
 points to. The hook compares each file's mtime with that list file's own
@@ -28,26 +28,26 @@ KEEP_INPUTS = 20
 # bash and zsh source this before each prompt. Variables start with _denver_
 # because it runs in the user's shell.
 SH_HOOK = r"""# Written by denver. Sourced before each prompt (bash: PROMPT_COMMAND, zsh: precmd).
-_denver_reason=
+_denver_outdated=
 if [ -f "${DENVER_ENV_INPUTS-}" ]; then
     while IFS= read -r _denver_file; do
         if [ ! -e "$_denver_file" ] || [ "$_denver_file" -nt "$DENVER_ENV_INPUTS" ]; then
-            _denver_reason="${_denver_file##*/} changed"
+            _denver_outdated=1
             break
         fi
     done <"$DENVER_ENV_INPUTS"
 fi
-if [ -z "$_denver_reason" ]; then
+if [ -z "$_denver_outdated" ]; then
     SHELL_PROMPT_PREFIX="($DENVER_ENV_NAME) "
     _denver_ps1=$SHELL_PROMPT_PREFIX
 else
-    SHELL_PROMPT_PREFIX=$'\e[31m'"($DENVER_ENV_NAME: $_denver_reason)"$'\e[0m '
+    SHELL_PROMPT_PREFIX=$'\e[31m'"($DENVER_ENV_NAME: outdated env)"$'\e[0m '
     # the prompt must know which characters take no space
     if [ -n "${ZSH_VERSION-}" ]; then _denver_on='%{' _denver_off='%}'; else _denver_on='\[' _denver_off='\]'; fi
-    _denver_ps1="$_denver_on"$'\e[31m'"$_denver_off($DENVER_ENV_NAME: $_denver_reason)$_denver_on"$'\e[0m'"$_denver_off "
+    _denver_ps1="$_denver_on"$'\e[31m'"$_denver_off($DENVER_ENV_NAME: outdated env)$_denver_on"$'\e[0m'"$_denver_off "
     if [ -z "${_denver_warned-}" ]; then
         _denver_warned=1
-        printf 'denver: %s since this shell started. Start the env again to use it.\n' "$_denver_reason" >&2
+        printf 'denver: the env changed since this shell started. Start the env again to use it.\n' >&2
     fi
 fi
 export SHELL_PROMPT_PREFIX
@@ -82,28 +82,28 @@ FISH_HOOK = r"""# Written by denver: set SHELL_PROMPT_PREFIX before each prompt.
 # fish < 3.4 has no "return" outside a function
 if status is-interactive
     function __denver_prompt --on-event fish_prompt
-        set -l reason
+        set -l outdated
         set -l files
         test -f "$DENVER_ENV_INPUTS"; and set files (string split \n <$DENVER_ENV_INPUTS)
         for file in $files
             if not test -e "$file"
-                set reason (string replace -r '.*/' '' -- $file)" changed"
+                set outdated 1
                 break
             end
         end
         # fish < 4 has no 'test -nt', so ask find once for all files
-        if test -z "$reason"; and set -q files[1]
+        if test -z "$outdated"; and set -q files[1]
             set -l newer (command find $files -newer $DENVER_ENV_INPUTS 2>/dev/null)
-            set -q newer[1]; and set reason (string replace -r '.*/' '' -- $newer[1])" changed"
+            set -q newer[1]; and set outdated 1
         end
-        if test -z "$reason"
+        if test -z "$outdated"
             set -gx SHELL_PROMPT_PREFIX "($DENVER_ENV_NAME) "
             return
         end
-        set -gx SHELL_PROMPT_PREFIX \e"[31m($DENVER_ENV_NAME: $reason)"\e"[0m "
+        set -gx SHELL_PROMPT_PREFIX \e"[31m($DENVER_ENV_NAME: outdated env)"\e"[0m "
         if not set -q __denver_warned
             set -g __denver_warned 1
-            printf 'denver: %s since this shell started. Start the env again to use it.\n' $reason >&2
+            printf 'denver: the env changed since this shell started. Start the env again to use it.\n' >&2
         end
     end
 end

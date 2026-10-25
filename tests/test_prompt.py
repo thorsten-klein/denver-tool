@@ -204,23 +204,23 @@ def test_bash_marks_outdated_env(hooked):
     _touch(config)
     result = _bash(ctx, f'PS1=\'$ \'; {pc}; {pc}; {pc}; printf %s "$PS1"; printf "|%s" "$SHELL_PROMPT_PREFIX"')
     ps1, prefix = result.stdout.split("|")
-    assert ps1 == "\\[\x1b[31m\\](myenv: denver.yml changed)\\[\x1b[0m\\] $ "
-    assert prefix == f"{RED}(myenv: denver.yml changed)\x1b[0m "
-    assert result.stderr.count("denver: denver.yml changed") == 1
+    assert ps1 == "\\[\x1b[31m\\](myenv: outdated env)\\[\x1b[0m\\] $ "
+    assert prefix == f"{RED}(myenv: outdated env)\x1b[0m "
+    assert result.stderr.count("denver: the env changed since this shell started") == 1
 
 
 def test_bash_marker_replaced_in_place(hooked):
     ctx, config = hooked()
     pc = ctx.prompt_command
     result = _bash(ctx, f"PS1='X $ '; {pc}; touch {config}; {pc}; printf %s \"$PS1\"")
-    assert result.stdout == "\\[\x1b[31m\\](myenv: denver.yml changed)\\[\x1b[0m\\] X $ "
+    assert result.stdout == "\\[\x1b[31m\\](myenv: outdated env)\\[\x1b[0m\\] X $ "
 
 
 def test_bash_marks_deleted_input(hooked):
     ctx, config = hooked()
     config.unlink()
     result = _bash(ctx, f'{ctx.prompt_command}; printf %s "$SHELL_PROMPT_PREFIX"')
-    assert "denver.yml changed" in result.stdout
+    assert "(myenv: outdated env)" in result.stdout
 
 
 def test_bash_without_input_list_shows_plain_prefix(hooked):
@@ -240,8 +240,8 @@ def test_zsh_runs_user_files_and_marks_outdated_env(hooked, tmp_path):
     _touch(config)
     script = 'print -rn -- "$USER_ZSHENV|${ZDOTDIR-unset}|"; _denver_prompt; _denver_prompt; print -rn -- "$PS1"'
     result = subprocess.run(["zsh", "-i", "-c", script], env=ctx.env, capture_output=True, text=True, check=True)
-    assert result.stdout == "1|unset|%{\x1b[31m%}(myenv: denver.yml changed)%{\x1b[0m%} %% "
-    assert result.stderr.count("denver: denver.yml changed") == 1
+    assert result.stdout == "1|unset|%{\x1b[31m%}(myenv: outdated env)%{\x1b[0m%} %% "
+    assert result.stderr.count("denver: the env changed since this shell started") == 1
 
 
 @pytest.mark.skipif(not shutil.which("zsh"), reason="zsh not installed")
@@ -266,6 +266,6 @@ def test_fish_marks_outdated_env(hooked, tmp_path):
     result = subprocess.run(["fish", "-i", "-c", script], env=ctx.env, capture_output=True, text=True, check=True)
     # an interactive fish prints its greeting and prompt around it
     shown = [part.split(">")[0] for part in result.stdout.split("<")[1:]]
-    assert shown == ["(myenv) ", *[f"{RED}(myenv: denver.yml changed)\x1b[0m "] * 2]
-    assert result.stderr.count("denver: denver.yml changed") == 1
+    assert shown == ["(myenv) ", *[f"{RED}(myenv: outdated env)\x1b[0m "] * 2]
+    assert result.stderr.count("denver: the env changed since this shell started") == 1
     assert "denver.fish" not in result.stderr  # the hook loaded without an error

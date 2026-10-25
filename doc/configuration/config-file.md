@@ -349,8 +349,8 @@ compose files, ...). `DENVER_ENV_INPUTS` points to that list.
 When one of these files is newer than the list, or is gone, the hook marks
 the shell as outdated:
 
-- the marker turns red and names the file: `(<env>: denver.yml changed) `,
-- the shell prints once: `denver: denver.yml changed since this shell started. Start the env again to use it.`
+- the marker turns red: `(<env>: outdated env) `,
+- the shell prints once: `denver: the env changed since this shell started. Start the env again to use it.`
 
 To get the change, leave the shell and run `denver run` again. The check is
 only a hint: it looks at file times, not at what changed. In fish older
