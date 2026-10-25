@@ -14,6 +14,7 @@ Full key reference, worked examples and design notes: ``doc/providers/conan.md``
 
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -46,6 +47,10 @@ AUTH_MAY_FAIL = "may-fail"
 USABLE_REMOTES_FILENAME = "denver-usable-remotes.json"
 CONANBUILDENV_NAME = "conanbuildenv.sh"
 
+# the name of a global.conf line: everything before its operator ('=', '+=',
+# '=+', '*=' or '=!' -- the last two also start at the first '=').
+GLOBAL_CONF_NAME_RE = re.compile(r"\s*([^=\s]+?)\s*[+*]?=")
+
 # exit code of recipes.py --repair-cache if nothing was broken (same as in recipes.py)
 EXIT_NOTHING_REPAIRED = 1
 
@@ -65,6 +70,7 @@ class ConanProvider(Provider):
         "authentication",
         "profiles",
         "config",
+        "global-conf",
         "remotes",
         "keep-remotes",
         "remove-local-builds",
@@ -160,6 +166,10 @@ class ConanProvider(Provider):
         if config_dirs is not None:
             resolved["config"] = config_dirs
 
+        global_conf = cls._resolve_global_conf(cfg)
+        if global_conf is not None:
+            resolved["global-conf"] = global_conf
+
         cls._resolve_remote_settings(cfg, resolved)
 
         return fill_unset(resolved, cls.KEYS)
@@ -226,6 +236,26 @@ class ConanProvider(Provider):
         return cls._resolve_path_list(ctx, configured_config_dirs, what="config dir", checker=Path.is_dir)
 
     @staticmethod
+    def _resolve_global_conf(cfg):
+        """Validate 'global-conf:' -- a mapping of conf names to values (None => leave unset)."""
+        global_conf = cfg.get("global-conf")
+        if not global_conf:
+            return None
+        if not isinstance(global_conf, dict):
+            die(f"conan: 'global-conf:' must be a mapping of conf names to values, not {global_conf!r}")
+        for name, value in global_conf.items():
+            if not isinstance(name, str) or not name.strip() or "=" in name or "\n" in name:
+                die(f"conan: 'global-conf:' has an invalid conf name: {name!r}")
+            if "\n" in ConanProvider._global_conf_value(value):
+                die(f"conan: 'global-conf: {name}' must be a single line, got {value!r}")
+        return dict(global_conf)
+
+    @staticmethod
+    def _global_conf_value(value):
+        """A 'global-conf:' value as conan reads it: a string as is (Jinja too), anything else as a Python literal."""
+        return value if isinstance(value, str) else repr(value)
+
+    @staticmethod
     def _die_if_bare_string(value, key, noun):
         """Die if 'key:' was written as a single string instead of a list -- a common shape mistake across list-valued keys."""
         if isinstance(value, str):
@@ -274,6 +304,7 @@ class ConanProvider(Provider):
         banner(ctx, self.stage, "config")
         self._install_config(ctx, conan, cfg)
         self._ensure_profile(ctx, conan)
+        self._merge_global_conf(ctx, cfg)
         self._drop_remotes_record(ctx)
 
         if has_recipes or reconcile_remotes or self._auth_may_fail(cfg):
@@ -522,6 +553,52 @@ class ConanProvider(Provider):
             info("conan: no 'config:' key set -- skipping `conan config install`")
         for config_dir in config_dirs:
             ctx.run([conan, "config", "install", config_dir])
+
+    def _merge_global_conf(self, ctx, cfg):
+        """Write every 'global-conf:' entry into <conan home>/global.conf, keeping all its other lines.
+
+        An entry replaces the line(s) with the same name, in place; a new one
+        is appended. The file is only written when its text changes.
+        """
+        global_conf = cfg.get("global-conf")
+        if not global_conf:
+            return
+        if not self._conan_home:
+            warn(f"conan[{self.stage}]: conan home unknown -- not merging 'global-conf:' into global.conf")
+            return
+        path = Path(self._conan_home) / "global.conf"
+        old_text = path.read_text() if path.is_file() else ""
+        new_text = self._merged_global_conf(old_text, global_conf)
+        if new_text == old_text:
+            return
+        ctx.mkdir(path.parent)
+        ctx.write_text(path, new_text)
+        info(f"conan[{self.stage}]: merged 'global-conf:' into {path}")
+
+    @classmethod
+    def _merged_global_conf(cls, text, global_conf):
+        """``text`` (a global.conf) with every ``global_conf`` entry set: replaced in place, or appended."""
+        entries = {name: f"{name}={cls._global_conf_value(value)}" for name, value in global_conf.items()}
+        lines = []
+        written = set()
+        for line in text.splitlines():
+            name = cls._global_conf_line_name(line)
+            if name not in entries:
+                lines.append(line)
+            elif name not in written:
+                # the first line with this name takes the new value, later ones go
+                lines.append(entries[name])
+                written.add(name)
+        lines += [entry for name, entry in entries.items() if name not in written]
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def _global_conf_line_name(line):
+        """The conf name a global.conf line sets, or None for a comment, a Jinja line or any other line."""
+        if line.lstrip().startswith(("#", "{")):
+            return None
+        match = GLOBAL_CONF_NAME_RE.match(line)
+        return match.group(1) if match else None
 
     def _warn_if_shadowing_venv(self, ctx, conan):
         """Warn when a venv is active but the conan about to run isn't the one inside it.

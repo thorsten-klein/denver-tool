@@ -8,6 +8,7 @@ import pytest
 
 from denver_errors import DenverError
 from denver_providers.conan import USABLE_REMOTES_FILENAME, ConanProvider
+from denver_providers.context import Context
 
 
 def run_conan(config, ctx, stage="conan"):
@@ -1297,3 +1298,95 @@ def test_install_hides_the_ccache_remote_storage(make_context, run_recorder, whi
     install = next(c for c in run_recorder.calls if "install" in [str(x) for x in c.cmd] and "graph" not in c.cmd)
     assert "CCACHE_REMOTE_STORAGE" not in install.kwargs["env"]
     assert ctx.env["CCACHE_REMOTE_STORAGE"] == "file:/cache @layout=local"
+
+
+# ---- global-conf (merged into <conan home>/global.conf) -----------------------#
+def _run_with_global_conf(make_context, run_recorder, global_conf, home, **ctx_kwargs):
+    """Run the conan stage with ``global-conf:`` set, against a conan home at ``home``."""
+    default_profile_ok(run_recorder, home=home)
+    config = {"conan": {"global-conf": global_conf}}
+    ctx = make_context(config=config, **ctx_kwargs)
+    return run_conan(config, ctx)
+
+
+def test_global_conf_merged_keeps_other_lines(make_context, run_recorder, which, tmp_path):
+    home = tmp_path / "conanhome"
+    home.mkdir()
+    (home / "global.conf").write_text(
+        "# a comment\n{% set jobs = 2 %}\ncore:non_interactive=False\n\n"
+        "tools.build:jobs=2\ntools.build:jobs+=3\nuser.keep:me=yes\n"
+    )
+    global_conf = {
+        "core:non_interactive": True,
+        "tools.build:jobs": 8,
+        "tools.build:cxxflags": ["-O2"],
+        "user.token:value": '{{ os.getenv("MY_TOKEN") }}',
+    }
+
+    _run_with_global_conf(make_context, run_recorder, global_conf, home)
+
+    assert (home / "global.conf").read_text() == (
+        "# a comment\n"
+        "{% set jobs = 2 %}\n"
+        "core:non_interactive=True\n"
+        "\n"
+        "tools.build:jobs=8\n"
+        "user.keep:me=yes\n"
+        "tools.build:cxxflags=['-O2']\n"
+        'user.token:value={{ os.getenv("MY_TOKEN") }}\n'
+    )
+
+
+def test_global_conf_created_when_missing(make_context, run_recorder, which, tmp_path):
+    home = tmp_path / "conanhome"
+    _run_with_global_conf(make_context, run_recorder, {"tools.build:jobs": 4}, home)
+    assert (home / "global.conf").read_text() == "tools.build:jobs=4\n"
+
+
+def test_global_conf_not_rewritten_when_unchanged(make_context, run_recorder, which, tmp_path, monkeypatch):
+    home = tmp_path / "conanhome"
+    home.mkdir()
+    (home / "global.conf").write_text("tools.build:jobs=4\n")
+    writes = []
+    monkeypatch.setattr(Context, "write_text", lambda self, path, text: writes.append(path))
+
+    _run_with_global_conf(make_context, run_recorder, {"tools.build:jobs": 4}, home)
+
+    assert home / "global.conf" not in writes
+
+
+def test_global_conf_dry_run_leaves_the_file(make_context, run_recorder, which, tmp_path):
+    home = tmp_path / "conanhome"
+    home.mkdir()
+    (home / "global.conf").write_text("tools.build:jobs=2\n")
+    _run_with_global_conf(make_context, run_recorder, {"tools.build:jobs": 4}, home, dry_run=True)
+    assert (home / "global.conf").read_text() == "tools.build:jobs=2\n"
+
+
+def test_global_conf_without_a_known_conan_home_warns(make_context, run_recorder, which, caplog):
+    run_recorder.responses["config home"] = lambda cmd: type("R", (), {"stdout": "", "stderr": "", "returncode": 1})()
+    config = {"conan": {"global-conf": {"tools.build:jobs": 4}}}
+    ctx = make_context(config=config, dry_run=True)
+    run_conan(config, ctx)
+    assert "not merging 'global-conf:'" in caplog.text
+
+
+def test_global_conf_unset_resolves_to_none(make_context, which):
+    ctx = make_context(config={"conan": {}})
+    assert ConanProvider.resolve_defaults(ctx, {}, {})["global-conf"] is None
+
+
+@pytest.mark.parametrize(
+    ("global_conf", "message"),
+    [
+        (["tools.build:jobs=4"], "must be a mapping"),
+        ({"tools.build:jobs=4": 1}, "invalid conf name"),
+        ({1: "x"}, "invalid conf name"),
+        ({"user.x:y": "a\nb"}, "single line"),
+    ],
+)
+def test_global_conf_invalid_dies(make_context, which, caplog, global_conf, message):
+    ctx = make_context(config={"conan": {}})
+    with pytest.raises(DenverError):
+        ConanProvider.resolve_defaults(ctx, {"global-conf": global_conf}, {})
+    assert message in caplog.text
