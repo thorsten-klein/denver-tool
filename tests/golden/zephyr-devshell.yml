@@ -94,6 +94,7 @@ conan:
   deployers:
   - <REPO>/src/denver_providers/conan_scripts/extensions/symlink.py
   exe: conan
+  global-conf: null
   install-args: null
   keep-remotes: false
   profiles:
