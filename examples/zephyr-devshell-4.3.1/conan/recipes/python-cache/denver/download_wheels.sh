@@ -21,7 +21,9 @@ python3 -m ensurepip --upgrade
 echo "resolving requirements via uv (overrides applied by caller)..."
 set -x
 uv pip install "$@"
-uv pip freeze > freeze.txt
+# '==1.2.3' also matches a local build like '1.2.3+abc' (PEP 440), and pip
+# prefers it. '===' pins the exact build uv installed.
+uv pip freeze | sed -E 's/^([A-Za-z0-9._-]+)==/\1===/' > freeze.txt
 # 'pip wheel' fetches prebuilt wheels directly, unlike 'pip download' which
 # also resolves -- freeze.txt is already the resolved set, so skip that.
 python3 -m pip wheel -r freeze.txt --no-deps -w "$OUTPUT_DIR"

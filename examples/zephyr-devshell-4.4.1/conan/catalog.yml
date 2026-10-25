@@ -6,7 +6,7 @@ fish/4.8.1: fish/4.8.1@denver/snapshot#3d7cefdb1bb01190b53f4af7261aaee4
 jlink/8.82: jlink/8.82@denver/snapshot#79424641f002e9aeed004f10f5afaac5
 ninja/1.13.2: ninja/1.13.2@denver/snapshot#8ad94e0caf6cc728a38362cc78957a8e
 protoc/33.2: protoc/33.2@denver/snapshot#2aebfa90886e1dab0269295746f8c51d
-python-cache/denver: python-cache/denver@denver/snapshot#1d244b19a1f584d0515a5cc8ad8cd8ec
+python-cache/denver: python-cache/denver@denver/snapshot#cfe29951fb1d40a398ed05bb1155032f
 systemview/3.62b: systemview/3.62b@denver/snapshot#5e7f65a8159b979b7d9609562e968ea2
 west-blobs-cache/denver: west-blobs-cache/denver@denver/snapshot#035e732b23b33da280eb5f45c51cf4ae
 zephyr-sdk/0.17.4: zephyr-sdk/0.17.4@denver/snapshot#4abf4000d95d81ee7fbbf26ebc8f2970
