@@ -372,6 +372,10 @@ class ConfigReadError(Exception):
     """
 
 
+# every config file this process read: the prompt hooks watch them (see Context.write_env_inputs)
+CONFIG_FILES_READ: set[Path] = set()
+
+
 def load_config_file(path):
     """Load a denver.yml/denver.yaml or denver.toml file, returning a dict ({} for empty files).
 
@@ -391,6 +395,7 @@ def load_config_file(path):
     explicitly below.
     """
     path = Path(path)
+    CONFIG_FILES_READ.add(path.resolve())
     if path.suffix == ".toml":
         if tomllib is None:
             raise ConfigReadError(
@@ -2450,6 +2455,7 @@ def _prepare_context(
     config, ctx = resolve_full_config(env_dir, config, config_path, env_vars=env_vars, **resolve_kwargs)
     ctx.acquire_lock(wait=not no_wait)
     ctx.ensure_state_dir()
+    ctx.install_prompt_hooks()
     if log_files:
         ctx.start_run_log(run_id)
     run_hook(ctx, config_path, "env")
@@ -2846,6 +2852,7 @@ def _run_stages_directly(
     # host, so cmd is left alone.
     cmd = resolve_command(config, forwarded, in_container=ctx.in_container)
     run_hook(ctx, config_path, "pre-cmd")
+    ctx.write_env_inputs(CONFIG_FILES_READ)
     if export_env:
         banner = LOGO_PATH.read_text() if not quiet and LOGO_PATH.is_file() else None
         ctx.write_export_env(export_env, banner=banner)
