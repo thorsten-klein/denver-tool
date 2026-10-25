@@ -17,7 +17,7 @@
     <link rel="shortcut icon" href="../_static/favicon.svg"/>
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=17ab5d2b"></script>
+      <script src="../_static/documentation_options.js?v=d04bbf2b"></script>
       <script src="../_static/doctools.js?v=9a2dae69"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -50,7 +50,7 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
-<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/9ac7b5997fff25b433f83b31b28133eb687178de">1.7.1-12-g9ac7b59</a>
+<div class="version"><a href="https://github.com/thorsten-klein/denver-tool/tree/66cdeff0c4d6bc5d8f21617ac23465f896086e62">1.7.1-13-g66cdeff</a>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Introduction</span></p>
@@ -687,7 +687,9 @@ otherwise. Only written for the stages, hooks and the final command;
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code></strong> — <code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> </code>: the text marking a shell as
 running inside this environment, so a prompt reads
 <code class="docutils literal notranslate"><span class="pre">(raspberry-pico)</span> <span class="pre">dev&#64;host:~/ws$</span></code>. fish reads this natively from <strong>fish
-4.8.0</strong> onwards (see below).</p></li>
+4.8.0</strong> onwards. It turns red when the env is outdated (see below).</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">DENVER_ENV_INPUTS</span></code></strong> — the file listing the files this env was built
+from. Set right before the final command starts (see below).</p></li>
 </ul>
 <p>These are exported into the environment too, so scripts, compose files and
 the final command can read them as ordinary variables. <code class="docutils literal notranslate"><span class="pre">DENVER_ENV_DIR</span></code> —
@@ -733,8 +735,10 @@ and continues the <code class="docutils literal notranslate"><span class="pre">r
 </section>
 <section id="the-prompt-marker">
 <h3>The prompt marker<a class="headerlink" href="#the-prompt-marker" title="Link to this heading"></a></h3>
-<p>denver marks the shell it starts by writing the prompt variables <strong>the
-shells themselves define</strong> — it contributes to them, it does not own them:</p>
+<p>denver marks the shell it starts with <code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> </code>. It writes a small hook per
+shell into <code class="docutils literal notranslate"><span class="pre">$DENVER_ENV_WORKDIR/.shell/</span></code>, and points each shell at it with
+the variables <strong>the shells themselves define</strong> — it adds to them, it does
+not own them:</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Variable</p></th>
@@ -745,31 +749,58 @@ shells themselves define</strong> — it contributes to them, it does not own th
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PROMPT_COMMAND</span></code></p></td>
 <td><p>bash</p></td>
-<td><p>its snippet, appended after whatever was there</p></td>
+<td><p>a snippet that sources the hook, after whatever was there</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PROMPT</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ZDOTDIR</span></code></p></td>
 <td><p>zsh</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> <span class="pre">%m%#</span></code> — short host, then <code class="docutils literal notranslate"><span class="pre">%</span></code> (or <code class="docutils literal notranslate"><span class="pre">#</span></code> for root)</p></td>
+<td><p>the hook’s dir. Its <code class="docutils literal notranslate"><span class="pre">.zshenv</span></code> sets <code class="docutils literal notranslate"><span class="pre">ZDOTDIR</span></code> back (your old value is in <code class="docutils literal notranslate"><span class="pre">DENVER_ZDOTDIR</span></code>), runs your own <code class="docutils literal notranslate"><span class="pre">.zshenv</span></code>, and adds the hook to <code class="docutils literal notranslate"><span class="pre">precmd_functions</span></code>. zsh then reads your other startup files as usual.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PROMPT</span></code></p></td>
+<td><p>zsh</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> <span class="pre">%m%#</span></code> — short host, then <code class="docutils literal notranslate"><span class="pre">%</span></code> (or <code class="docutils literal notranslate"><span class="pre">#</span></code> for root), for a zsh whose rc files set no prompt</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">XDG_DATA_DIRS</span></code></p></td>
+<td><p>fish</p></td>
+<td><p>the hook’s dir first; fish loads <code class="docutils literal notranslate"><span class="pre">fish/vendor_conf.d/denver.fish</span></code> from it</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code></p></td>
 <td><p>fish ≥ 4.8.0</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> </code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;)</span> </code>; fish shows it itself</p></td>
 </tr>
 </tbody>
 </table>
+<p>The hooks run before each prompt. In bash and zsh they put the marker in
+front of <code class="docutils literal notranslate"><span class="pre">PS1</span></code>, or replace the one they put there before, so it never
+stacks up. In all three shells they set <code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code>.</p>
 <p><strong><code class="docutils literal notranslate"><span class="pre">PS1</span></code> is deliberately not set.</strong> An interactive bash re-reads its rc files
 after denver execs it and assigns <code class="docutils literal notranslate"><span class="pre">PS1</span></code> outright, so anything denver put
-there would be discarded before the user ever saw it. <code class="docutils literal notranslate"><span class="pre">PROMPT_COMMAND</span></code> is
-bash’s answer to exactly that — it runs after those rc files, before every
-prompt — so that is where the marker goes for bash instead.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">PROMPT_COMMAND</span></code> snippet is idempotent: it re-applies the prefix only if
-it isn’t already present (bash would otherwise grow <code class="docutils literal notranslate"><span class="pre">PS1</span></code> by one copy per
-prompt), and a wrapper provider re-invoking denver inside a container never
-appends a second copy.</p>
+there would be discarded before the user ever saw it. <code class="docutils literal notranslate"><span class="pre">PROMPT_COMMAND</span></code> runs
+after those rc files, before every prompt — so that is where the marker
+goes for bash instead.</p>
+<p>A wrapper provider runs denver a second time inside the container. That run
+finds the hooks already in place and adds nothing twice.</p>
+<section id="an-outdated-env">
+<h4>An outdated env<a class="headerlink" href="#an-outdated-env" title="Link to this heading"></a></h4>
+<p>Right before the final command starts, denver writes the list of files the
+env was built from: every config file it read (with <code class="docutils literal notranslate"><span class="pre">import:</span></code> and <code class="docutils literal notranslate"><span class="pre">-f</span></code>
+files), and every existing file a path in the config named (scripts,
+compose files, …). <code class="docutils literal notranslate"><span class="pre">DENVER_ENV_INPUTS</span></code> points to that list.</p>
+<p>When one of these files is newer than the list, or is gone, the hook marks
+the shell as outdated:</p>
+<ul class="simple">
+<li><p>the marker turns red: <code class="docutils literal notranslate"><span class="pre">(&lt;env&gt;:</span> <span class="pre">outdated</span> <span class="pre">env)</span> </code>,</p></li>
+<li><p>the shell prints once: <code class="docutils literal notranslate"><span class="pre">denver:</span> <span class="pre">the</span> <span class="pre">env</span> <span class="pre">changed</span> <span class="pre">since</span> <span class="pre">this</span> <span class="pre">shell</span> <span class="pre">started.</span> <span class="pre">Start</span> <span class="pre">the</span> <span class="pre">env</span> <span class="pre">again</span> <span class="pre">to</span> <span class="pre">use</span> <span class="pre">it.</span></code></p></li>
+</ul>
+<p>To get the change, leave the shell and run <code class="docutils literal notranslate"><span class="pre">denver</span> <span class="pre">run</span></code> again. The check is
+only a hint: it looks at file times, not at what changed. In fish older
+than 4.8.0 you only get the warning, since that fish does not show
+<code class="docutils literal notranslate"><span class="pre">SHELL_PROMPT_PREFIX</span></code>. A wrapper with no setup stages runs no denver inside
+the container, so its shell gets no hook.</p>
 <p>One ordering subtlety, handled in <code class="docutils literal notranslate"><span class="pre">Context._prefix_prompt</span></code>: in zsh <code class="docutils literal notranslate"><span class="pre">PROMPT</span></code>
 and <code class="docutils literal notranslate"><span class="pre">PS1</span></code> are the <em>same</em> parameter, so an inherited <code class="docutils literal notranslate"><span class="pre">PS1</span></code> would win over
 denver’s <code class="docutils literal notranslate"><span class="pre">PROMPT</span></code> if it happened to come later in <code class="docutils literal notranslate"><span class="pre">environ</span></code>. <code class="docutils literal notranslate"><span class="pre">PROMPT</span></code> is
 therefore always written last, so zsh keeps the zsh-syntax value.</p>
+</section>
 </section>
 </section>
 <section id="config-resolution">
